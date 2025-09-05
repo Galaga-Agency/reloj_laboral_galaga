@@ -1,0 +1,97 @@
+@import "tailwindcss";
+
+@font-face {
+  font-family: 'Aileron';
+  src: url('/assets/fonts/Aileron-Regular.otf') format('opentype');
+  font-weight: 400;
+  font-style: normal;
+}
+
+@font-face {
+  font-family: 'Aileron';
+  src: url('/assets/fonts/Aileron-Light.otf') format('opentype');
+  font-weight: 300;
+  font-style: normal;
+}
+
+@font-face {
+  font-family: 'Aileron';
+  src: url('/assets/fonts/Aileron-SemiBold.otf') format('opentype');
+  font-weight: 600;
+  font-style: normal;
+}
+
+@font-face {
+  font-family: 'Aileron';
+  src: url('/assets/fonts/Aileron-Bold.otf') format('opentype');
+  font-weight: 700;
+  font-style: normal;
+}
+
+@font-face {
+  font-family: 'Aileron';
+  src: url('/assets/fonts/Aileron-Black.otf') format('opentype');
+  font-weight: 900;
+  font-style: normal;
+}
+
+@theme {
+  /* Galaga Agency Brand Colors */
+  --color-negro: #000000;
+  --color-blanco: #ffffff;
+  --color-azul-profundo: #121c30;
+  --color-teal: #176161;
+  --color-turquesa: #4cbcc5;
+  --color-hielo: #c3e5ef;
+  --color-naranja-tostado: #b03c18;
+  --color-melocoton: #f7b69f;
+  --color-mandarina: #ee6f45;
+  --color-violeta: #4e3a73;
+
+  /* Typography */
+  --font-family-primary: "Aileron", "Inter", system-ui, sans-serif;
+  --font-family-heading: "Aileron", "Inter", system-ui, sans-serif;
+
+  /* Status colors for work clock */
+  --color-activo: #10b981;
+  --color-inactivo: #ef4444;
+  --color-descanso: #f59e0b;
+}
+
+/* Reset */
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+* {
+  margin: 0;
+}
+
+html {
+  font-family: var(--font-family-primary);
+  scroll-behavior: smooth;
+  overflow-x: hidden !important;
+  width: 100vw !important;
+}
+
+body {
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  background-color: var(--color-blanco);
+  color: var(--color-negro);
+  min-height: 100vh;
+  font-family: var(--font-family-primary);
+}
+
+/* Focus styles */
+:focus-visible {
+  outline: 2px solid var(--color-teal);
+  outline-offset: 2px;
+}
+
+:focus:not(:focus-visible) {
+  outline: none;
+}

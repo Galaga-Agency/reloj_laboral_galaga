@@ -111,4 +111,29 @@ export class TimeRecordsService {
       esSimulado: data.es_simulado
     }
   }
+
+  static async getRecordsByDateRange(userId: string, startDate: Date, endDate: Date): Promise<RegistroTiempo[]> {
+    const { data, error } = await supabase
+      .from('registros_tiempo')
+      .select('*')
+      .eq('usuario_id', userId)
+      .gte('fecha_entrada', startDate.toISOString())
+      .lte('fecha_entrada', endDate.toISOString())
+      .order('fecha_entrada', { ascending: false })
+
+    if (error) {
+      throw new Error(`Error fetching time records by date range: ${error.message}`)
+    }
+
+    if (!data) return []
+
+    return data.map((record: any) => ({
+      id: record.id,
+      usuarioId: record.usuario_id,
+      fechaEntrada: new Date(record.fecha_entrada),
+      fechaSalida: record.fecha_salida ? new Date(record.fecha_salida) : undefined,
+      tipoRegistro: record.tipo_registro,
+      esSimulado: record.es_simulado
+    }))
+  }
 }

@@ -1,86 +1,152 @@
+import { BrowserRouter } from 'react-router-dom'
 import { useState, useEffect } from 'react'
-import { LoginPage } from '@/components/pages/LoginPage'
-import { PasswordUpdatePage } from '@/components/pages/PasswordUpdatePage'
-import { DashboardPage } from '@/components/pages/DashboardPage'
+import { RouteRenderer } from '@/components/RouteRenderer'
+import { LoadingScreen } from '@/components/ui/LoadingScreen'
 import { useLocalStorage } from '@/hooks/useLocalStorage'
 import { AuthService } from '@/services/auth-service'
+import { supabase } from '@/lib/supabase'
 import type { Usuario } from '@/types'
 
 function App() {
   const [usuario, setUsuario] = useLocalStorage<Usuario | null>('usuario_actual', null)
-  const [estaLogueado, setEstaLogueado] = useState(false)
-  const [esFirstLogin, setEsFirstLogin] = useState(false)
   const [isLoading, setIsLoading] = useState(true)
+  const [authChecked, setAuthChecked] = useState(false)
 
   useEffect(() => {
-    const checkAuthState = async () => {
-      try {
-        const currentUser = await AuthService.getCurrentUser()
-        if (currentUser) {
-          setUsuario(currentUser)
-          setEstaLogueado(true)
-          setEsFirstLogin(currentUser.firstLogin || false)
+    let authStateProcessed = false
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(
+      async (event, session) => {
+        console.log('=== AUTH STATE CHANGE ===')
+        console.log('Event:', event, 'Session exists:', !!session)
+        
+        if (event === 'INITIAL_SESSION') {
+          console.log('Processing INITIAL_SESSION')
+          
+          if (!session) {
+            console.log('No initial session found - user should be logged out')
+            setUsuario(null)
+          } else {
+            console.log('Initial session found - getting user data')
+            try {
+              const currentUser = await AuthService.getCurrentUser()
+              console.log('Initial session user data:', currentUser)
+              
+              if (currentUser) {
+                setUsuario(currentUser)
+              } else {
+                setUsuario(null)
+              }
+            } catch (error) {
+              console.error('Error getting user from initial session:', error)
+              setUsuario(null)
+            }
+          }
+          
+          authStateProcessed = true
+          setAuthChecked(true)
+          setIsLoading(false)
+          console.log('INITIAL_SESSION processing complete')
+        } 
+        else if (event === 'SIGNED_IN' && session && authStateProcessed) {
+          console.log('SIGNED_IN event - getting user data')
+          try {
+            const currentUser = await AuthService.getCurrentUser()
+            console.log('SIGNED_IN user data:', currentUser)
+            
+            if (currentUser) {
+              setUsuario(currentUser)
+            } else {
+              console.log('SIGNED_IN but no user data - signing out')
+              await AuthService.signOut()
+            }
+          } catch (error) {
+            console.error('Error getting user after sign in:', error)
+            await AuthService.signOut()
+          }
+        } 
+        else if (event === 'SIGNED_OUT') {
+          console.log('SIGNED_OUT - clearing user')
+          setUsuario(null)
+        } 
+        else if (event === 'TOKEN_REFRESHED') {
+          console.log('TOKEN_REFRESHED - verifying user')
+          try {
+            const currentUser = await AuthService.getCurrentUser()
+            if (currentUser) {
+              setUsuario(currentUser)
+            } else {
+              setUsuario(null)
+            }
+          } catch (error) {
+            console.error('Error refreshing user data:', error)
+          }
         }
-      } catch (error) {
-        console.error('Error checking auth state:', error)
-      } finally {
+      }
+    )
+
+    // Fallback timeout in case auth state change never fires
+    const fallbackTimeout = setTimeout(() => {
+      if (!authStateProcessed) {
+        console.log('Auth state change timeout - assuming no session')
+        setUsuario(null)
+        setAuthChecked(true)
         setIsLoading(false)
       }
+    }, 10000)
+
+    return () => {
+      subscription.unsubscribe()
+      clearTimeout(fallbackTimeout)
     }
+  }, [])
 
-    checkAuthState()
-  }, [setUsuario])
-
-  const manejarLogin = (datosUsuario: Usuario) => {
+  const handleLogin = (datosUsuario: Usuario) => {
+    console.log('handleLogin called with:', datosUsuario)
     setUsuario(datosUsuario)
-    setEstaLogueado(true)
-    setEsFirstLogin(datosUsuario.firstLogin || false)
   }
 
-  const manejarPasswordUpdated = () => {
-    setEsFirstLogin(false)
+  const handlePasswordUpdated = () => {
     if (usuario) {
+      console.log('Password updated, updating user firstLogin status')
       setUsuario({ ...usuario, firstLogin: false })
     }
   }
 
-  const manejarLogout = async () => {
+  const handleLogout = async () => {
+    console.log('handleLogout called')
     try {
       await AuthService.signOut()
       setUsuario(null)
-      setEstaLogueado(false)
-      setEsFirstLogin(false)
     } catch (error) {
       console.error('Error signing out:', error)
     }
   }
 
-  if (isLoading) {
-    return (
-      <div className="min-h-screen bg-gradient-to-br from-azul-profundo to-teal flex items-center justify-center">
-        <div className="flex items-center gap-3">
-          <div className="w-8 h-8 border-2 border-blanco border-t-transparent rounded-full animate-spin"></div>
-          <span className="text-blanco text-lg">Cargando...</span>
-        </div>
-      </div>
-    )
+  console.log('App render state:', { 
+    isLoading, 
+    authChecked, 
+    hasUsuario: !!usuario,
+    usuarioId: usuario?.id 
+  })
+
+  if (isLoading || !authChecked) {
+    return <LoadingScreen />
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-azul-profundo to-teal">
-      <div className="min-h-screen bg-gradient-to-t from-black/20 to-transparent">
-        {!estaLogueado ? (
-          <LoginPage onLogin={manejarLogin} />
-        ) : esFirstLogin && usuario ? (
-          <PasswordUpdatePage 
-            usuario={usuario} 
-            onPasswordUpdated={manejarPasswordUpdated} 
+    <BrowserRouter>
+      <div className="min-h-screen bg-gradient-to-br from-azul-profundo to-teal">
+        <div className="min-h-screen bg-gradient-to-t from-black/20 to-transparent">
+          <RouteRenderer
+            usuario={usuario}
+            onLogin={handleLogin}
+            onPasswordUpdated={handlePasswordUpdated}
+            onLogout={handleLogout}
           />
-        ) : (
-          <DashboardPage usuario={usuario!} onLogout={manejarLogout} />
-        )}
+        </div>
       </div>
-    </div>
+    </BrowserRouter>
   )
 }
 

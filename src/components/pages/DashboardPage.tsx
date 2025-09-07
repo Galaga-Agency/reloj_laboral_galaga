@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useMemo } from 'react'
 import type { Usuario, VistaNavegacion } from '@/types'
 import { RelojPrincipal } from '@/components/RelojPrincipal'
 import { HistorialTrabajo } from '@/components/HistorialTrabajo'
@@ -7,8 +7,8 @@ import { DashboardTabs } from '@/components/DashboardTabs'
 import { DashboardHeader } from '@/components/DashboardHeader'
 import { useTimeRecords } from '@/hooks/useTimeRecords'
 import { useGSAPAnimations } from '@/hooks/useGSAPAnimations'
-import { initDashboardAnimations } from '@/utils/animations/clock-animations'
 import { FiClock, FiList, FiSettings } from 'react-icons/fi'
+import { initDashboardAnimations } from '@/utils/animations/dashboard-animations'
 
 interface DashboardPageProps {
   usuario: Usuario
@@ -17,14 +17,21 @@ interface DashboardPageProps {
 
 export function DashboardPage({ usuario, onLogout }: DashboardPageProps) {
   const [vistaActual, setVistaActual] = useState<VistaNavegacion>('reloj')
-  
+   
   const {
     registros,
     estadoActual,
     refetch
   } = useTimeRecords(usuario.id)
+  console.log('DashboardPage: useTimeRecords completed')
 
-  useGSAPAnimations({ animations: [initDashboardAnimations], delay: 100 })
+  const animations = useMemo(() => [initDashboardAnimations], [])
+
+  useGSAPAnimations({ 
+    animations,
+    delay: 100,
+    dependencies: []
+  })
 
   const tabs = [
     { id: 'reloj' as const, label: 'Fichaje', icon: <FiClock className="w-5 h-5" /> },
@@ -35,35 +42,52 @@ export function DashboardPage({ usuario, onLogout }: DashboardPageProps) {
   const renderTabContent = () => {
     switch (vistaActual) {
       case 'reloj':
-        return <RelojPrincipal usuario={usuario} />
+        return (
+          <RelojPrincipal 
+            usuario={usuario}
+            estadoActual={estadoActual}
+            onStatusChange={refetch}
+          />
+        )
       case 'historial':
         return <HistorialTrabajo registros={registros.filter(r => r.usuarioId === usuario.id)} onRefresh={refetch} />
       case 'configuracion':
         return <WorkSettings usuario={usuario} registros={registros} />
       default:
-        return <RelojPrincipal usuario={usuario} />
+        return (
+          <RelojPrincipal 
+            usuario={usuario}
+            estadoActual={estadoActual}
+            onStatusChange={refetch}
+          />
+        )
     }
   }
 
   return (
     <div className="min-h-screen flex flex-col bg-gradient-to-br from-azul-profundo via-[#123243] to-teal">
-      {/* HEADER */}
-      <DashboardHeader 
-        usuario={usuario}
-        estadoActual={estadoActual}
-        onLogout={onLogout}
-      />
+      <div className="dashboard-header opacity-0">
+        <DashboardHeader 
+          usuario={usuario}
+          estadoActual={estadoActual}
+          onLogout={onLogout}
+        />
+      </div>
 
-      {/* NAVIGATION TABS */}
-      <DashboardTabs
-        tabs={tabs}
-        activeTab={vistaActual}
-        onTabChange={(tabId) => setVistaActual(tabId as VistaNavegacion)}
-      />
+      <div className="dashboard-tabs opacity-0">
+        <DashboardTabs
+          tabs={tabs}
+          activeTab={vistaActual}
+          onTabChange={(tabId) => setVistaActual(tabId as VistaNavegacion)}
+        />
+      </div>
 
-      {/* MAIN CONTENT */}
-      <main className="flex-1 w-full px-4 py-8">
-        {renderTabContent()}
+      <main className="flex-1 w-full px-4 py-8 opacity-0">
+        <div className="flex justify-center">
+          <div className="w-full" style={{ maxWidth: '80rem' }}>
+            {renderTabContent()}
+          </div>
+        </div>
       </main>
     </div>
   )

@@ -62,27 +62,75 @@ export class AuthService {
   }
 
   static async getCurrentUser(): Promise<Usuario | null> {
-    const { data: { user } } = await supabase.auth.getUser()
+    console.log('AuthService.getCurrentUser() called')
     
-    if (!user) return null
+    try {
+      // Add timeout to getCurrentUser
+      const getUserPromise = async () => {
+        const { data: { user }, error: userError } = await supabase.auth.getUser()
+        
+        console.log('supabase.auth.getUser() result:', {
+          hasUser: !!user,
+          userId: user?.id,
+          userEmail: user?.email,
+          error: userError
+        })
+        
+        if (userError) {
+          console.error('Error getting user from supabase.auth.getUser():', userError)
+          return null
+        }
+            
+        if (!user) {
+          console.log('No user returned from supabase.auth.getUser()')
+          return null
+        }
 
-    // Get user record from our usuarios table
-    const { data: userRecord, error } = await supabase
-      .from('usuarios')
-      .select('*')
-      .eq('id', user.id)
-      .single()
+        console.log('Fetching user record from usuarios table for ID:', user.id)
+        
+        const { data: userRecord, error } = await supabase
+          .from('usuarios')
+          .select('*')
+          .eq('id', user.id)
+          .single()
 
-    if (error) {
-      if (error.code === 'PGRST116') return null
-      throw new Error(`Error al obtener datos del usuario: ${error.message}`)
-    }
+        console.log('usuarios table query result:', {
+          hasRecord: !!userRecord,
+          record: userRecord,
+          error: error
+        })
 
-    return {
-      id: userRecord.id,
-      nombre: userRecord.nombre,
-      email: userRecord.email,
-      firstLogin: userRecord.first_login
+        if (error) {
+          if (error.code === 'PGRST116') {
+            console.log('User record not found in usuarios table (PGRST116)')
+            return null
+          }
+          console.error('Error fetching user record:', error)
+          throw new Error(`Error al obtener datos del usuario: ${error.message}`)
+        }
+
+        const result = {
+          id: userRecord.id,
+          nombre: userRecord.nombre,
+          email: userRecord.email,
+          firstLogin: userRecord.first_login
+        }
+        
+        console.log('Returning user:', result)
+        return result
+      }
+
+      const timeoutPromise = new Promise<null>((_, reject) => 
+        setTimeout(() => reject(new Error('getCurrentUser timeout')), 8000)
+      )
+      
+      return await Promise.race([getUserPromise(), timeoutPromise])
+    } catch (error) {
+      console.error('Exception in getCurrentUser():', error)
+      if (error instanceof Error && error.message.includes('timeout')) {
+        return null
+      }
+      throw error
     }
   }
 }

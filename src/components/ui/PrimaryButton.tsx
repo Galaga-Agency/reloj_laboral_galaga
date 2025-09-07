@@ -16,6 +16,8 @@ interface PrimaryButtonProps {
   bgColor?: BgColor;
   /** optional click handler (works for both <a> and <button>) */
   onClick?: (e: React.MouseEvent<HTMLElement>) => void;
+  /** inline styles */
+  style?: React.CSSProperties;
 }
 
 export default function PrimaryButton({
@@ -27,6 +29,7 @@ export default function PrimaryButton({
   external = false,
   bgColor = "teal",
   onClick,
+  style,
 }: PrimaryButtonProps) {
   const sizeStyles: Record<Size, string> = {
     sm: "px-6 py-2 !text-sm",
@@ -80,6 +83,7 @@ export default function PrimaryButton({
         target={external ? "_blank" : undefined}
         rel={external ? "noopener noreferrer" : undefined}
         aria-disabled={disabled || undefined}
+        style={style}
       >
         {children}
       </a>
@@ -87,7 +91,7 @@ export default function PrimaryButton({
   }
 
   return (
-    <button disabled={disabled} onClick={onClick} className={classes}>
+    <button disabled={disabled} onClick={onClick} className={classes} style={style}>
       {children}
     </button>
   );

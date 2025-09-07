@@ -18,6 +18,8 @@ interface SecondaryButtonProps {
   borderColor?: BorderColor;
   /** optional click handler (works for both <a> and <button>) */
   onClick?: (e: React.MouseEvent<HTMLElement>) => void;
+  /** inline styles */
+  style?: React.CSSProperties;
 }
 
 export default function SecondaryButton({
@@ -30,6 +32,7 @@ export default function SecondaryButton({
   darkBg = false,
   borderColor = "teal",
   onClick,
+  style,
 }: SecondaryButtonProps) {
   const sizeStyles: Record<Size, string> = {
     sm: "px-6 py-2 !text-sm",
@@ -37,7 +40,6 @@ export default function SecondaryButton({
     lg: "px-12 py-5 !text-xl",
   };
 
-  // Mirrors your provided styles
   const colorStyles =
     borderColor === "white"
       ? `
@@ -104,6 +106,7 @@ export default function SecondaryButton({
         target={external ? "_blank" : undefined}
         rel={external ? "noopener noreferrer" : undefined}
         aria-disabled={disabled || undefined}
+        style={style}
       >
         {children}
       </a>
@@ -111,7 +114,7 @@ export default function SecondaryButton({
   }
 
   return (
-    <button disabled={disabled} onClick={onClick} className={classes}>
+    <button disabled={disabled} onClick={onClick} className={classes} style={style}>
       {children}
     </button>
   );

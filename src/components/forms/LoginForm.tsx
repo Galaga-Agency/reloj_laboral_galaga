@@ -1,63 +1,95 @@
-import { useState } from 'react'
-import { useForm } from 'react-hook-form'
-import { Eye, EyeOff } from 'lucide-react'
-import type { Usuario } from '@/types'
-import { useAuth } from '@/hooks/useAuth'
-import { supabase } from '@/lib/supabase'
-import PrimaryButton from '@/components/ui/PrimaryButton'
+import { useState } from "react";
+import { useForm } from "react-hook-form";
+import { Eye, EyeOff } from "lucide-react";
+import type { Usuario } from "@/types";
+import { useAuth } from "@/context/AuthContext";
+import { supabase } from "@/lib/supabase";
+import PrimaryButton from "@/components/ui/PrimaryButton";
 
-interface LoginFormProps { onLogin: (usuario: Usuario) => void }
-interface LoginFormData { email: string; password: string }
+interface LoginFormProps {
+  onLogin: (usuario: Usuario) => void;
+}
+
+interface LoginFormData {
+  email: string;
+  password: string;
+}
 
 export function LoginForm({ onLogin }: LoginFormProps) {
-  const { login, isLoading, error } = useAuth()
-  const [showPasswordReset, setShowPasswordReset] = useState(false)
-  const [resetEmail, setResetEmail] = useState('')
-  const [resetLoading, setResetLoading] = useState(false)
-  const [resetMessage, setResetMessage] = useState('')
-  const [showPassword, setShowPassword] = useState(false)
+  const { login } = useAuth();
+  const [showPasswordReset, setShowPasswordReset] = useState(false);
+  const [resetEmail, setResetEmail] = useState("");
+  const [resetLoading, setResetLoading] = useState(false);
+  const [resetMessage, setResetMessage] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
-  const { register, handleSubmit, formState: { errors, isValid } } =
-    useForm<LoginFormData>({ mode: 'onChange' })
+  const {
+    register,
+    handleSubmit,
+    formState: { errors, isValid },
+  } = useForm<LoginFormData>({ mode: "onChange" });
 
   const onSubmit = async (data: LoginFormData) => {
+    setIsLoading(true);
+    setError(null);
+
     try {
-      const usuario = await login(data.email, data.password)
-      onLogin(usuario)
-    } catch {}
-  }
+      const usuario = await login(data.email, data.password);
+      onLogin(usuario);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Error desconocido");
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   const handlePasswordReset = async (e: React.FormEvent) => {
-    e.preventDefault()
-    if (!resetEmail.trim()) return
-    setResetLoading(true); setResetMessage('')
+    e.preventDefault();
+    if (!resetEmail.trim()) return;
+    setResetLoading(true);
+    setResetMessage("");
+
     try {
       const { error } = await supabase.auth.resetPasswordForEmail(resetEmail, {
-        redirectTo: `${window.location.origin}/restablecer-contrasena`
-      })
-      setResetMessage(error ? `Error: ${error.message}` : 'Se ha enviado un enlace de recuperación a tu correo electrónico.')
+        redirectTo: `${window.location.origin}/restablecer-contrasena`,
+      });
+      setResetMessage(
+        error
+          ? `Error: ${error.message}`
+          : "Se ha enviado un enlace de recuperación a tu correo electrónico."
+      );
     } catch {
-      setResetMessage('Error al enviar el correo de recuperación.')
+      setResetMessage("Error al enviar el correo de recuperación.");
     } finally {
-      setResetLoading(false)
+      setResetLoading(false);
     }
-  }
+  };
 
   if (showPasswordReset) {
     return (
       <div className="bg-white/95 backdrop-blur-xl rounded-2xl p-6 shadow-xl">
-        <h2 className="text-xl font-bold text-azul-profundo pb-6 text-center">Recuperar Contraseña</h2>
+        <h2 className="text-xl font-bold text-azul-profundo pb-6 text-center">
+          Recuperar Contraseña
+        </h2>
 
         {resetMessage && (
-          <div className={`p-3 rounded-lg text-sm ${resetMessage.startsWith('Error')
-            ? 'bg-red-50 text-red-700 border border-red-200'
-            : 'bg-green-50 text-green-700 border border-green-200'
-          }`}>
+          <div
+            className={`p-3 rounded-lg text-sm ${
+              resetMessage.startsWith("Error")
+                ? "bg-red-50 text-red-700 border border-red-200"
+                : "bg-green-50 text-green-700 border border-green-200"
+            }`}
+          >
             {resetMessage}
           </div>
         )}
 
-        <form onSubmit={handlePasswordReset} className={`flex flex-col gap-4 ${resetMessage && "pt-4"}`}>
+        <form
+          onSubmit={handlePasswordReset}
+          className={`flex flex-col gap-4 ${resetMessage && "pt-4"}`}
+        >
           <div>
             <label className="block text-sm font-medium text-azul-profundo pb-2">
               Correo electrónico
@@ -78,7 +110,7 @@ export function LoginForm({ onLogin }: LoginFormProps) {
               disabled={resetLoading || !resetEmail.trim()}
               className="w-full"
             >
-              {resetLoading ? 'Enviando…' : 'Enviar Enlace'}
+              {resetLoading ? "Enviando…" : "Enviar Enlace"}
             </PrimaryButton>
 
             <button
@@ -91,12 +123,14 @@ export function LoginForm({ onLogin }: LoginFormProps) {
           </div>
         </form>
       </div>
-    )
+    );
   }
 
   return (
     <div className="bg-white/95 backdrop-blur-xl rounded-2xl p-6 shadow-xl">
-      <h2 className="text-xl font-bold text-azul-profundo text-center pb-6">Iniciar Sesión</h2>
+      <h2 className="text-xl font-bold text-azul-profundo text-center pb-6">
+        Iniciar Sesión
+      </h2>
 
       {error && (
         <div className="p-3 bg-red-50 border border-red-200 rounded-lg">
@@ -104,24 +138,32 @@ export function LoginForm({ onLogin }: LoginFormProps) {
         </div>
       )}
 
-      <form onSubmit={handleSubmit(onSubmit)} className={`flex flex-col gap-4 ${resetMessage && "pt-4"}`}>
+      <form
+        onSubmit={handleSubmit(onSubmit)}
+        className={`flex flex-col gap-4 ${resetMessage && "pt-4"}`}
+      >
         <div>
           <label className="block text-sm font-medium text-azul-profundo pb-2">
             Correo electrónico
           </label>
           <input
             type="email"
-            {...register('email', {
-              required: 'El correo electrónico es obligatorio',
-              pattern: { value: /^[^\s@]+@[^\s@]+\.[^\s@]+$/, message: 'Formato de correo inválido' }
+            {...register("email", {
+              required: "El correo electrónico es obligatorio",
+              pattern: {
+                value: /^[^\s@]+@[^\s@]+\.[^\s@]+$/,
+                message: "Formato de correo inválido",
+              },
             })}
             className={`w-full px-4 py-3 border rounded-xl focus:ring-2 focus:ring-teal focus:border-teal transition-all ${
-              errors.email ? 'border-red-300 bg-red-50' : 'border-hielo'
+              errors.email ? "border-red-300 bg-red-50" : "border-hielo"
             }`}
             placeholder="tu@galagaagency.com"
             disabled={isLoading}
           />
-          {errors.email && <p className="text-sm text-red-600 pt-1">{errors.email.message}</p>}
+          {errors.email && (
+            <p className="text-sm text-red-600 pt-1">{errors.email.message}</p>
+          )}
         </div>
 
         <div>
@@ -130,13 +172,16 @@ export function LoginForm({ onLogin }: LoginFormProps) {
           </label>
           <div className="relative">
             <input
-              type={showPassword ? 'text' : 'password'}
-              {...register('password', {
-                required: 'La contraseña es obligatoria',
-                minLength: { value: 6, message: 'La contraseña debe tener al menos 6 caracteres' }
+              type={showPassword ? "text" : "password"}
+              {...register("password", {
+                required: "La contraseña es obligatoria",
+                minLength: {
+                  value: 6,
+                  message: "La contraseña debe tener al menos 6 caracteres",
+                },
               })}
               className={`w-full px-4 py-3 pr-12 border rounded-xl focus:ring-2 focus:ring-teal focus:border-teal transition-all ${
-                errors.password ? 'border-red-300 bg-red-50' : 'border-hielo'
+                errors.password ? "border-red-300 bg-red-50" : "border-hielo"
               }`}
               placeholder="Tu contraseña"
               disabled={isLoading}
@@ -150,15 +195,16 @@ export function LoginForm({ onLogin }: LoginFormProps) {
               {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
             </button>
           </div>
-          {errors.password && <p className="text-sm text-red-600 pt-1">{errors.password.message}</p>}
+          {errors.password && (
+            <p className="text-sm text-red-600 pt-1">
+              {errors.password.message}
+            </p>
+          )}
         </div>
 
         <div className="flex flex-col gap-3 pt-2">
-          <PrimaryButton
-            disabled={isLoading || !isValid}
-            className="w-full"
-          >
-            {isLoading ? 'Verificando…' : 'Iniciar Sesión'}
+          <PrimaryButton disabled={isLoading || !isValid} className="w-full">
+            {isLoading ? "Verificando…" : "Iniciar Sesión"}
           </PrimaryButton>
 
           <button
@@ -171,5 +217,5 @@ export function LoginForm({ onLogin }: LoginFormProps) {
         </div>
       </form>
     </div>
-  )
+  );
 }

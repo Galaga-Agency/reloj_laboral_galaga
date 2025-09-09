@@ -172,7 +172,7 @@ export class AutoEntryService {
       await TimeRecordsService.createRecord({
         usuarioId: userId,
         fechaEntrada: breakStart,
-        tipoRegistro: 'descanso_inicio',
+        tipoRegistro: 'entrada',
         esSimulado: true
       })
 
@@ -180,7 +180,7 @@ export class AutoEntryService {
         usuarioId: userId,
         fechaEntrada: breakEnd,
         fechaSalida: breakEnd,
-        tipoRegistro: 'descanso_fin',
+        tipoRegistro: 'salida',
         esSimulado: true
       })
     }

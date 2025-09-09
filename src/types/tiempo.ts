@@ -1,10 +1,10 @@
 export interface RegistroTiempo {
-  id: string
-  usuarioId: string
-  fechaEntrada: Date
-  fechaSalida?: Date
-  tipoRegistro: 'entrada' | 'salida' | 'descanso_inicio' | 'descanso_fin'
-  esSimulado?: boolean
+  id: string;
+  usuarioId: string;
+  fechaEntrada: Date;
+  fechaSalida?: Date;
+  tipoRegistro: "entrada" | "salida";
+  esSimulado?: boolean;
 }
 
-export type EstadoTrabajo = 'desconectado' | 'trabajando' | 'descanso'
+export type EstadoTrabajo = "parado" | "trabajando"; 

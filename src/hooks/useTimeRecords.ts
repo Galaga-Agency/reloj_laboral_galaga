@@ -1,113 +1,134 @@
-// hooks/useTimeRecords.ts
-import { useState, useEffect, useCallback } from 'react'
-import { TimeRecordsService } from '@/services/time-records-service'
-import { ClockStateManager } from '@/utils/clock-state'
-import type { RegistroTiempo, EstadoTrabajo } from '@/types'
+import { useState, useEffect, useCallback } from "react";
+import { TimeRecordsService } from "@/services/time-records-service";
+import { ClockStateManager } from "@/utils/clock-state";
+import type { RegistroTiempo, EstadoTrabajo } from "@/types";
 
 interface UseTimeRecordsReturn {
-  registros: RegistroTiempo[]
-  estadoActual: EstadoTrabajo
-  tiempoTrabajado: string
+  registros: RegistroTiempo[];
+  estadoActual: EstadoTrabajo;
+  tiempoTrabajado: string;
   availableActions: Array<{
-    action: 'entrada' | 'descanso_inicio' | 'descanso_fin' | 'salida'
-    label: string
-    type: 'primary' | 'secondary' | 'danger'
-  }>
-  performAction: (action: 'entrada' | 'descanso_inicio' | 'descanso_fin' | 'salida') => Promise<void>
-  isLoading: boolean
-  error: string | null
-  refetch: () => Promise<void>
+    action: "entrada" | "salida";
+    label: string;
+    type: "primary" | "danger";
+  }>;
+  performAction: (action: "entrada" | "salida") => Promise<void>;
+  isLoading: boolean;
+  error: string | null;
+  refetch: () => Promise<void>;
 }
 
 export function useTimeRecords(usuarioId: string): UseTimeRecordsReturn {
-  const [registros, setRegistros] = useState<RegistroTiempo[]>([])
-  const [estadoActual, setEstadoActual] = useState<EstadoTrabajo>('desconectado')
-  const [tiempoTrabajado, setTiempoTrabajado] = useState('00:00')
-  const [isLoading, setIsLoading] = useState(false)
-  const [error, setError] = useState<string | null>(null)
+  const [registros, setRegistros] = useState<RegistroTiempo[]>([]);
+  const [estadoActual, setEstadoActual] = useState<EstadoTrabajo>("parado");
+  const [tiempoTrabajado, setTiempoTrabajado] = useState("00:00");
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const updateStateFromRecords = useCallback((records: RegistroTiempo[]) => {
+    const currentState = ClockStateManager.getCurrentState(records);
+    setEstadoActual(currentState);
+
+    const workedTime = ClockStateManager.calculateWorkedTime(records);
+    setTiempoTrabajado(workedTime);
+  }, []);
 
   const fetchRegistros = useCallback(async () => {
-    if (!usuarioId) return
+    if (!usuarioId) return;
 
-    setIsLoading(true)
-    setError(null)
+    setIsLoading(true);
+    setError(null);
 
     try {
-      const records = await TimeRecordsService.getRecordsByUser(usuarioId)
-      setRegistros(records)
-      
-      // Update state using utility functions
-      const currentState = ClockStateManager.getCurrentState(records)
-      setEstadoActual(currentState)
-      
-      const workedTime = ClockStateManager.calculateWorkedTime(records)
-      setTiempoTrabajado(workedTime)
-      
+      const records = await TimeRecordsService.getRecordsByUser(usuarioId);
+      setRegistros(records);
+      updateStateFromRecords(records);
     } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : 'Error desconocido'
-      setError(errorMessage)
+      const errorMessage =
+        err instanceof Error ? err.message : "Error desconocido";
+      setError(errorMessage);
     } finally {
-      setIsLoading(false)
+      setIsLoading(false);
     }
-  }, [usuarioId])
+  }, [usuarioId, updateStateFromRecords]);
 
-  const performAction = useCallback(async (
-    action: 'entrada' | 'descanso_inicio' | 'descanso_fin' | 'salida'
-  ) => {
-    // Validate action
-    const validation = ClockStateManager.canPerformAction(action, estadoActual)
-    if (!validation.canPerform) {
-      throw new Error(validation.reason || 'Acción no permitida')
-    }
-
-    setError(null)
-    setIsLoading(true)
-
-    try {
-      const now = new Date()
-      
-      const registro: Omit<RegistroTiempo, 'id' | 'usuarioId'> = {
-        fechaEntrada: now,
-        tipoRegistro: action,
-        fechaSalida: action === 'salida' || action === 'descanso_fin' ? now : undefined,
-        esSimulado: false
+  const performAction = useCallback(
+    async (action: "entrada" | "salida") => {
+      // Validate action
+      const validation = ClockStateManager.canPerformAction(
+        action,
+        estadoActual
+      );
+      if (!validation.canPerform) {
+        throw new Error(validation.reason || "Acción no permitida");
       }
 
-      await TimeRecordsService.createRecord({
-        ...registro,
-        usuarioId
-      })
+      setError(null);
 
-      // Refetch to update state
-      await fetchRegistros()
-      
-    } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : 'Error desconocido'
-      setError(errorMessage)
-      throw err
-    } finally {
-      setIsLoading(false)
-    }
-  }, [usuarioId, estadoActual, fetchRegistros])
+      try {
+        const now = new Date();
+
+        // Create optimistic record
+        const optimisticRecord: RegistroTiempo = {
+          id: "temp-" + Date.now(), // Temporary ID
+          usuarioId,
+          fechaEntrada: now,
+          tipoRegistro: action,
+          fechaSalida: action === "salida" ? now : undefined,
+          esSimulado: false,
+        };
+
+        // IMMEDIATE UI UPDATE - Don't wait for server
+        const optimisticRecords = [optimisticRecord, ...registros];
+        setRegistros(optimisticRecords);
+        updateStateFromRecords(optimisticRecords);
+
+        // Now do the server request in background
+        const serverRecord = await TimeRecordsService.createRecord({
+          fechaEntrada: now,
+          tipoRegistro: action,
+          fechaSalida: action === "salida" ? now : undefined,
+          esSimulado: false,
+          usuarioId,
+        });
+
+        // Replace the optimistic record with the real one
+        setRegistros((prev) => [
+          serverRecord,
+          ...prev.filter((r) => r.id !== optimisticRecord.id),
+        ]);
+      } catch (err) {
+        // Rollback optimistic update on error
+        setRegistros(registros);
+        updateStateFromRecords(registros);
+
+        const errorMessage =
+          err instanceof Error ? err.message : "Error desconocido";
+        setError(errorMessage);
+        throw err;
+      }
+    },
+    [usuarioId, estadoActual, registros, updateStateFromRecords]
+  );
 
   // Update worked time every minute when working
   useEffect(() => {
-    if (estadoActual === 'trabajando' || estadoActual === 'descanso') {
+    if (estadoActual === "trabajando") {
       const interval = setInterval(() => {
-        const workedTime = ClockStateManager.calculateWorkedTime(registros)
-        setTiempoTrabajado(workedTime)
-      }, 60000) // Update every minute
+        const workedTime = ClockStateManager.calculateWorkedTime(registros);
+        setTiempoTrabajado(workedTime);
+      }, 60000); // Update every minute
 
-      return () => clearInterval(interval)
+      return () => clearInterval(interval);
     }
-  }, [registros, estadoActual])
+  }, [registros, estadoActual]);
 
   useEffect(() => {
-    fetchRegistros()
-  }, [fetchRegistros])
+    fetchRegistros();
+  }, [fetchRegistros]);
 
   // Get available actions based on current state
-  const availableActions = ClockStateManager.getAvailableActions(estadoActual)
+  const availableActions = ClockStateManager.getAvailableActions(estadoActual);
 
   return {
     registros,
@@ -115,8 +136,8 @@ export function useTimeRecords(usuarioId: string): UseTimeRecordsReturn {
     tiempoTrabajado,
     availableActions,
     performAction,
-    isLoading,
+    isLoading: false, // Never show loading for button actions
     error,
-    refetch: fetchRegistros
-  }
+    refetch: fetchRegistros,
+  };
 }

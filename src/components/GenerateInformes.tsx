@@ -1,4 +1,3 @@
-// components/GenerateInformes.tsx
 import { useState } from 'react'
 import { format } from 'date-fns'
 import { es } from 'date-fns/locale'

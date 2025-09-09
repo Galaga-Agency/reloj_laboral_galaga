@@ -118,7 +118,7 @@ export function RelojPrincipal({
         )}
 
         <div className="clock-container bg-white/95 backdrop-blur rounded-3xl shadow-2xl p-12 text-center">
-          <div className="text-7xl font-mono font-bold text-azul-profundo pb-4">
+          <div className="text-5xl md:text-7xl font-mono font-bold text-azul-profundo pb-4">
             {format(horaActual, "HH:mm:ss")}
           </div>
 
@@ -144,10 +144,10 @@ export function RelojPrincipal({
           </div>
 
           <div className="flex items-end gap-4 justify-center pt-8">
-            <div className="text-4xl font-bold text-azul-profundo ">
+            <div className="text-2xl md:text-4xl font-bold text-azul-profundo ">
               {tiempoTrabajado}
             </div>
-            <div className="text-azul-profundo/60 pb-1">
+            <div className="text-azul-profundo/60 pb-1 text-nowrap">
               Tiempo trabajado hoy
             </div>
           </div>

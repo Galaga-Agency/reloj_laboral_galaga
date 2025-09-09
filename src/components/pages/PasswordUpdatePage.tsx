@@ -7,6 +7,7 @@ import { useGSAPAnimations } from "@/hooks/useGSAPAnimations";
 import PrimaryButton from "@/components/ui/PrimaryButton";
 import { initEntranceAnimation } from "@/utils/animations/entrance-animations";
 import { CustomInput } from "../ui/CustomInput";
+import { FiLock } from "react-icons/fi";
 
 interface PasswordUpdatePageProps {
   usuario: Usuario;
@@ -56,10 +57,10 @@ export function PasswordUpdatePage({ usuario }: PasswordUpdatePageProps) {
       <div className="w-full max-w-md">
         {/* Header block */}
         <div className="login-logo text-center pb-8 fade-down opacity-0">
-          <div className="inline-flex items-center justify-center w-20 h-20 bg-gradient-to-br from-mandarina to-naranja-tostado rounded-2xl pb-4 shadow-2xl">
-            <span className="text-2xl font-bold text-blanco">🔒</span>
+          <div className="inline-flex items-center justify-center w-20 h-20 bg-teal rounded-2xl shadow-2xl">
+            <FiLock className="w-8 h-8 text-blanco" />
           </div>
-          <h1 className="text-3xl font-bold text-blanco pb-2 fade-left opacity-0">
+          <h1 className="text-3xl font-bold text-blanco py-4 fade-left opacity-0">
             Actualizar Contraseña
           </h1>
           <p className="text-hielo text-lg fade-up opacity-0">
@@ -73,7 +74,7 @@ export function PasswordUpdatePage({ usuario }: PasswordUpdatePageProps) {
             Primera conexión
           </h2>
 
-          <div className="pb-6 p-4 bg-mandarina/10 border border-mandarina/30 rounded-lg">
+          <div className="p-4 bg-mandarina/10 border border-mandarina/30 rounded-lg">
             <p className="text-sm text-azul-profundo">
               Por seguridad, debes cambiar tu contraseña temporal antes de
               continuar.
@@ -88,7 +89,7 @@ export function PasswordUpdatePage({ usuario }: PasswordUpdatePageProps) {
 
           <form
             onSubmit={handleSubmit(onSubmit)}
-            className="flex flex-col gap-6 fade-up opacity-0"
+            className="flex flex-col gap-6 fade-up opacity-0 pt-6"
           >
             <CustomInput
               label="Nueva contraseña"

@@ -19,30 +19,32 @@ export function LoginPage() {
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-azul-profundo to-teal relative">
-      {/* Desktop */}
-      <div className="hidden lg:flex min-h-screen">
-        <div className="flex-1 flex items-center justify-center px-20">
-          <div className="max-w-2xl">
-            <img
-              src="/assets/img/logos/logo-full.webp"
-              alt="Galaga Agency"
-              className="login-logo absolute top-6 left-6 w-48 h-auto pb-16 fade-down opacity-0"
-            />
-            <h1 className="login-title text-8xl font-semibold text-white pb-8 leading-none fade-left opacity-0">
+      {/* Mobile & Tablet Layout */}
+      <div className="min-h-screen flex flex-col items-center justify-center px-6 lg:hidden">
+        <img
+          src="/assets/img/logos/logo-full.webp"
+          alt="Galaga Agency"
+          className="absolute top-6 left-6 w-32 md:w-40 h-auto fade-down opacity-0"
+        />
+
+        <div
+          className="flex flex-col gap-8 text-center"
+          style={{ width: "clamp(320px, 90vw, 600px)" }}
+        >
+          <div className="flex flex-col gap-4">
+            <h1 className="text-5xl md:text-6xl font-semibold text-white leading-tight fade-left opacity-0">
               Reloj Laboral
             </h1>
-            <p className="login-subtitle text-3xl text-white/90 font-light fade-up opacity-0">
+            <p className="text-xl md:text-2xl text-white/90 fade-up opacity-0">
               Sistema de fichaje para el equipo
             </p>
           </div>
-        </div>
 
-        <div className="w-2/5 bg-black/20 backdrop-blur-xl flex items-center justify-center px-16">
-          <div className="w-full max-w-lg">
-            <div className="login-form fade-up opacity-0">
+          <div className="flex flex-col gap-6">
+            <div className="fade-up opacity-0">
               <LoginForm onLogin={handleLogin} />
             </div>
-            <div className="login-credentials pt-8 text-center fade-up opacity-0">
+            <div className="fade-up opacity-0">
               <p className="text-white/70 text-sm">
                 ¿No tienes credenciales? Contacta con el administrador.
               </p>
@@ -51,30 +53,34 @@ export function LoginPage() {
         </div>
       </div>
 
-      {/* Mobile */}
-      <div className="lg:hidden min-h-screen flex flex-col justify-center px-6">
-        <div className="text-center pb-16">
-          <img
-            src="/assets/img/logos/logo-full.webp"
-            alt="Galaga Agency"
-            className="mobile-login-logo w-48 h-auto mx-auto pb-12 fade-down opacity-0"
-          />
-          <h1 className="mobile-login-title text-6xl font-semibold text-white pb-6 leading-none fade-left opacity-0">
-            Reloj Laboral
-          </h1>
-          <p className="mobile-login-subtitle text-xl text-white/90 fade-up opacity-0">
-            Sistema de fichaje para el equipo
-          </p>
+      {/* Desktop Layout */}
+      <div className="hidden lg:flex min-h-screen">
+        <div className="flex-1 flex items-center justify-center px-20">
+          <div className="max-w-2xl">
+            <img
+              src="/assets/img/logos/logo-full.webp"
+              alt="Galaga Agency"
+              className="absolute top-6 left-6 w-48 h-auto fade-down opacity-0"
+            />
+            <h1 className="text-8xl font-semibold text-white pb-8 leading-none fade-left opacity-0">
+              Reloj Laboral
+            </h1>
+            <p className="text-3xl text-white/90 font-light fade-up opacity-0">
+              Sistema de fichaje para el equipo
+            </p>
+          </div>
         </div>
 
-        <div className="max-w-md mx-auto w-full">
-          <div className="mobile-login-form fade-up opacity-0">
-            <LoginForm onLogin={handleLogin} />
-          </div>
-          <div className="mobile-login-credentials pt-8 text-center fade-up opacity-0">
-            <p className="text-white/70 text-sm">
-              ¿No tienes credenciales? Contacta con el administrador.
-            </p>
+        <div className="w-2/5 bg-black/20 backdrop-blur-xl flex items-center justify-center px-16">
+          <div className="w-full max-w-lg flex flex-col gap-8">
+            <div className="fade-up opacity-0">
+              <LoginForm onLogin={handleLogin} />
+            </div>
+            <div className="text-center fade-up opacity-0">
+              <p className="text-white/70 text-sm">
+                ¿No tienes credenciales? Contacta con el administrador.
+              </p>
+            </div>
           </div>
         </div>
       </div>

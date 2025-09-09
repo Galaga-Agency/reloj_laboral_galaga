@@ -3,11 +3,12 @@ import type { Usuario, VistaNavegacion } from "@/types";
 import { RelojPrincipal } from "@/components/RelojPrincipal";
 import { HistorialTrabajo } from "@/components/HistorialTrabajo";
 import { WorkSettings } from "@/components/WorkSettings";
+import { AdminPanel } from "@/components/AdminPanel";
 import { DashboardTabs } from "@/components/DashboardTabs";
 import { DashboardHeader } from "@/components/DashboardHeader";
 import { useTimeRecords } from "@/hooks/useTimeRecords";
 import { useGSAPAnimations } from "@/hooks/useGSAPAnimations";
-import { FiClock, FiList, FiSettings } from "react-icons/fi";
+import { FiClock, FiList, FiSettings, FiShield } from "react-icons/fi";
 import { initEntranceAnimation } from "@/utils/animations/entrance-animations";
 
 interface DashboardPageProps {
@@ -38,6 +39,15 @@ export function DashboardPage({ usuario, onLogout }: DashboardPageProps) {
       label: "Config",
       icon: <FiSettings className="w-5 h-5" />,
     },
+    ...(usuario.isAdmin
+      ? [
+          {
+            id: "admin" as const,
+            label: "Admin",
+            icon: <FiShield className="w-5 h-5" />,
+          },
+        ]
+      : []),
   ];
 
   const renderTabContent = () => {
@@ -54,6 +64,8 @@ export function DashboardPage({ usuario, onLogout }: DashboardPageProps) {
         return <HistorialTrabajo usuarioId={usuario.id} onRefresh={refetch} />;
       case "configuracion":
         return <WorkSettings usuario={usuario} registros={registros} />;
+      case "admin":
+        return usuario.isAdmin ? <AdminPanel currentUser={usuario} /> : null;
       default:
         return (
           <RelojPrincipal
@@ -67,7 +79,7 @@ export function DashboardPage({ usuario, onLogout }: DashboardPageProps) {
 
   return (
     <div className="min-h-screen flex flex-col bg-gradient-to-br from-azul-profundo via-[#123243] to-teal pb-16">
-      <div className="dashboard-header fade-down opacity-0">
+      <div className="dashboard-header">
         <DashboardHeader
           usuario={usuario}
           estadoActual={estadoActual}
@@ -75,7 +87,7 @@ export function DashboardPage({ usuario, onLogout }: DashboardPageProps) {
         />
       </div>
 
-      <div className="dashboard-tabs fade-up opacity-0">
+      <div className="dashboard-tabs">
         <DashboardTabs
           tabs={tabs}
           activeTab={vistaActual}
@@ -83,7 +95,7 @@ export function DashboardPage({ usuario, onLogout }: DashboardPageProps) {
         />
       </div>
 
-      <main className="flex-1 w-full px-4 py-8 fade-up opacity-0">
+      <main className="flex-1 w-full px-4 py-8">
         <div className="flex justify-center">
           <div className="w-full" style={{ maxWidth: "80rem" }}>
             {renderTabContent()}

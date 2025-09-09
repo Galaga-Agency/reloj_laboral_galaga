@@ -1,1 +1,1 @@
-export type VistaNavegacion = 'reloj' | 'historial' | 'configuracion'
+export type VistaNavegacion = "reloj" | "historial" | "configuracion" | "admin";

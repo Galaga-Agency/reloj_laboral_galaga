@@ -1,3 +1,11 @@
+export interface Usuario {
+  id: string;
+  nombre: string;
+  email: string;
+  firstLogin?: boolean;
+  isAdmin?: boolean;
+}
+
 export interface Database {
   public: {
     Tables: {
@@ -7,6 +15,7 @@ export interface Database {
           nombre: string;
           email: string;
           first_login: boolean;
+          is_admin: boolean;
           created_at: string;
           updated_at: string;
         };
@@ -15,6 +24,7 @@ export interface Database {
           nombre: string;
           email: string;
           first_login?: boolean;
+          is_admin?: boolean;
           created_at?: string;
           updated_at?: string;
         };
@@ -23,6 +33,7 @@ export interface Database {
           nombre?: string;
           email?: string;
           first_login?: boolean;
+          is_admin?: boolean;
           created_at?: string;
           updated_at?: string;
         };

@@ -1,33 +1,35 @@
-import { supabase } from '@/lib/supabase'
-import { TimeRecordsService } from './time-records-service'
-import { isWeekend, startOfDay, subDays, addMinutes } from 'date-fns'
-import type { RegistroTiempo } from '@/types'
+import { supabase } from "@/lib/supabase";
+import { TimeRecordsService } from "./time-records-service";
+import { isWeekend, startOfDay, subDays, addMinutes, format } from "date-fns";
+import type { RegistroTiempo } from "@/types";
 
 interface UserWorkSettings {
-  id: string
-  usuarioId: string
-  horasDiarias: number
-  horaEntradaMin: string
-  horaEntradaMax: string
-  horaSalidaMin: string
-  horaSalidaMax: string
-  diasLibres: string[]
-  autoEntryEnabled: boolean
+  id: string;
+  usuarioId: string;
+  horasDiarias: number;
+  horaEntradaMin: string;
+  horaEntradaMax: string;
+  horaSalidaMin: string;
+  horaSalidaMax: string;
+  diasLibres: string[];
+  autoEntryEnabled: boolean;
 }
 
 export class AutoEntryService {
-  static async getUserWorkSettings(userId: string): Promise<UserWorkSettings | null> {
+  static async getUserWorkSettings(
+    userId: string
+  ): Promise<UserWorkSettings | null> {
     const { data, error } = await supabase
-      .from('user_work_settings')
-      .select('*')
-      .eq('usuario_id', userId)
-      .single()
+      .from("user_work_settings")
+      .select("*")
+      .eq("usuario_id", userId)
+      .single();
 
     if (error) {
-      if (error.code === 'PGRST116') {
-        return await this.createDefaultWorkSettings(userId)
+      if (error.code === "PGRST116") {
+        return await this.createDefaultWorkSettings(userId);
       }
-      throw error
+      throw error;
     }
 
     return {
@@ -39,27 +41,29 @@ export class AutoEntryService {
       horaSalidaMin: data.hora_salida_min,
       horaSalidaMax: data.hora_salida_max,
       diasLibres: data.dias_libres || [],
-      autoEntryEnabled: data.auto_entry_enabled
-    }
+      autoEntryEnabled: data.auto_entry_enabled,
+    };
   }
 
-  static async createDefaultWorkSettings(userId: string): Promise<UserWorkSettings> {
+  static async createDefaultWorkSettings(
+    userId: string
+  ): Promise<UserWorkSettings> {
     const { data, error } = await supabase
-      .from('user_work_settings')
+      .from("user_work_settings")
       .insert({
         usuario_id: userId,
         horas_diarias: 8,
-        hora_entrada_min: '08:30',
-        hora_entrada_max: '09:30',
-        hora_salida_min: '17:30',
-        hora_salida_max: '18:30',
+        hora_entrada_min: "08:30",
+        hora_entrada_max: "09:30",
+        hora_salida_min: "17:30",
+        hora_salida_max: "18:30",
         dias_libres: [],
-        auto_entry_enabled: true
+        auto_entry_enabled: true,
       })
       .select()
-      .single()
+      .single();
 
-    if (error) throw error
+    if (error) throw error;
 
     return {
       id: data.id,
@@ -70,13 +74,16 @@ export class AutoEntryService {
       horaSalidaMin: data.hora_salida_min,
       horaSalidaMax: data.hora_salida_max,
       diasLibres: data.dias_libres || [],
-      autoEntryEnabled: data.auto_entry_enabled
-    }
+      autoEntryEnabled: data.auto_entry_enabled,
+    };
   }
 
-  static async updateWorkSettings(userId: string, settings: Partial<UserWorkSettings>): Promise<void> {
+  static async updateWorkSettings(
+    userId: string,
+    settings: Partial<UserWorkSettings>
+  ): Promise<void> {
     const { error } = await supabase
-      .from('user_work_settings')
+      .from("user_work_settings")
       .update({
         horas_diarias: settings.horasDiarias,
         hora_entrada_min: settings.horaEntradaMin,
@@ -85,131 +92,288 @@ export class AutoEntryService {
         hora_salida_max: settings.horaSalidaMax,
         dias_libres: settings.diasLibres,
         auto_entry_enabled: settings.autoEntryEnabled,
-        updated_at: new Date().toISOString()
+        updated_at: new Date().toISOString(),
       })
-      .eq('usuario_id', userId)
+      .eq("usuario_id", userId);
 
-    if (error) throw error
+    if (error) throw error;
   }
 
   static shouldProcessDay(date: Date, settings: UserWorkSettings): boolean {
-    if (isWeekend(date)) return false
-    
-    const dateString = date.toISOString().split('T')[0]
-    if (settings.diasLibres.includes(dateString)) return false
-    
-    if (date >= new Date()) return false
-    
-    return true
+    // Skip weekends (Saturday = 6, Sunday = 0)
+    if (isWeekend(date)) {
+      console.log(`Skipping weekend: ${format(date, "yyyy-MM-dd")}`);
+      return false;
+    }
+
+    // Skip future dates
+    if (date >= startOfDay(new Date())) {
+      console.log(`Skipping future date: ${format(date, "yyyy-MM-dd")}`);
+      return false;
+    }
+
+    // Check if date is in user's holidays/days off
+    const dateString = format(date, "yyyy-MM-dd");
+    if (settings.diasLibres.includes(dateString)) {
+      console.log(`Skipping holiday/day off: ${dateString}`);
+      return false;
+    }
+
+    return true;
   }
 
-  static generateRandomTime(minTime: string, maxTime: string, baseDate: Date): Date {
-    const [minHour, minMinute] = minTime.split(':').map(Number)
-    const [maxHour, maxMinute] = maxTime.split(':').map(Number)
-    
-    const minMinutes = minHour * 60 + minMinute
-    const maxMinutes = maxHour * 60 + maxMinute
-    
-    const randomMinutes = Math.floor(Math.random() * (maxMinutes - minMinutes + 1)) + minMinutes
-    const hours = Math.floor(randomMinutes / 60)
-    const minutes = randomMinutes % 60
-    
-    const result = new Date(baseDate)
-    result.setHours(hours, minutes, Math.floor(Math.random() * 60), 0)
-    
-    return result
+  static generateRandomTime(
+    minTime: string,
+    maxTime: string,
+    baseDate: Date
+  ): Date {
+    const [minHour, minMinute] = minTime.split(":").map(Number);
+    const [maxHour, maxMinute] = maxTime.split(":").map(Number);
+
+    const minMinutes = minHour * 60 + minMinute;
+    const maxMinutes = maxHour * 60 + maxMinute;
+
+    const randomMinutes =
+      Math.floor(Math.random() * (maxMinutes - minMinutes + 1)) + minMinutes;
+    const hours = Math.floor(randomMinutes / 60);
+    const minutes = randomMinutes % 60;
+
+    const result = new Date(baseDate);
+    result.setHours(hours, minutes, Math.floor(Math.random() * 60), 0);
+
+    return result;
   }
 
   static async processUserAutoEntries(userId: string): Promise<void> {
-    const settings = await this.getUserWorkSettings(userId)
-    if (!settings || !settings.autoEntryEnabled) return
+    console.log(`Processing auto entries for user: ${userId}`);
+
+    const settings = await this.getUserWorkSettings(userId);
+    if (!settings || !settings.autoEntryEnabled) {
+      console.log(`Auto entry disabled for user: ${userId}`);
+      return;
+    }
+
+    // Get existing records for the user
+    const existingRecords = await TimeRecordsService.getRecordsByUser(userId);
 
     // Check last 7 days for missing entries
     for (let i = 1; i <= 7; i++) {
-      const checkDate = subDays(new Date(), i)
-      
-      if (!this.shouldProcessDay(checkDate, settings)) continue
+      const checkDate = subDays(startOfDay(new Date()), i);
 
-      const existingRecords = await TimeRecordsService.getRecordsByUser(userId)
-      const dayRecords = existingRecords.filter(record => 
-        record.fechaEntrada.toDateString() === checkDate.toDateString()
-      )
+      if (!this.shouldProcessDay(checkDate, settings)) continue;
+
+      // Check if there are any records for this specific day
+      const dayRecords = existingRecords.filter((record) => {
+        const recordDate = startOfDay(record.fechaEntrada);
+        const targetDate = startOfDay(checkDate);
+        return recordDate.getTime() === targetDate.getTime();
+      });
 
       if (dayRecords.length === 0) {
-        await this.createDayEntries(userId, checkDate, settings)
+        console.log(
+          `Creating auto entries for ${format(checkDate, "yyyy-MM-dd")}`
+        );
+        await this.createDayEntries(userId, checkDate, settings);
+      } else {
+        console.log(
+          `Records already exist for ${format(checkDate, "yyyy-MM-dd")}: ${
+            dayRecords.length
+          } records`
+        );
       }
     }
   }
 
-  static async createDayEntries(userId: string, date: Date, settings: UserWorkSettings): Promise<void> {
-    const dayStart = startOfDay(date)
-    
+  static async createDayEntries(
+    userId: string,
+    date: Date,
+    settings: UserWorkSettings
+  ): Promise<void> {
+    const dayStart = startOfDay(date);
+
+    // Generate entry time
     const entryTime = this.generateRandomTime(
-      settings.horaEntradaMin, 
-      settings.horaEntradaMax, 
+      settings.horaEntradaMin,
+      settings.horaEntradaMax,
       dayStart
-    )
-    
+    );
+
+    // Generate exit time
     const exitTime = this.generateRandomTime(
-      settings.horaSalidaMin, 
-      settings.horaSalidaMax, 
+      settings.horaSalidaMin,
+      settings.horaSalidaMax,
       dayStart
-    )
+    );
 
-    // Create entry
-    await TimeRecordsService.createRecord({
-      usuarioId: userId,
-      fechaEntrada: entryTime,
-      tipoRegistro: 'entrada',
-      esSimulado: true
-    })
+    // Calculate total work minutes for break placement
+    const totalWorkMinutes =
+      (exitTime.getTime() - entryTime.getTime()) / (1000 * 60);
 
-    // Random break (30% chance)
-    if (Math.random() > 0.7) {
-      const breakStart = addMinutes(entryTime, Math.floor(Math.random() * 120) + 180)
-      const breakEnd = addMinutes(breakStart, Math.floor(Math.random() * 30) + 30)
-      
-      await TimeRecordsService.createRecord({
-        usuarioId: userId,
-        fechaEntrada: breakStart,
-        tipoRegistro: 'entrada',
-        esSimulado: true
-      })
+    console.log(
+      `Creating entries from ${format(entryTime, "HH:mm:ss")} to ${format(
+        exitTime,
+        "HH:mm:ss"
+      )} (${Math.round(totalWorkMinutes)} minutes)`
+    );
 
-      await TimeRecordsService.createRecord({
-        usuarioId: userId,
-        fechaEntrada: breakEnd,
-        fechaSalida: breakEnd,
-        tipoRegistro: 'salida',
-        esSimulado: true
-      })
+    // Generate random breaks (1-3 breaks per day)
+    const numBreaks = Math.floor(Math.random() * 3) + 1; // 1, 2, or 3 breaks
+    const breaks: { start: Date; end: Date }[] = [];
+
+    for (let i = 0; i < numBreaks; i++) {
+      // Random break start time (avoid first 30 min and last 60 min of work)
+      const earliestBreakStart = addMinutes(entryTime, 30);
+      const latestBreakStart = addMinutes(exitTime, -60);
+
+      if (latestBreakStart > earliestBreakStart) {
+        const breakStartMinutes = Math.floor(
+          Math.random() *
+            ((latestBreakStart.getTime() - earliestBreakStart.getTime()) /
+              (1000 * 60))
+        );
+        const breakStart = addMinutes(earliestBreakStart, breakStartMinutes);
+
+        // Random break duration (15-45 minutes)
+        const breakDuration = Math.floor(Math.random() * 30) + 15;
+        const breakEnd = addMinutes(breakStart, breakDuration);
+
+        // Make sure break doesn't go past exit time
+        if (breakEnd < exitTime) {
+          breaks.push({ start: breakStart, end: breakEnd });
+        }
+      }
     }
 
-    // Create exit
-    await TimeRecordsService.createRecord({
-      usuarioId: userId,
-      fechaEntrada: exitTime,
-      fechaSalida: exitTime,
-      tipoRegistro: 'salida',
-      esSimulado: true
-    })
+    // Sort breaks by start time to avoid overlaps
+    breaks.sort((a, b) => a.start.getTime() - b.start.getTime());
+
+    // Remove overlapping breaks
+    const validBreaks: { start: Date; end: Date }[] = [];
+    for (const currentBreak of breaks) {
+      const lastBreak = validBreaks[validBreaks.length - 1];
+      if (!lastBreak || currentBreak.start >= addMinutes(lastBreak.end, 15)) {
+        validBreaks.push(currentBreak);
+      }
+    }
+
+    console.log(`Creating ${validBreaks.length} breaks`);
+
+    try {
+      // Create all records in chronological order
+      const allRecords: {
+        time: Date;
+        type: "entrada" | "salida";
+        isBreak?: boolean;
+      }[] = [];
+
+      // Add main entry
+      allRecords.push({ time: entryTime, type: "entrada" });
+
+      // Add break records
+      validBreaks.forEach((breakItem) => {
+        allRecords.push({
+          time: breakItem.start,
+          type: "salida",
+          isBreak: true,
+        }); // Break start (go out)
+        allRecords.push({
+          time: breakItem.end,
+          type: "entrada",
+          isBreak: true,
+        }); // Break end (come back)
+      });
+
+      // Add main exit
+      allRecords.push({ time: exitTime, type: "salida" });
+
+      // Sort all records by time
+      allRecords.sort((a, b) => a.time.getTime() - b.time.getTime());
+
+      // Create records in database
+      for (const record of allRecords) {
+        if (record.type === "entrada") {
+          // ENTRADA record: only fecha_entrada, fecha_salida = NULL
+          await TimeRecordsService.createRecord({
+            usuarioId: userId,
+            fechaEntrada: record.time,
+            // fechaSalida: undefined, // NULL for entrada
+            tipoRegistro: "entrada",
+            esSimulado: true,
+          });
+        } else {
+          // SALIDA record: both dates set
+          // For salida, we need the original entry time as reference
+          const originalEntryTime =
+            allRecords.find((r) => r.type === "entrada" && !r.isBreak)?.time ||
+            entryTime;
+
+          await TimeRecordsService.createRecord({
+            usuarioId: userId,
+            fechaEntrada: originalEntryTime, // Reference to when work started
+            fechaSalida: record.time, // When the salida happened
+            tipoRegistro: "salida",
+            esSimulado: true,
+          });
+        }
+
+        console.log(
+          `Created ${record.type} at ${format(record.time, "HH:mm:ss")}${
+            record.isBreak ? " (break)" : ""
+          }`
+        );
+      }
+
+      console.log(
+        `Successfully created realistic workday for user ${userId} on ${format(
+          date,
+          "yyyy-MM-dd"
+        )} with ${validBreaks.length} breaks`
+      );
+    } catch (error) {
+      console.error(
+        `Error creating auto entries for user ${userId} on ${format(
+          date,
+          "yyyy-MM-dd"
+        )}:`,
+        error
+      );
+      throw error;
+    }
   }
 
   // Run this daily via cron job or similar
   static async processAllUsersAutoEntries(): Promise<void> {
-    const { data: users, error } = await supabase
-      .from('usuarios')
-      .select('id')
+    console.log("Starting auto entries processing for all users");
 
-    if (error) throw error
-    if (!users) return
+    const { data: users, error } = await supabase
+      .from("usuarios")
+      .select("id, nombre");
+
+    if (error) {
+      console.error("Error fetching users:", error);
+      throw error;
+    }
+
+    if (!users) {
+      console.log("No users found");
+      return;
+    }
+
+    console.log(`Processing ${users.length} users`);
 
     for (const user of users) {
       try {
-        await this.processUserAutoEntries(user.id)
+        console.log(`Processing user: ${user.nombre} (${user.id})`);
+        await this.processUserAutoEntries(user.id);
       } catch (error) {
-        console.error(`Error processing auto entries for user ${user.id}:`, error)
+        console.error(
+          `Error processing auto entries for user ${user.id}:`,
+          error
+        );
+        // Continue with next user instead of stopping
       }
     }
+
+    console.log("Completed auto entries processing for all users");
   }
 }

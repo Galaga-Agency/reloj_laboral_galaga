@@ -26,7 +26,7 @@ export function DashboardTabs({
 
   return (
     <>
-      <div className="fixed bottom-0 left-0 right-0 z-50 md:hidden">
+      <div className="fixed bottom-0 left-0 right-0 z-40 md:hidden">
         <div className="bg-white/90 backdrop-blur-xl border-t border-hielo/30 px-4 py-2 safe-area-pb">
           <div className="flex justify-around">
             {tabs.map((tab) => (
@@ -69,7 +69,7 @@ export function DashboardTabs({
                 <button
                   key={tab.id}
                   onClick={() => onTabChange(tab.id)}
-                  className={`relative flex items-center justify-center gap-2 px-6 py-3 text-sm font-semibold rounded-xl transition-colors duration-300 ${
+                  className={`relative cursor-pointer flex items-center justify-center gap-2 px-6 py-3 text-sm font-semibold rounded-xl transition-colors duration-300 z-10 ${
                     activeTab === tab.id
                       ? "text-azul-profundo"
                       : "text-white/90 hover:text-white"

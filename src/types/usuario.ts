@@ -3,4 +3,5 @@ export interface Usuario {
   nombre: string
   email: string
   firstLogin?: boolean
+  isAdmin: boolean
 }

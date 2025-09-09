@@ -1,6 +1,6 @@
 {
-  "name": "Galaga Agency",
-  "short_name": "Galaga",
+  "name": "Reloj Laboral - Galaga",
+  "short_name": "Reloj Laboral",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#000000",
@@ -10,13 +10,13 @@
       "src": "/galaga-manifest-192x192.png",
       "sizes": "192x192",
       "type": "image/png",
-      "purpose": "maskable"
+      "purpose": "any maskable"
     },
     {
       "src": "/galaga-manifest-512x512.png",
       "sizes": "512x512",
       "type": "image/png",
-      "purpose": "maskable"
+      "purpose": "any maskable"
     }
   ]
 }

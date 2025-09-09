@@ -46,7 +46,7 @@ export function HolidayVacationPicker({
   const dateRanges = DateManager.groupIntoRanges(selectedDates);
 
   return (
-    <div className="bg-blanco/95 backdrop-blur-sm rounded-2xl shadow-lg p-6">
+    <div className="bg-blanco/95 backdrop-blur-sm rounded-2xl shadow-lg p-6 relative">
       <div className="flex items-center justify-between pb-6">
         <h2 className="text-2xl font-bold text-azul-profundo flex items-center gap-3">
           <FiCalendar className="text-teal" />
@@ -55,10 +55,10 @@ export function HolidayVacationPicker({
         <button
           ref={buttonRef}
           onClick={() => setShowCalendar(!showCalendar)}
-          className="px-4 py-2 bg-teal text-blanco rounded-lg hover:bg-teal/90 flex items-center gap-2 transition-colors"
+          className="absolute top-6 right-6 p-2 md:px-4 md:py-2 bg-teal text-blanco rounded-lg hover:bg-teal/90 flex items-center gap-2 transition-colors"
         >
           <FiPlus className="w-4 h-4" />
-          Agregar
+         <span className="hidden md:block">Agregar</span> 
         </button>
       </div>
 

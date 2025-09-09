@@ -1,11 +1,3 @@
-export interface Usuario {
-  id: string;
-  nombre: string;
-  email: string;
-  firstLogin?: boolean;
-  isAdmin?: boolean;
-}
-
 export interface Database {
   public: {
     Tables: {

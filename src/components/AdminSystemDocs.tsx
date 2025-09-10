@@ -303,7 +303,7 @@ export function AdminSystemDocumentation({
                 </button>
               </div>
               <a
-                href="https://app.netlify.com/projects/reloj-laboral-galaga-agency/overview"
+                href="https://app.netlify.com/"
                 target="_blank"
                 rel="noopener noreferrer"
                 className="inline-flex items-center gap-2 px-3 py-1 bg-orange-600 hover:bg-orange-700 text-white text-sm rounded-lg transition-colors"
@@ -315,7 +315,7 @@ export function AdminSystemDocumentation({
 
             <div className="flex flex-col gap-2">
               <div className="flex items-center justify-between">
-                <span className="text-white/70 text-sm">Email:</span>
+                <span className="text-white/70 text-sm">Selecciona Log in with Email - Email:</span>
                 <div className="flex items-center gap-2">
                   <span className="text-white font-mono text-sm">
                     thomas@galagaagency.com

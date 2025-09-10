@@ -143,7 +143,7 @@ export function CreateUserForm({
         </label>
       </div>
 
-      <div className="flex gap-4 pt-4">
+      <div className="flex flex-col-reverse md:flex-row gap-4 pt-4">
         <SecondaryButton
           onClick={onCancel}
           disabled={isLoading}

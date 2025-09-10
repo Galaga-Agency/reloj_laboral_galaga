@@ -188,7 +188,7 @@ export function AdminPanel({ currentUser }: AdminPanelProps) {
             </div>
             <PrimaryButton onClick={handleCreateUser} size="sm">
               <FiPlus className="w-4 h-4" />
-              Crear Usuario
+              <span className="hidden md:block">Crear Usuario</span>
             </PrimaryButton>
           </div>
 
@@ -196,7 +196,7 @@ export function AdminPanel({ currentUser }: AdminPanelProps) {
             {users.map((user) => (
               <div
                 key={user.id}
-                className={`p-4 rounded-lg border cursor-pointer transition-colors ${
+                className={`w-[120vw] md:w-full p-4 rounded-lg border cursor-pointer transition-colors ${
                   selectedUser?.id === user.id
                     ? "bg-white/20 border-white/30"
                     : "bg-white/5 border-white/10 hover:bg-white/10"
@@ -211,7 +211,7 @@ export function AdminPanel({ currentUser }: AdminPanelProps) {
                       </span>
                       {user.isAdmin && (
                         <FiShield
-                          className="w-4 h-4 text-yellow-400"
+                          className="w-4 h-4 text-yellow-400 flex-shrink-0"
                           title="Administrador"
                         />
                       )}
@@ -252,9 +252,9 @@ export function AdminPanel({ currentUser }: AdminPanelProps) {
         </div>
 
         <div className="bg-white/10 backdrop-blur-md rounded-2xl p-6">
-          <div className="flex items-center justify-between pb-4">
+          <div className="flex flex-col md:flex-row md:items-center gap-4 md:gap-unset justify-between pb-4">
             <div className="flex items-center gap-2">
-              <FiClock className="w-5 h-5 text-white" />
+              <FiClock className="w-5 h-5 text-white flex-shrink-0" />
               <h2 className="text-xl font-semibold text-white">
                 {selectedUser
                   ? `Registros de ${selectedUser.nombre}`
@@ -293,7 +293,7 @@ export function AdminPanel({ currentUser }: AdminPanelProps) {
                     className="flex items-center justify-between p-4 bg-white/5 rounded-lg border border-white/10"
                   >
                     <div className="flex items-center gap-4">
-                      <div className="flex items-center justify-center w-8 h-8 rounded-full bg-white/20">
+                      <div className="flex items-center justify-center w-8 h-8 rounded-full bg-white/20 flex-shrink-0">
                         {TimeRecordsUtils.getTypeIcon(record.tipoRegistro)}
                       </div>
                       <div className="flex flex-col gap-1">

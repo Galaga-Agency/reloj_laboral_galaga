@@ -16,25 +16,25 @@ export function DashboardHeader({
   estadoActual,
   onLogout,
 }: DashboardHeaderProps) {
-  const { isMobile } = useDeviceDetect();
+  const { isMobile, isTablet } = useDeviceDetect();
 
   return (
     <header className="bg-blanco border-b border-hielo/30 relative z-50">
       <div className="px-4 py-4 md:px-6 md:py-5 lg:px-10 lg:py-7">
-        {isMobile ? (
+        {isMobile || isTablet ? (
           <div className="flex items-center justify-between fade-down opacity-0">
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-4">
               <img
                 src="/assets/img/logos/logo-mobile.webp"
                 alt="Galaga"
-                className="h-8"
+                className="h-10"
               />
-              <div className="flex items-center gap-2">
-                <span className="font-bold text-azul-profundo">
+              <div className="flex items-center gap-4">
+                <span className="font-bold text-azul-profundo text-xl">
                   {usuario.nombre}
                 </span>
                 <div
-                  className={`w-2 h-2 rounded-full ${
+                  className={`w-4 h-4 rounded-full ${
                     estadoActual === "trabajando" ? "bg-activo" : "bg-inactivo"
                   }`}
                 />

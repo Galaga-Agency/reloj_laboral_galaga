@@ -7,6 +7,7 @@ import { useTimeRecords } from "@/hooks/useTimeRecords";
 import PrimaryButton from "@/components/ui/PrimaryButton";
 import SecondaryButton from "@/components/ui/SecondaryButton";
 import { ConfirmModal } from "@/components/modals/ConfirmModal";
+import { Link } from "react-router-dom";
 
 interface Props {
   usuario: Usuario;
@@ -181,6 +182,15 @@ export function RelojPrincipal({
 
             return null;
           })}
+        </div>
+
+        <div className="flex justify-center gap-6 md:hidden text-white pt-12">
+          <Link to="/politica-privacidad" className="hover:underline">
+            Política de Privacidad
+          </Link>
+          <Link to="/aviso-legal" className="hover:underline">
+            Aviso Legal
+          </Link>
         </div>
       </div>
 

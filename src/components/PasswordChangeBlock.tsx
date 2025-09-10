@@ -97,12 +97,13 @@ export function PasswordChangeBlock({ onMessage }: PasswordChangeBlockProps) {
             }
           />
 
-          <div className="flex gap-2">
+          <div className="flex flex-col md:flex-row gap-2">
             <PrimaryButton
               onClick={changePassword}
               disabled={!passwordData.new || !passwordData.confirm}
+              className="flex-1"
             >
-              Actualizar Contraseña
+              Actualizar <span className="hidden md:block">Contraseña</span>
             </PrimaryButton>
             <SecondaryButton
               onClick={() => {
@@ -110,7 +111,7 @@ export function PasswordChangeBlock({ onMessage }: PasswordChangeBlockProps) {
                 setPasswordData({ current: "", new: "", confirm: "" });
                 setPasswordError("");
               }}
-              className="px-4 py-2"
+              className="px-4 py-2 flex-1"
             >
               Cancelar
             </SecondaryButton>

@@ -11,7 +11,7 @@ export function BackButton() {
       darkBg
     >
       <FiArrowLeft className="w-4 h-4" />
-      Volver
+      <span className="hidden md:block">Volver</span>
     </SecondaryButton>
   );
 }

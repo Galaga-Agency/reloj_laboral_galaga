@@ -180,8 +180,8 @@ export function HistorialTrabajo({
 
   return (
     <div className="flex flex-col gap-6">
-      <div className="bg-blanco/95 backdrop-blur-sm rounded-2xl shadow-lg p-6">
-        <div className="flex items-center justify-between pb-6">
+      <div className="bg-blanco/95 backdrop-blur-sm rounded-2xl shadow-lg p-6 relative">
+        <div className="flex items-start md:items-center justify-between pb-6">
           <div>
             <h2 className="text-2xl font-bold text-azul-profundo">
               Historial de Trabajo
@@ -202,7 +202,7 @@ export function HistorialTrabajo({
                 isRefreshing ? "animate-spin" : ""
               }`}
             />
-            {isRefreshing ? "Actualizando..." : "Actualizar"}
+           <span className="hidden md:block">{isRefreshing ? "Actualizando..." : "Actualizar"}</span> 
           </PrimaryButton>
         </div>
 

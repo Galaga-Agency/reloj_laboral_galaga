@@ -48,8 +48,8 @@ export function HolidayVacationPicker({
   return (
     <div className="bg-blanco/95 backdrop-blur-sm rounded-2xl shadow-lg p-6 relative">
       <div className="flex items-center justify-between pb-6">
-        <h2 className="text-2xl font-bold text-azul-profundo flex items-center gap-3">
-          <FiCalendar className="text-teal" />
+        <h2 className="text-2xl font-bold text-azul-profundo flex items-center gap-3 max-w-[80%]">
+          <FiCalendar className="text-teal flex-shrink-0" />
           Días Libres y Vacaciones
         </h2>
         <button

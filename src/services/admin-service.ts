@@ -1,5 +1,24 @@
 import { supabase } from "@/lib/supabase";
 import type { Usuario, RegistroTiempo } from "@/types";
+import {
+  subDays,
+  startOfDay,
+  endOfDay,
+  startOfWeek,
+  endOfWeek,
+  startOfMonth,
+  endOfMonth,
+  subMonths,
+} from "date-fns";
+
+export type TimeRange =
+  | "yesterday"
+  | "past2days"
+  | "thisweek"
+  | "past7days"
+  | "thismonth"
+  | "pastmonth"
+  | "all";
 
 export class AdminService {
   static async getAllUsers(): Promise<Usuario[]> {
@@ -38,12 +57,25 @@ export class AdminService {
     return mappedUsers;
   }
 
-  static async getUserRecords(userId: string): Promise<RegistroTiempo[]> {
-    const { data, error } = await supabase
+  static async getUserRecords(
+    userId: string,
+    timeRange: TimeRange = "past2days"
+  ): Promise<RegistroTiempo[]> {
+    const { startDate, endDate } = this.getDateRangeFromTimeRange(timeRange);
+
+    let query = supabase
       .from("registros_tiempo")
       .select("*")
       .eq("usuario_id", userId)
       .order("fecha_entrada", { ascending: false });
+
+    if (timeRange !== "all") {
+      query = query
+        .gte("fecha_entrada", startDate.toISOString())
+        .lte("fecha_entrada", endDate.toISOString());
+    }
+
+    const { data, error } = await query;
 
     if (error) {
       throw new Error(`Error fetching user records: ${error.message}`);
@@ -61,6 +93,82 @@ export class AdminService {
       tipoRegistro: record.tipo_registro,
       esSimulado: record.es_simulado,
     }));
+  }
+
+  private static getDateRangeFromTimeRange(timeRange: TimeRange): {
+    startDate: Date;
+    endDate: Date;
+  } {
+    const now = new Date();
+    const today = startOfDay(now);
+
+    switch (timeRange) {
+      case "yesterday":
+        const yesterday = subDays(today, 1);
+        return {
+          startDate: startOfDay(yesterday),
+          endDate: endOfDay(yesterday),
+        };
+
+      case "past2days":
+        return {
+          startDate: startOfDay(subDays(today, 2)),
+          endDate: endOfDay(now),
+        };
+
+      case "thisweek":
+        return {
+          startDate: startOfWeek(today, { weekStartsOn: 1 }),
+          endDate: endOfWeek(now, { weekStartsOn: 1 }),
+        };
+
+      case "past7days":
+        return {
+          startDate: startOfDay(subDays(today, 7)),
+          endDate: endOfDay(now),
+        };
+
+      case "thismonth":
+        return {
+          startDate: startOfMonth(today),
+          endDate: endOfMonth(now),
+        };
+
+      case "pastmonth":
+        const lastMonth = subMonths(today, 1);
+        return {
+          startDate: startOfMonth(lastMonth),
+          endDate: endOfMonth(lastMonth),
+        };
+
+      case "all":
+      default:
+        return {
+          startDate: new Date(0),
+          endDate: new Date(),
+        };
+    }
+  }
+
+  static getTimeRangeLabel(timeRange: TimeRange): string {
+    switch (timeRange) {
+      case "yesterday":
+        return "Ayer";
+      case "past2days":
+        return "Últimos 2 días";
+      case "thisweek":
+        return "Esta semana";
+      case "past7days":
+        return "Últimos 7 días";
+      case "thismonth":
+        return "Este mes";
+      case "pastmonth":
+        return "Mes pasado";
+      case "all":
+        return "Todo el historial";
+      default:
+        return "Últimos 2 días";
+    }
   }
 
   static async updateUserAdminStatus(

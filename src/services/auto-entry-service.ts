@@ -1,6 +1,13 @@
 import { supabase } from "@/lib/supabase";
 import { TimeRecordsService } from "./time-records-service";
-import { isWeekend, startOfDay, subDays, addMinutes, format } from "date-fns";
+import {
+  isWeekend,
+  startOfDay,
+  subDays,
+  addMinutes,
+  format,
+  addHours,
+} from "date-fns";
 import type { RegistroTiempo } from "@/types";
 
 interface UserWorkSettings {
@@ -14,6 +21,8 @@ interface UserWorkSettings {
   diasLibres: string[];
   autoEntryEnabled: boolean;
 }
+
+const CANARY_UTC_OFFSET = 1; // Canary Islands is UTC+1
 
 export class AutoEntryService {
   static async getUserWorkSettings(
@@ -100,22 +109,21 @@ export class AutoEntryService {
   }
 
   static shouldProcessDay(date: Date, settings: UserWorkSettings): boolean {
-    // Skip weekends (Saturday = 6, Sunday = 0)
     if (isWeekend(date)) {
       console.log(`Skipping weekend: ${format(date, "yyyy-MM-dd")}`);
       return false;
     }
 
-    // Skip future dates
-    if (date >= startOfDay(new Date())) {
-      console.log(`Skipping future date: ${format(date, "yyyy-MM-dd")}`);
+    // Simple fix: use local time minus 2 days to ensure yesterday gets processed
+    const cutoffDate = subDays(startOfDay(new Date()), 2);
+    if (date >= cutoffDate) {
+      console.log(`Skipping recent date: ${format(date, "yyyy-MM-dd")}`);
       return false;
     }
 
-    // Check if date is in user's holidays/days off
     const dateString = format(date, "yyyy-MM-dd");
     if (settings.diasLibres.includes(dateString)) {
-      console.log(`Skipping holiday/day off: ${dateString}`);
+      console.log(`Skipping holiday: ${dateString}`);
       return false;
     }
 
@@ -141,7 +149,17 @@ export class AutoEntryService {
     const result = new Date(baseDate);
     result.setHours(hours, minutes, Math.floor(Math.random() * 60), 0);
 
-    return result;
+    // Convert to UTC by subtracting the offset
+    const utcResult = addHours(result, -CANARY_UTC_OFFSET);
+
+    console.log(
+      `Generated: ${format(result, "HH:mm:ss")} local → ${format(
+        utcResult,
+        "HH:mm:ss"
+      )} UTC`
+    );
+
+    return utcResult;
   }
 
   static async processUserAutoEntries(userId: string): Promise<void> {
@@ -153,33 +171,28 @@ export class AutoEntryService {
       return;
     }
 
-    // Get existing records for the user
     const existingRecords = await TimeRecordsService.getRecordsByUser(userId);
 
-    // Check last 7 days for missing entries
+    // Check last 7 days
     for (let i = 1; i <= 7; i++) {
       const checkDate = subDays(startOfDay(new Date()), i);
 
       if (!this.shouldProcessDay(checkDate, settings)) continue;
 
-      // Check if there are any records for this specific day
       const dayRecords = existingRecords.filter((record) => {
-        const recordDate = startOfDay(record.fechaEntrada);
+        // Convert UTC to local for comparison
+        const localRecordTime = addHours(
+          record.fechaEntrada,
+          CANARY_UTC_OFFSET
+        );
+        const recordDate = startOfDay(localRecordTime);
         const targetDate = startOfDay(checkDate);
         return recordDate.getTime() === targetDate.getTime();
       });
 
       if (dayRecords.length === 0) {
-        console.log(
-          `Creating auto entries for ${format(checkDate, "yyyy-MM-dd")}`
-        );
+        console.log(`Creating entries for ${format(checkDate, "yyyy-MM-dd")}`);
         await this.createDayEntries(userId, checkDate, settings);
-      } else {
-        console.log(
-          `Records already exist for ${format(checkDate, "yyyy-MM-dd")}: ${
-            dayRecords.length
-          } records`
-        );
       }
     }
   }
@@ -191,14 +204,14 @@ export class AutoEntryService {
   ): Promise<void> {
     const dayStart = startOfDay(date);
 
-    // Generate entry time
+    // Generate entry time (in local time, converted to UTC)
     const entryTime = this.generateRandomTime(
       settings.horaEntradaMin,
       settings.horaEntradaMax,
       dayStart
     );
 
-    // Generate exit time
+    // Generate exit time (in local time, converted to UTC)
     const exitTime = this.generateRandomTime(
       settings.horaSalidaMin,
       settings.horaSalidaMax,
@@ -210,14 +223,17 @@ export class AutoEntryService {
       (exitTime.getTime() - entryTime.getTime()) / (1000 * 60);
 
     console.log(
-      `Creating entries from ${format(entryTime, "HH:mm:ss")} to ${format(
-        exitTime,
+      `Creating entries from ${format(
+        addHours(entryTime, CANARY_UTC_OFFSET),
         "HH:mm:ss"
-      )} (${Math.round(totalWorkMinutes)} minutes)`
+      )} to ${format(
+        addHours(exitTime, CANARY_UTC_OFFSET),
+        "HH:mm:ss"
+      )} local time (${Math.round(totalWorkMinutes)} minutes)`
     );
 
     // Generate random breaks (1-3 breaks per day)
-    const numBreaks = Math.floor(Math.random() * 3) + 1; // 1, 2, or 3 breaks
+    const numBreaks = Math.floor(Math.random() * 3) + 1;
     const breaks: { start: Date; end: Date }[] = [];
 
     for (let i = 0; i < numBreaks; i++) {
@@ -275,12 +291,12 @@ export class AutoEntryService {
           time: breakItem.start,
           type: "salida",
           isBreak: true,
-        }); // Break start (go out)
+        });
         allRecords.push({
           time: breakItem.end,
           type: "entrada",
           isBreak: true,
-        }); // Break end (come back)
+        });
       });
 
       // Add main exit
@@ -289,37 +305,34 @@ export class AutoEntryService {
       // Sort all records by time
       allRecords.sort((a, b) => a.time.getTime() - b.time.getTime());
 
-      // Create records in database
+      // Create records in database (times are already in UTC)
       for (const record of allRecords) {
         if (record.type === "entrada") {
-          // ENTRADA record: only fecha_entrada, fecha_salida = NULL
           await TimeRecordsService.createRecord({
             usuarioId: userId,
             fechaEntrada: record.time,
-            // fechaSalida: undefined, // NULL for entrada
             tipoRegistro: "entrada",
             esSimulado: true,
           });
         } else {
-          // SALIDA record: both dates set
-          // For salida, we need the original entry time as reference
           const originalEntryTime =
             allRecords.find((r) => r.type === "entrada" && !r.isBreak)?.time ||
             entryTime;
 
           await TimeRecordsService.createRecord({
             usuarioId: userId,
-            fechaEntrada: originalEntryTime, // Reference to when work started
-            fechaSalida: record.time, // When the salida happened
+            fechaEntrada: originalEntryTime,
+            fechaSalida: record.time,
             tipoRegistro: "salida",
             esSimulado: true,
           });
         }
 
         console.log(
-          `Created ${record.type} at ${format(record.time, "HH:mm:ss")}${
-            record.isBreak ? " (break)" : ""
-          }`
+          `Created ${record.type} at ${format(
+            addHours(record.time, CANARY_UTC_OFFSET),
+            "HH:mm:ss"
+          )} local time${record.isBreak ? " (break)" : ""}`
         );
       }
 
@@ -341,39 +354,20 @@ export class AutoEntryService {
     }
   }
 
-  // Run this daily via cron job or similar
   static async processAllUsersAutoEntries(): Promise<void> {
-    console.log("Starting auto entries processing for all users");
-
     const { data: users, error } = await supabase
       .from("usuarios")
       .select("id, nombre");
 
-    if (error) {
-      console.error("Error fetching users:", error);
-      throw error;
-    }
-
-    if (!users) {
-      console.log("No users found");
-      return;
-    }
-
-    console.log(`Processing ${users.length} users`);
+    if (error) throw error;
+    if (!users) return;
 
     for (const user of users) {
       try {
-        console.log(`Processing user: ${user.nombre} (${user.id})`);
         await this.processUserAutoEntries(user.id);
       } catch (error) {
-        console.error(
-          `Error processing auto entries for user ${user.id}:`,
-          error
-        );
-        // Continue with next user instead of stopping
+        console.error(`Error for user ${user.id}:`, error);
       }
     }
-
-    console.log("Completed auto entries processing for all users");
   }
 }

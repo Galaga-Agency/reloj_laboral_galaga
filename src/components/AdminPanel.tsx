@@ -1,22 +1,22 @@
 import { useState, useEffect } from "react";
-import { AdminService } from "@/services/admin-service";
+import { AdminService, type TimeRange } from "@/services/admin-service";
 import type { Usuario, RegistroTiempo } from "@/types";
 import {
   FiUsers,
   FiClock,
   FiShield,
-  FiEye,
   FiPlus,
   FiEdit2,
   FiTrash2,
 } from "react-icons/fi";
-import { format } from "date-fns";
-import { es } from "date-fns/locale";
 import { TimeRecordsUtils } from "@/utils/time-records";
+import { DateFormatUtils } from "@/utils/date-format";
 import PrimaryButton from "@/components/ui/PrimaryButton";
+import { CustomDropdown } from "@/components/ui/CustomDropdown";
 import { ConfirmModal } from "@/components/modals/ConfirmModal";
 import { UserFormModal } from "@/components/modals/UserFormModal";
 import type { UserFormData } from "@/components/forms/CreateUserForm";
+import { AdminSystemDocumentation } from "./AdminSystemDocs";
 
 interface AdminPanelProps {
   currentUser: Usuario;
@@ -26,7 +26,9 @@ export function AdminPanel({ currentUser }: AdminPanelProps) {
   const [users, setUsers] = useState<Usuario[]>([]);
   const [selectedUser, setSelectedUser] = useState<Usuario | null>(null);
   const [userRecords, setUserRecords] = useState<RegistroTiempo[]>([]);
+  const [timeRange, setTimeRange] = useState<TimeRange>("past2days");
   const [isLoading, setIsLoading] = useState(false);
+  const [isRecordsLoading, setIsRecordsLoading] = useState(false);
   const [isFormLoading, setIsFormLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [showUserForm, setShowUserForm] = useState(false);
@@ -37,9 +39,25 @@ export function AdminPanel({ currentUser }: AdminPanelProps) {
     userName: string;
   }>({ isOpen: false, userId: "", userName: "" });
 
+  const timeRangeOptions = [
+    { value: "yesterday", label: "Ayer" },
+    { value: "past2days", label: "Últimos 2 días" },
+    { value: "thisweek", label: "Esta semana" },
+    { value: "past7days", label: "Últimos 7 días" },
+    { value: "thismonth", label: "Este mes" },
+    { value: "pastmonth", label: "Mes pasado" },
+    { value: "all", label: "Todo el historial" },
+  ];
+
   useEffect(() => {
     loadUsers();
   }, []);
+
+  useEffect(() => {
+    if (selectedUser) {
+      loadUserRecords(selectedUser.id, timeRange);
+    }
+  }, [selectedUser, timeRange]);
 
   const loadUsers = async () => {
     try {
@@ -54,44 +72,27 @@ export function AdminPanel({ currentUser }: AdminPanelProps) {
     }
   };
 
-  const loadUserRecords = async (userId: string) => {
+  const loadUserRecords = async (userId: string, range: TimeRange) => {
     try {
-      setIsLoading(true);
+      setIsRecordsLoading(true);
       setError(null);
-      const records = await AdminService.getUserRecords(userId);
+      const records = await AdminService.getUserRecords(userId, range);
       setUserRecords(records);
     } catch (err) {
       setError(
         err instanceof Error ? err.message : "Error loading user records"
       );
     } finally {
-      setIsLoading(false);
+      setIsRecordsLoading(false);
     }
   };
 
   const handleUserSelect = async (user: Usuario) => {
     setSelectedUser(user);
-    await loadUserRecords(user.id);
   };
 
-  const handleToggleAdmin = async (
-    userId: string,
-    currentAdminStatus: boolean
-  ) => {
-    if (userId === currentUser.id) {
-      setError("No puedes cambiar tu propio estado de administrador");
-      return;
-    }
-
-    try {
-      setError(null);
-      await AdminService.updateUserAdminStatus(userId, !currentAdminStatus);
-      await loadUsers();
-    } catch (err) {
-      setError(
-        err instanceof Error ? err.message : "Error updating admin status"
-      );
-    }
+  const handleTimeRangeChange = (newRange: string) => {
+    setTimeRange(newRange as TimeRange);
   };
 
   const handleCreateUser = () => {
@@ -145,23 +146,13 @@ export function AdminPanel({ currentUser }: AdminPanelProps) {
       }
 
       await loadUsers();
-      // Only close modal and reset state on success
       setShowUserForm(false);
       setEditingUser(null);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Error saving user");
-      // Don't close modal on error so user can fix issues
     } finally {
       setIsFormLoading(false);
     }
-  };
-
-  const formatDateTime = (date: Date) => {
-    return format(date, "HH:mm:ss");
-  };
-
-  const formatDate = (date: Date) => {
-    return format(date, "PPP", { locale: es });
   };
 
   if (isLoading && users.length === 0) {
@@ -187,6 +178,7 @@ export function AdminPanel({ currentUser }: AdminPanelProps) {
         </div>
       )}
 
+      {/* Users Management Section */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <div className="bg-white/10 backdrop-blur-md rounded-2xl p-6">
           <div className="flex items-center justify-between pb-4">
@@ -260,20 +252,39 @@ export function AdminPanel({ currentUser }: AdminPanelProps) {
         </div>
 
         <div className="bg-white/10 backdrop-blur-md rounded-2xl p-6">
-          <div className="flex items-center gap-2 pb-4">
-            <FiClock className="w-5 h-5 text-white" />
-            <h2 className="text-xl font-semibold text-white">
-              {selectedUser
-                ? `Registros de ${selectedUser.nombre}`
-                : "Selecciona un usuario"}
-            </h2>
+          <div className="flex items-center justify-between pb-4">
+            <div className="flex items-center gap-2">
+              <FiClock className="w-5 h-5 text-white" />
+              <h2 className="text-xl font-semibold text-white">
+                {selectedUser
+                  ? `Registros de ${selectedUser.nombre}`
+                  : "Selecciona un usuario"}
+              </h2>
+            </div>
+
+            {selectedUser && (
+              <div className="w-48">
+                <CustomDropdown
+                  options={timeRangeOptions}
+                  value={timeRange}
+                  onChange={handleTimeRangeChange}
+                  variant="dark"
+                  className="text-sm"
+                />
+              </div>
+            )}
           </div>
 
           {selectedUser ? (
             <div className="flex flex-col gap-3 max-h-96 overflow-y-auto">
-              {userRecords.length === 0 ? (
+              {isRecordsLoading ? (
+                <div className="text-center flex flex-col items-center text-white/70 py-8">
+                  <div className="animate-spin w-8 h-8 border-2 border-white/20 border-t-white mx-auto pb-3 rounded-full"></div>
+                  Cargando registros...
+                </div>
+              ) : userRecords.length === 0 ? (
                 <div className="text-center text-white/70 py-8">
-                  Este usuario no tiene registros de tiempo
+                  Este usuario no tiene registros en el período seleccionado
                 </div>
               ) : (
                 userRecords.map((record) => (
@@ -290,20 +301,15 @@ export function AdminPanel({ currentUser }: AdminPanelProps) {
                           <span className="font-medium text-white">
                             {TimeRecordsUtils.getTypeText(record.tipoRegistro)}
                           </span>
-                          {record.esSimulado && (
-                            <span className="px-2 py-1 text-xs bg-orange-500/20 text-orange-300 rounded-full">
-                              Simulado
-                            </span>
-                          )}
                         </div>
                         <div className="text-sm text-white/70">
-                          {formatDate(record.fechaEntrada)}
+                          {DateFormatUtils.formatDate(record.fechaEntrada)}
                         </div>
                       </div>
                     </div>
                     <div className="text-right">
                       <div className="font-mono font-bold text-white">
-                        {formatDateTime(record.fechaEntrada)}
+                        {DateFormatUtils.formatTime(record.fechaEntrada)}
                       </div>
                     </div>
                   </div>
@@ -318,6 +324,10 @@ export function AdminPanel({ currentUser }: AdminPanelProps) {
         </div>
       </div>
 
+      {/* Add the AdminSystemDocumentation component here */}
+      <AdminSystemDocumentation currentUser={currentUser} />
+
+      {/* Modals */}
       <UserFormModal
         isOpen={showUserForm}
         onClose={() => setShowUserForm(false)}

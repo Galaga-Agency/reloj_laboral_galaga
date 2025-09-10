@@ -9,10 +9,11 @@ interface DropdownOption {
 interface CustomDropdownProps {
   options: DropdownOption[];
   value: string;
-  onChange: (value: string) => void;
+  onChange: any;
   placeholder?: string;
   disabled?: boolean;
   className?: string;
+  variant?: "light" | "dark";
 }
 
 export function CustomDropdown({
@@ -22,6 +23,7 @@ export function CustomDropdown({
   placeholder = "Seleccionar...",
   disabled = false,
   className = "",
+  variant = "light",
 }: CustomDropdownProps) {
   const [isOpen, setIsOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
@@ -89,6 +91,84 @@ export function CustomDropdown({
     }
   };
 
+  // Dynamic styling based on variant
+  const getButtonStyles = () => {
+    const baseStyles = `
+      w-full flex items-center justify-between px-4 py-3 
+      border rounded-xl font-medium transition-all duration-200
+    `;
+
+    if (variant === "dark") {
+      return `${baseStyles} 
+        bg-white/10 border-white/20 text-white
+        ${
+          disabled
+            ? "opacity-50 cursor-not-allowed"
+            : "hover:bg-white/20 focus:ring-2 focus:ring-white/50 focus:border-white/50 cursor-pointer"
+        }
+        ${isOpen ? "ring-2 ring-white/50 border-white/50" : ""}
+      `;
+    }
+
+    // Default light variant
+    return `${baseStyles}
+      bg-hielo/20 border-hielo/50 text-azul-profundo
+      ${
+        disabled
+          ? "opacity-50 cursor-not-allowed"
+          : "hover:bg-hielo/30 focus:ring-2 focus:ring-teal focus:border-teal cursor-pointer"
+      }
+      ${isOpen ? "ring-2 ring-teal border-teal" : ""}
+    `;
+  };
+
+  const getTextColor = () => {
+    if (variant === "dark") {
+      return selectedOption ? "text-white" : "text-white/60";
+    }
+    return selectedOption ? "text-azul-profundo" : "text-azul-profundo/60";
+  };
+
+  const getChevronColor = () => {
+    return variant === "dark" ? "text-white/50" : "text-azul-profundo/50";
+  };
+
+  const getDropdownMenuStyles = () => {
+    if (variant === "dark") {
+      return "bg-blanco/95 backdrop-blur-sm border border-hielo/30 rounded-xl shadow-2xl overflow-hidden";
+    }
+    return "bg-blanco/95 backdrop-blur-sm border border-hielo/30 rounded-xl shadow-2xl overflow-hidden";
+  };
+
+  const getOptionStyles = (option: DropdownOption) => {
+    const baseStyles = `
+      w-full px-4 py-3 text-left flex items-center justify-between
+      transition-colors duration-150 cursor-pointer
+    `;
+
+    if (variant === "dark") {
+      return `${baseStyles}
+        ${
+          option.value === value
+            ? "bg-teal/20 text-teal font-medium"
+            : "text-teal/90 hover:bg-teal/10"
+        }
+      `;
+    }
+
+    return `${baseStyles}
+      ${
+        option.value === value
+          ? "bg-teal/10 text-teal font-medium"
+          : "text-azul-profundo hover:bg-hielo/20"
+      }
+    `;
+  };
+
+  const getCheckColor = () => {
+    return variant === "dark" ? "text-teal" : "text-teal";
+  };
+
   return (
     <div className={`relative ${className}`} ref={dropdownRef}>
       <button
@@ -96,32 +176,17 @@ export function CustomDropdown({
         onClick={() => !disabled && setIsOpen(!isOpen)}
         onKeyDown={handleKeyDown}
         disabled={disabled}
-        className={`
-          w-full flex items-center justify-between px-4 py-3 
-          bg-hielo/20 border border-hielo/50 rounded-xl
-          text-left text-azul-profundo font-medium
-          transition-all duration-200
-          ${
-            disabled
-              ? "opacity-50 cursor-not-allowed"
-              : "hover:bg-hielo/30 focus:ring-2 focus:ring-teal focus:border-teal cursor-pointer"
-          }
-          ${isOpen ? "ring-2 ring-teal border-teal" : ""}
-        `}
+        className={getButtonStyles()}
         aria-haspopup="listbox"
         aria-expanded={isOpen}
         aria-label="Filtro de fecha"
       >
-        <span
-          className={
-            selectedOption ? "text-azul-profundo" : "text-azul-profundo/60"
-          }
-        >
+        <span className={getTextColor()}>
           {selectedOption?.label || placeholder}
         </span>
 
         <FiChevronDown
-          className={`w-5 h-5 text-azul-profundo/50 transition-transform duration-200 ${
+          className={`w-5 h-5 ${getChevronColor()} transition-transform duration-200 ${
             isOpen ? "rotate-180" : "rotate-0"
           }`}
         />
@@ -137,7 +202,7 @@ export function CustomDropdown({
 
           {/* Dropdown menu */}
           <div className="absolute top-full left-0 right-0 mt-2 z-20">
-            <div className="bg-blanco/95 backdrop-blur-sm border border-hielo/30 rounded-xl shadow-2xl overflow-hidden">
+            <div className={getDropdownMenuStyles()}>
               <ul className="py-2 max-h-60 overflow-y-auto" role="listbox">
                 {options.map((option) => (
                   <li
@@ -148,19 +213,11 @@ export function CustomDropdown({
                     <button
                       type="button"
                       onClick={() => handleSelect(option.value)}
-                      className={`
-                        w-full px-4 py-3 text-left flex items-center justify-between
-                        transition-colors duration-150
-                        ${
-                          option.value === value
-                            ? "bg-teal/10 text-teal font-medium"
-                            : "text-azul-profundo hover:bg-hielo/20"
-                        }
-                      `}
+                      className={getOptionStyles(option)}
                     >
                       <span>{option.label}</span>
                       {option.value === value && (
-                        <FiCheck className="w-4 h-4 text-teal" />
+                        <FiCheck className={`w-4 h-4 ${getCheckColor()}`} />
                       )}
                     </button>
                   </li>

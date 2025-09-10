@@ -214,7 +214,7 @@ export function HistorialTrabajo({
               label: option.label,
             }))}
             value={filtroFecha}
-            onChange={(value) => handleFilterChange(value as DateRangeFilter)}
+            onChange={(value: any) => handleFilterChange(value as DateRangeFilter)}
             placeholder="Seleccionar período"
           />
 
@@ -336,11 +336,6 @@ export function HistorialTrabajo({
                         <span className="font-medium text-azul-profundo">
                           {TimeRecordsUtils.getTypeText(registro.tipoRegistro)}
                         </span>
-                        {registro.esSimulado && (
-                          <span className="px-2 py-1 text-xs bg-mandarina/20 text-mandarina rounded-full">
-                            Simulado
-                          </span>
-                        )}
                       </div>
                       <div className="text-sm text-azul-profundo/70">
                         {format(new Date(registro.fechaEntrada), "PPP", {

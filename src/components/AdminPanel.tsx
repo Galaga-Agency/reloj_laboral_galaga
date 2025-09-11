@@ -17,6 +17,7 @@ import { ConfirmModal } from "@/components/modals/ConfirmModal";
 import { UserFormModal } from "@/components/modals/UserFormModal";
 import type { UserFormData } from "@/components/forms/CreateUserForm";
 import { AdminSystemDocumentation } from "./AdminSystemDocs";
+import { AdminUserReports } from "@/components/AdminUserReports";
 
 interface AdminPanelProps {
   currentUser: Usuario;
@@ -324,7 +325,14 @@ export function AdminPanel({ currentUser }: AdminPanelProps) {
         </div>
       </div>
 
-      {/* Add the AdminSystemDocumentation component here */}
+      {/* User Reports Section */}
+      {selectedUser && (
+        <AdminUserReports
+          selectedUser={selectedUser}
+          userRecords={userRecords}
+        />
+      )}
+
       <AdminSystemDocumentation currentUser={currentUser} />
 
       {/* Modals */}

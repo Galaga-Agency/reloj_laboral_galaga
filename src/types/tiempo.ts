@@ -8,3 +8,4 @@ export interface RegistroTiempo {
 }
 
 export type EstadoTrabajo = "parado" | "trabajando"; 
+ 67

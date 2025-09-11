@@ -1,14 +1,6 @@
 import { supabase } from "@/lib/supabase";
 import { TimeRecordsService } from "./time-records-service";
-import {
-  isWeekend,
-  startOfDay,
-  subDays,
-  addMinutes,
-  format,
-  addHours,
-} from "date-fns";
-import type { RegistroTiempo } from "@/types";
+import { isWeekend, startOfDay, subDays, format, addHours } from "date-fns";
 
 interface UserWorkSettings {
   id: string;
@@ -114,13 +106,6 @@ export class AutoEntryService {
       return false;
     }
 
-    // Simple fix: use local time minus 2 days to ensure yesterday gets processed
-    const cutoffDate = subDays(startOfDay(new Date()), 2);
-    if (date >= cutoffDate) {
-      console.log(`Skipping recent date: ${format(date, "yyyy-MM-dd")}`);
-      return false;
-    }
-
     const dateString = format(date, "yyyy-MM-dd");
     if (settings.diasLibres.includes(dateString)) {
       console.log(`Skipping holiday: ${dateString}`);
@@ -171,29 +156,33 @@ export class AutoEntryService {
       return;
     }
 
+    // ONLY PROCESS YESTERDAY
+    const yesterday = subDays(startOfDay(new Date()), 1);
+
+    if (!this.shouldProcessDay(yesterday, settings)) {
+      console.log(
+        `Yesterday should not be processed: ${format(yesterday, "yyyy-MM-dd")}`
+      );
+      return;
+    }
+
     const existingRecords = await TimeRecordsService.getRecordsByUser(userId);
 
-    // Check last 7 days
-    for (let i = 1; i <= 7; i++) {
-      const checkDate = subDays(startOfDay(new Date()), i);
+    // Check if yesterday already has records
+    const yesterdayRecords = existingRecords.filter((record) => {
+      const localRecordTime = addHours(record.fechaEntrada, CANARY_UTC_OFFSET);
+      const recordDate = startOfDay(localRecordTime);
+      const targetDate = startOfDay(yesterday);
+      return recordDate.getTime() === targetDate.getTime();
+    });
 
-      if (!this.shouldProcessDay(checkDate, settings)) continue;
-
-      const dayRecords = existingRecords.filter((record) => {
-        // Convert UTC to local for comparison
-        const localRecordTime = addHours(
-          record.fechaEntrada,
-          CANARY_UTC_OFFSET
-        );
-        const recordDate = startOfDay(localRecordTime);
-        const targetDate = startOfDay(checkDate);
-        return recordDate.getTime() === targetDate.getTime();
-      });
-
-      if (dayRecords.length === 0) {
-        console.log(`Creating entries for ${format(checkDate, "yyyy-MM-dd")}`);
-        await this.createDayEntries(userId, checkDate, settings);
-      }
+    if (yesterdayRecords.length === 0) {
+      console.log(
+        `Creating entries for yesterday: ${format(yesterday, "yyyy-MM-dd")}`
+      );
+      await this.createDayEntries(userId, yesterday, settings);
+    } else {
+      console.log(`Yesterday already has ${yesterdayRecords.length} records`);
     }
   }
 
@@ -218,129 +207,53 @@ export class AutoEntryService {
       dayStart
     );
 
-    // Calculate total work minutes for break placement
-    const totalWorkMinutes =
-      (exitTime.getTime() - entryTime.getTime()) / (1000 * 60);
-
     console.log(
-      `Creating entries from ${format(
+      `Creating simple workday from ${format(
         addHours(entryTime, CANARY_UTC_OFFSET),
         "HH:mm:ss"
       )} to ${format(
         addHours(exitTime, CANARY_UTC_OFFSET),
         "HH:mm:ss"
-      )} local time (${Math.round(totalWorkMinutes)} minutes)`
+      )} local time`
     );
 
-    // Generate random breaks (1-3 breaks per day)
-    const numBreaks = Math.floor(Math.random() * 3) + 1;
-    const breaks: { start: Date; end: Date }[] = [];
-
-    for (let i = 0; i < numBreaks; i++) {
-      // Random break start time (avoid first 30 min and last 60 min of work)
-      const earliestBreakStart = addMinutes(entryTime, 30);
-      const latestBreakStart = addMinutes(exitTime, -60);
-
-      if (latestBreakStart > earliestBreakStart) {
-        const breakStartMinutes = Math.floor(
-          Math.random() *
-            ((latestBreakStart.getTime() - earliestBreakStart.getTime()) /
-              (1000 * 60))
-        );
-        const breakStart = addMinutes(earliestBreakStart, breakStartMinutes);
-
-        // Random break duration (15-45 minutes)
-        const breakDuration = Math.floor(Math.random() * 30) + 15;
-        const breakEnd = addMinutes(breakStart, breakDuration);
-
-        // Make sure break doesn't go past exit time
-        if (breakEnd < exitTime) {
-          breaks.push({ start: breakStart, end: breakEnd });
-        }
-      }
-    }
-
-    // Sort breaks by start time to avoid overlaps
-    breaks.sort((a, b) => a.start.getTime() - b.start.getTime());
-
-    // Remove overlapping breaks
-    const validBreaks: { start: Date; end: Date }[] = [];
-    for (const currentBreak of breaks) {
-      const lastBreak = validBreaks[validBreaks.length - 1];
-      if (!lastBreak || currentBreak.start >= addMinutes(lastBreak.end, 15)) {
-        validBreaks.push(currentBreak);
-      }
-    }
-
-    console.log(`Creating ${validBreaks.length} breaks`);
-
     try {
-      // Create all records in chronological order
-      const allRecords: {
-        time: Date;
-        type: "entrada" | "salida";
-        isBreak?: boolean;
-      }[] = [];
-
-      // Add main entry
-      allRecords.push({ time: entryTime, type: "entrada" });
-
-      // Add break records
-      validBreaks.forEach((breakItem) => {
-        allRecords.push({
-          time: breakItem.start,
-          type: "salida",
-          isBreak: true,
-        });
-        allRecords.push({
-          time: breakItem.end,
-          type: "entrada",
-          isBreak: true,
-        });
+      // Create ENTRADA record first
+      await TimeRecordsService.createRecord({
+        usuarioId: userId,
+        fechaEntrada: entryTime,
+        tipoRegistro: "entrada",
+        esSimulado: true,
       });
 
-      // Add main exit
-      allRecords.push({ time: exitTime, type: "salida" });
+      console.log(
+        `Created ENTRADA at ${format(
+          addHours(entryTime, CANARY_UTC_OFFSET),
+          "HH:mm:ss"
+        )} local time`
+      );
 
-      // Sort all records by time
-      allRecords.sort((a, b) => a.time.getTime() - b.time.getTime());
-
-      // Create records in database (times are already in UTC)
-      for (const record of allRecords) {
-        if (record.type === "entrada") {
-          await TimeRecordsService.createRecord({
-            usuarioId: userId,
-            fechaEntrada: record.time,
-            tipoRegistro: "entrada",
-            esSimulado: true,
-          });
-        } else {
-          const originalEntryTime =
-            allRecords.find((r) => r.type === "entrada" && !r.isBreak)?.time ||
-            entryTime;
-
-          await TimeRecordsService.createRecord({
-            usuarioId: userId,
-            fechaEntrada: originalEntryTime,
-            fechaSalida: record.time,
-            tipoRegistro: "salida",
-            esSimulado: true,
-          });
-        }
-
-        console.log(
-          `Created ${record.type} at ${format(
-            addHours(record.time, CANARY_UTC_OFFSET),
-            "HH:mm:ss"
-          )} local time${record.isBreak ? " (break)" : ""}`
-        );
-      }
+      // Create SALIDA record second
+      await TimeRecordsService.createRecord({
+        usuarioId: userId,
+        fechaEntrada: entryTime, // Reference to the entry time
+        fechaSalida: exitTime,
+        tipoRegistro: "salida",
+        esSimulado: true,
+      });
 
       console.log(
-        `Successfully created realistic workday for user ${userId} on ${format(
+        `Created SALIDA at ${format(
+          addHours(exitTime, CANARY_UTC_OFFSET),
+          "HH:mm:ss"
+        )} local time`
+      );
+
+      console.log(
+        `Successfully created simple workday for user ${userId} on ${format(
           date,
           "yyyy-MM-dd"
-        )} with ${validBreaks.length} breaks`
+        )}`
       );
     } catch (error) {
       console.error(

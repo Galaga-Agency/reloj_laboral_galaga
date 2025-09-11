@@ -13,17 +13,12 @@ import {
   subMonths,
 } from "date-fns";
 import { es } from "date-fns/locale";
-import {
-  FiRefreshCw,
-  FiCalendar,
-  FiClock,
-  FiTrendingUp,
-  FiChevronDown,
-} from "react-icons/fi";
+import { FiRefreshCw, FiClock } from "react-icons/fi";
 import PrimaryButton from "@/components/ui/PrimaryButton";
 import { TimeRecordsUtils } from "@/utils/time-records";
 import { TimeRecordsService } from "@/services/time-records-service";
 import { CustomDropdown } from "./ui/CustomDropdown";
+import { WorkStatistics } from "./WorkStatistics";
 
 export type DateRangeFilter =
   | "today"
@@ -64,35 +59,28 @@ export function HistorialTrabajo({
     switch (filter) {
       case "today":
         return { start: startOfDay(now), end: endOfDay(now) };
-
       case "yesterday":
         const yesterday = subDays(now, 1);
         return { start: startOfDay(yesterday), end: endOfDay(yesterday) };
-
       case "this_week":
         return {
           start: startOfWeek(now, { weekStartsOn: 1 }),
           end: endOfWeek(now, { weekStartsOn: 1 }),
         };
-
       case "last_week":
         const lastWeekStart = startOfWeek(subWeeks(now, 1), {
           weekStartsOn: 1,
         });
         const lastWeekEnd = endOfWeek(subWeeks(now, 1), { weekStartsOn: 1 });
         return { start: lastWeekStart, end: lastWeekEnd };
-
       case "this_month":
         return { start: startOfMonth(now), end: endOfMonth(now) };
-
       case "last_month":
         const lastMonthStart = startOfMonth(subMonths(now, 1));
         const lastMonthEnd = endOfMonth(subMonths(now, 1));
         return { start: lastMonthStart, end: lastMonthEnd };
-
       case "custom":
         return customDateRange;
-
       default:
         return {
           start: startOfWeek(now, { weekStartsOn: 1 }),
@@ -105,7 +93,6 @@ export function HistorialTrabajo({
     if (!usuarioId) return;
 
     setIsLoading(true);
-
     try {
       const range = dateRange || getDateRange(filtroFecha);
       const records = await TimeRecordsService.getRecordsByDateRange(
@@ -151,15 +138,20 @@ export function HistorialTrabajo({
     }
   };
 
-  const estadisticas = useMemo(() => {
-    return TimeRecordsUtils.calculateStatistics(registros);
-  }, [registros]);
-
   const registrosOrdenados = useMemo(() => {
-    return registros.sort(
-      (a, b) =>
-        new Date(b.fechaEntrada).getTime() - new Date(a.fechaEntrada).getTime()
-    );
+    return registros.sort((a, b) => {
+      const timeA =
+        a.tipoRegistro === "salida" && a.fechaSalida
+          ? new Date(a.fechaSalida).getTime()
+          : new Date(a.fechaEntrada).getTime();
+
+      const timeB =
+        b.tipoRegistro === "salida" && b.fechaSalida
+          ? new Date(b.fechaSalida).getTime()
+          : new Date(b.fechaEntrada).getTime();
+
+      return timeB - timeA;
+    });
   }, [registros]);
 
   useEffect(() => {
@@ -202,11 +194,12 @@ export function HistorialTrabajo({
                 isRefreshing ? "animate-spin" : ""
               }`}
             />
-           <span className="hidden md:block">{isRefreshing ? "Actualizando..." : "Actualizar"}</span> 
+            <span className="hidden md:block">
+              {isRefreshing ? "Actualizando..." : "Actualizar"}
+            </span>
           </PrimaryButton>
         </div>
 
-        {/* Date Filter Dropdown */}
         <div className="pb-6">
           <CustomDropdown
             options={filterOptions.map((option) => ({
@@ -214,11 +207,12 @@ export function HistorialTrabajo({
               label: option.label,
             }))}
             value={filtroFecha}
-            onChange={(value: any) => handleFilterChange(value as DateRangeFilter)}
+            onChange={(value: any) =>
+              handleFilterChange(value as DateRangeFilter)
+            }
             placeholder="Seleccionar período"
           />
 
-          {/* Custom Date Range Picker */}
           {showCustomPicker && (
             <div className="mt-4 p-4 bg-hielo/10 rounded-xl border border-hielo/30">
               <div className="flex flex-col sm:flex-row gap-4">
@@ -270,40 +264,10 @@ export function HistorialTrabajo({
           )}
         </div>
 
-        {/* Statistics Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 pb-6">
-          <div className="bg-gradient-to-br from-activo/10 to-activo/5 p-4 rounded-xl border border-activo/20">
-            <div className="flex items-center gap-2 text-sm text-activo font-medium pb-2">
-              <FiClock className="w-4 h-4" />
-              Tiempo Total
-            </div>
-            <div className="text-2xl font-bold text-azul-profundo">
-              {estadisticas.tiempoTotal}
-            </div>
-          </div>
-          <div className="bg-gradient-to-br from-turquesa/10 to-turquesa/5 p-4 rounded-xl border border-turquesa/20">
-            <div className="flex items-center gap-2 text-sm text-turquesa font-medium pb-2">
-              <FiCalendar className="w-4 h-4" />
-              Días Trabajados
-            </div>
-            <div className="text-2xl font-bold text-azul-profundo">
-              {estadisticas.diasTrabajados}
-            </div>
-          </div>
-          <div className="bg-gradient-to-br from-mandarina/10 to-mandarina/5 p-4 rounded-xl border border-mandarina/20">
-            <div className="flex items-center gap-2 text-sm text-mandarina font-medium pb-2">
-              <FiTrendingUp className="w-4 h-4" />
-              Promedio Diario
-            </div>
-            <div className="text-2xl font-bold text-azul-profundo">
-              {estadisticas.promedioDiario}
-            </div>
-          </div>
-        </div>
+        <WorkStatistics registros={registros} />
 
-        {/* Loading State */}
         {isLoading && (
-          <div className="text-center py-8  flex flex-col items-center">
+          <div className="text-center py-8 flex flex-col items-center">
             <FiRefreshCw className="w-8 h-8 mx-auto animate-spin text-azul-profundo/50 pb-2" />
             <p className="text-sm text-azul-profundo/60">
               Cargando registros...
@@ -311,7 +275,6 @@ export function HistorialTrabajo({
           </div>
         )}
 
-        {/* Records List */}
         {!isLoading && (
           <div className="flex flex-col gap-2 max-h-96 overflow-y-auto">
             {registrosOrdenados.length === 0 ? (
@@ -346,7 +309,10 @@ export function HistorialTrabajo({
                   </div>
                   <div className="text-right">
                     <div className="font-mono font-bold text-azul-profundo">
-                      {format(new Date(registro.fechaEntrada), "HH:mm:ss")}
+                      {registro.tipoRegistro === "salida" &&
+                      registro.fechaSalida
+                        ? format(new Date(registro.fechaSalida), "HH:mm:ss")
+                        : format(new Date(registro.fechaEntrada), "HH:mm:ss")}
                     </div>
                   </div>
                 </div>

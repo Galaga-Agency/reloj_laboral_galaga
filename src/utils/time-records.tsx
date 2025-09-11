@@ -1,6 +1,6 @@
 import {
   format,
-  differenceInMinutes,
+  differenceInSeconds,
   startOfWeek,
   endOfWeek,
   startOfMonth,
@@ -19,9 +19,6 @@ export interface WorkStatistics {
 }
 
 export class TimeRecordsUtils {
-  /**
-   * Filter records by time period
-   */
   static filterByPeriod(
     registros: RegistroTiempo[],
     period: FilterPeriod
@@ -55,57 +52,68 @@ export class TimeRecordsUtils {
     }
   }
 
-  /**
-   * Calculate work statistics from time records using simplified entrada/salida logic
-   */
   static calculateStatistics(registros: RegistroTiempo[]): WorkStatistics {
-    // Group records by day
     const registrosPorDia = new Map<string, RegistroTiempo[]>();
 
     registros.forEach((registro) => {
-      const dia = format(new Date(registro.fechaEntrada), "yyyy-MM-dd");
+      const actionDate =
+        registro.tipoRegistro === "salida" && registro.fechaSalida
+          ? new Date(registro.fechaSalida)
+          : new Date(registro.fechaEntrada);
+
+      const dia = format(actionDate, "yyyy-MM-dd");
+
       if (!registrosPorDia.has(dia)) {
         registrosPorDia.set(dia, []);
       }
       registrosPorDia.get(dia)!.push(registro);
     });
 
-    let totalMinutos = 0;
+    let totalSeconds = 0;
     let diasTrabajados = 0;
 
     registrosPorDia.forEach((registrosDia) => {
-      const minutosDelDia = this.calculateDayMinutes(registrosDia);
+      const secondsForDay = this.calculateDaySeconds(registrosDia);
 
-      if (minutosDelDia > 0) {
-        totalMinutos += minutosDelDia;
+      if (secondsForDay > 0) {
+        totalSeconds += secondsForDay;
         diasTrabajados++;
       }
     });
 
-    const horasTotal = Math.floor(totalMinutos / 60);
-    const minutosRest = totalMinutos % 60;
-    const promedioDiario =
-      diasTrabajados > 0 ? totalMinutos / diasTrabajados : 0;
-    const horasPromedio = Math.floor(promedioDiario / 60);
-    const minutosPromedio = Math.floor(promedioDiario % 60);
+    const promedioSeconds =
+      diasTrabajados > 0 ? totalSeconds / diasTrabajados : 0;
 
     return {
-      tiempoTotal: `${horasTotal}h ${minutosRest}m`,
+      tiempoTotal: this.formatSecondsToTime(totalSeconds),
       diasTrabajados,
-      promedioDiario: `${horasPromedio}h ${minutosPromedio}m`,
+      promedioDiario: this.formatSecondsToTime(promedioSeconds),
     };
   }
 
-  /**
-   * Calculate worked minutes for a single day using simplified entrada/salida pairs
-   */
-  private static calculateDayMinutes(registrosDia: RegistroTiempo[]): number {
-    const registrosOrdenados = registrosDia.sort(
-      (a, b) =>
-        new Date(a.fechaEntrada).getTime() - new Date(b.fechaEntrada).getTime()
-    );
+  private static calculateDaySeconds(registrosDia: RegistroTiempo[]): number {
+    // FIXED SORTING: Sort by fechaEntrada, then by tipoRegistro (entrada first)
+    const registrosOrdenados = registrosDia.sort((a, b) => {
+      const timeA = new Date(a.fechaEntrada).getTime();
+      const timeB = new Date(b.fechaEntrada).getTime();
 
-    let totalMinutos = 0;
+      // First sort by time
+      if (timeA !== timeB) {
+        return timeA - timeB;
+      }
+
+      // If same time, entrada comes before salida
+      if (a.tipoRegistro === "entrada" && b.tipoRegistro === "salida") {
+        return -1;
+      }
+      if (a.tipoRegistro === "salida" && b.tipoRegistro === "entrada") {
+        return 1;
+      }
+
+      return 0;
+    });
+
+    let totalSeconds = 0;
     let currentEntrada: Date | null = null;
 
     for (const registro of registrosOrdenados) {
@@ -115,20 +123,30 @@ export class TimeRecordsUtils {
         const salida = registro.fechaSalida
           ? new Date(registro.fechaSalida)
           : new Date(registro.fechaEntrada);
-        totalMinutos += differenceInMinutes(salida, currentEntrada);
+
+        const secondsWorked = differenceInSeconds(salida, currentEntrada);
+        totalSeconds += secondsWorked;
         currentEntrada = null;
       }
     }
 
-    // If there's an unpaired entrada (currently working), don't count it in daily stats
-    // Daily stats should only count completed sessions
-
-    return totalMinutos;
+    return totalSeconds;
   }
 
-  /**
-   * Get icon for registro type (simplified)
-   */
+  private static formatSecondsToTime(totalSeconds: number): string {
+    const hours = Math.floor(totalSeconds / 3600);
+    const minutes = Math.floor((totalSeconds % 3600) / 60);
+    const seconds = Math.floor(totalSeconds % 60);
+
+    if (hours > 0) {
+      return `${hours}h ${minutes}m ${seconds}s`;
+    } else if (minutes > 0) {
+      return `${minutes}m ${seconds}s`;
+    } else {
+      return `${seconds}s`;
+    }
+  }
+
   static getTypeIcon(tipo: string) {
     switch (tipo) {
       case "entrada":
@@ -140,9 +158,6 @@ export class TimeRecordsUtils {
     }
   }
 
-  /**
-   * Get display text for registro type (simplified)
-   */
   static getTypeText(tipo: string): string {
     switch (tipo) {
       case "entrada":
@@ -154,9 +169,6 @@ export class TimeRecordsUtils {
     }
   }
 
-  /**
-   * Filter records by search term
-   */
   static filterBySearch(
     registros: RegistroTiempo[],
     searchTerm: string

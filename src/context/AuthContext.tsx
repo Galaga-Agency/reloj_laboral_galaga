@@ -12,6 +12,7 @@ import type { Usuario } from "@/types";
 interface AuthContextType {
   usuario: Usuario | null;
   isLoading: boolean;
+  isLoggingOut: boolean;
   isAuthenticated: boolean;
   login: (email: string, password: string) => Promise<Usuario>;
   logout: () => Promise<void>;
@@ -36,6 +37,7 @@ interface AuthProviderProps {
 export function AuthProvider({ children }: AuthProviderProps) {
   const [usuario, setUsuario] = useState<Usuario | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [isLoggingOut, setIsLoggingOut] = useState(false);
 
   useEffect(() => {
     let mounted = true;
@@ -90,6 +92,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
         case "SIGNED_OUT":
           if (mounted) {
             setUsuario(null);
+            setIsLoggingOut(false);
           }
           break;
 
@@ -121,8 +124,20 @@ export function AuthProvider({ children }: AuthProviderProps) {
   };
 
   const logout = async (): Promise<void> => {
-    await AuthService.signOut();
-    setUsuario(null);
+    setIsLoggingOut(true);
+
+    try {
+      // Set user to null immediately for instant UI feedback
+      setUsuario(null);
+
+      // Do the actual logout in the background
+      await AuthService.signOut();
+    } catch (error) {
+      console.error("Error during logout:", error);
+      // Even if logout fails, keep user logged out in UI
+    } finally {
+      setIsLoggingOut(false);
+    }
   };
 
   const updatePassword = async (newPassword: string): Promise<void> => {
@@ -141,6 +156,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
   const value: AuthContextType = {
     usuario,
     isLoading,
+    isLoggingOut,
     isAuthenticated: !!usuario,
     login,
     logout,

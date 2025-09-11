@@ -3,15 +3,21 @@ import { differenceInMinutes, isToday, format } from "date-fns";
 
 export class ClockStateManager {
   /**
-   * Determines the current work state based on the latest record
-   * Logic: if last record is 'entrada' -> 'trabajando', if 'salida' -> 'parado'
+   * Determines the current work state based on TODAY's latest record only
+   * Logic: if last record TODAY is 'entrada' -> 'trabajando', if 'salida' -> 'parado'
    */
   static getCurrentState(registros: RegistroTiempo[]): EstadoTrabajo {
-    if (registros.length === 0) return "parado";
+    // ONLY look at today's records to determine current state
+    const todayRecords = this.getTodayRecords(registros);
 
-    const latestRecord = registros[0]; // Assuming sorted by date desc
+    if (todayRecords.length === 0) return "parado";
 
-    return latestRecord.tipoRegistro === "entrada" ? "trabajando" : "parado";
+    // Get the latest record from TODAY only
+    const latestTodayRecord = todayRecords[0]; // Assuming sorted by date desc
+
+    return latestTodayRecord.tipoRegistro === "entrada"
+      ? "trabajando"
+      : "parado";
   }
 
   /**

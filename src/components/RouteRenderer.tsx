@@ -11,10 +11,15 @@ import { PrivacyPolicyPage } from "./pages/PrivacyPolicyPage";
 import { LegalNoticePage } from "./pages/LegalNoticePage";
 
 export function RouteRenderer() {
-  const { usuario, isLoading, isAuthenticated, logout } = useAuth();
+  const { usuario, isLoading, isLoggingOut, isAuthenticated, logout } =
+    useAuth();
 
   if (isLoading) {
     return <LoadingScreen />;
+  }
+
+  if (isLoggingOut) {
+    return <LoadingScreen message="Cerrando sesión..." />;
   }
 
   const needsPasswordUpdate = usuario?.firstLogin;
@@ -89,7 +94,7 @@ export function RouteRenderer() {
       />
 
       <Route path="/politica-privacidad" element={<PrivacyPolicyPage />} />
-      
+
       <Route path="/aviso-legal" element={<LegalNoticePage />} />
 
       <Route path="*" element={<Navigate to={ROUTES.HOME} replace />} />

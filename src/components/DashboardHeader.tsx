@@ -4,6 +4,7 @@ import { FiLogOut } from "react-icons/fi";
 import type { Usuario, EstadoTrabajo } from "@/types";
 import SecondaryButton from "./ui/SecondaryButton";
 import { useDeviceDetect } from "@/hooks/useDeviceDetect";
+import { useAuth } from "@/context/AuthContext";
 
 interface DashboardHeaderProps {
   usuario: Usuario;
@@ -17,6 +18,7 @@ export function DashboardHeader({
   onLogout,
 }: DashboardHeaderProps) {
   const { isMobile, isTablet } = useDeviceDetect();
+  const { isLoggingOut } = useAuth();
 
   return (
     <header className="bg-blanco border-b border-hielo/30 relative z-50">
@@ -43,9 +45,18 @@ export function DashboardHeader({
 
             <button
               onClick={onLogout}
-              className="p-2 rounded-lg border border-teal text-teal"
+              disabled={isLoggingOut}
+              className={`p-2 rounded-lg border border-teal text-teal flex items-center justify-center min-w-[40px] min-h-[40px] ${
+                isLoggingOut
+                  ? "opacity-50 cursor-not-allowed"
+                  : "hover:bg-teal/5"
+              }`}
             >
-              <FiLogOut className="w-5 h-5" />
+              {isLoggingOut ? (
+                <div className="w-4 h-4 border-2 border-teal border-t-transparent rounded-full animate-spin"></div>
+              ) : (
+                <FiLogOut className="w-5 h-5" />
+              )}
             </button>
           </div>
         ) : (
@@ -89,9 +100,24 @@ export function DashboardHeader({
                 </div>
               </div>
 
-              <SecondaryButton onClick={onLogout} size="sm" borderColor="teal">
-                <FiLogOut className="w-4 h-4" />
-                Cerrar Sesión
+              <SecondaryButton
+                onClick={onLogout}
+                size="sm"
+                borderColor="teal"
+                disabled={isLoggingOut}
+                className={isLoggingOut ? "opacity-50 cursor-not-allowed" : ""}
+              >
+                {isLoggingOut ? (
+                  <>
+                    <div className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin"></div>
+                    Cerrando...
+                  </>
+                ) : (
+                  <>
+                    <FiLogOut className="w-4 h-4" />
+                    Cerrar Sesión
+                  </>
+                )}
               </SecondaryButton>
             </div>
           </div>

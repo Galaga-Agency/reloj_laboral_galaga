@@ -55,7 +55,7 @@ export function HolidayVacationPicker({
         <button
           ref={buttonRef}
           onClick={() => setShowCalendar(!showCalendar)}
-          className="absolute top-6 right-6 p-2 md:px-4 md:py-2 bg-teal text-blanco rounded-lg hover:bg-teal/90 flex items-center gap-2 transition-colors"
+          className="absolute top-6 right-6 p-2 md:px-4 md:py-2 bg-teal text-blanco rounded-lg hover:bg-teal/90 flex items-center gap-2 transition-colors cursor-pointer"
         >
           <FiPlus className="w-4 h-4" />
          <span className="hidden md:block">Agregar</span> 

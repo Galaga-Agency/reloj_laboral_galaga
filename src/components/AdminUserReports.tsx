@@ -1,10 +1,11 @@
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { format } from "date-fns";
 import { es } from "date-fns/locale";
-import { FiFileText, FiDownload, FiActivity } from "react-icons/fi";
+import { FiFileText, FiDownload, FiActivity, FiCalendar } from "react-icons/fi";
 import type { RegistroTiempo, Usuario } from "@/types";
 import { useReports, type ReportPeriod } from "@/hooks/useReports";
 import PrimaryButton from "@/components/ui/PrimaryButton";
+import { CustomCalendar } from "@/components/ui/CustomCalendar";
 
 interface AdminUserReportsProps {
   selectedUser: Usuario;
@@ -19,6 +20,8 @@ export function AdminUserReports({
     type: "success" | "error";
     text: string;
   } | null>(null);
+  const [showCalendar, setShowCalendar] = useState(false);
+  const calendarTriggerRef = useRef<HTMLButtonElement>(null);
 
   const {
     selectedPeriod,
@@ -50,6 +53,16 @@ export function AdminUserReports({
     }
   };
 
+  const handleCalendarSelect = (dates: string[]) => {
+    if (dates.length > 0) {
+      const sortedDates = dates.sort();
+      setCustomDateRange({
+        start: sortedDates[0],
+        end: sortedDates[sortedDates.length - 1],
+      });
+    }
+  };
+
   const periodOptions: {
     value: ReportPeriod;
     label: string;
@@ -68,6 +81,20 @@ export function AdminUserReports({
       description: "Selecciona fechas específicas",
     },
   ];
+
+  const getSelectedDatesArray = (): string[] => {
+    if (!customDateRange.start || !customDateRange.end) return [];
+
+    const start = new Date(customDateRange.start);
+    const end = new Date(customDateRange.end);
+    const dates: string[] = [];
+
+    for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
+      dates.push(format(d, "yyyy-MM-dd"));
+    }
+
+    return dates;
+  };
 
   return (
     <div className="bg-white/10 backdrop-blur-md rounded-2xl p-6">
@@ -135,39 +162,33 @@ export function AdminUserReports({
           <div className="flex flex-col gap-3 p-4 bg-white/5 rounded-lg border border-white/20">
             <h5 className="text-sm font-medium text-white">Rango de Fechas</h5>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              <div className="flex flex-col gap-1">
-                <label className="text-xs text-white/80">Fecha Inicio</label>
-                <input
-                  type="date"
-                  value={customDateRange.start}
-                  onChange={(e) =>
-                    setCustomDateRange((prev) => ({
-                      ...prev,
-                      start: e.target.value,
-                    }))
-                  }
-                  className="px-3 py-2 bg-white/10 border border-white/20 rounded-lg text-white text-sm focus:ring-2 focus:ring-white/50 focus:border-white/50"
-                  max={format(new Date(), "yyyy-MM-dd")}
-                />
-              </div>
+            <div className="flex flex-col gap-3">
+              <button
+                ref={calendarTriggerRef}
+                onClick={() => setShowCalendar(true)}
+                className="flex items-center gap-2 px-4 py-3 bg-white/10 border border-white/20 rounded-lg text-white hover:bg-white/15 transition-colors"
+              >
+                <FiCalendar className="w-4 h-4" />
+                <span className="text-sm">
+                  {customDateRange.start && customDateRange.end
+                    ? `${format(new Date(customDateRange.start), "dd/MM/yyyy", {
+                        locale: es,
+                      })} - ${format(
+                        new Date(customDateRange.end),
+                        "dd/MM/yyyy",
+                        { locale: es }
+                      )}`
+                    : "Seleccionar fechas"}
+                </span>
+              </button>
 
-              <div className="flex flex-col gap-1">
-                <label className="text-xs text-white/80">Fecha Fin</label>
-                <input
-                  type="date"
-                  value={customDateRange.end}
-                  onChange={(e) =>
-                    setCustomDateRange((prev) => ({
-                      ...prev,
-                      end: e.target.value,
-                    }))
-                  }
-                  className="px-3 py-2 bg-white/10 border border-white/20 rounded-lg text-white text-sm focus:ring-2 focus:ring-white/50 focus:border-white/50"
-                  min={customDateRange.start}
-                  max={format(new Date(), "yyyy-MM-dd")}
-                />
-              </div>
+              {customDateRange.start && customDateRange.end && (
+                <div className="text-xs text-white/70">
+                  {getSelectedDatesArray().length} día
+                  {getSelectedDatesArray().length !== 1 ? "s" : ""} seleccionado
+                  {getSelectedDatesArray().length !== 1 ? "s" : ""}
+                </div>
+              )}
             </div>
 
             {!isCustomRangeValid &&
@@ -246,6 +267,17 @@ export function AdminUserReports({
           </p>
         </div>
       </div>
+
+      {/* Custom Calendar */}
+      {showCalendar && (
+        <CustomCalendar
+          selectedDates={getSelectedDatesArray()}
+          onBulkSelect={handleCalendarSelect}
+          onClose={() => setShowCalendar(false)}
+          triggerRef={calendarTriggerRef}
+          allowPastDates={true}
+        />
+      )}
     </div>
   );
 }

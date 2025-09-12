@@ -20,6 +20,7 @@ interface CalendarProps {
   onBulkSelect: (dates: string[]) => void;
   onClose: () => void;
   triggerRef: React.RefObject<HTMLElement | null>;
+  allowPastDates?: boolean;
 }
 
 export function CustomCalendar({
@@ -27,6 +28,7 @@ export function CustomCalendar({
   onBulkSelect,
   onClose,
   triggerRef,
+  allowPastDates = false,
 }: CalendarProps) {
   const [currentMonth, setCurrentMonth] = useState(new Date());
   const [tempDates, setTempDates] = useState<string[]>([]);
@@ -111,17 +113,25 @@ export function CustomCalendar({
 
   const handleDateClick = (date: Date) => {
     const dateStr = format(date, "yyyy-MM-dd");
-    if (isBefore(date, startOfDay(new Date()))) return;
+
+    // Check if date is disabled
+    if (!allowPastDates && isBefore(date, startOfDay(new Date()))) return;
+
     if (!firstClick) {
+      // First click - start new selection
       setFirstClick(dateStr);
       setTempDates([dateStr]);
-    } else {
+    } else if (tempDates.length === 1) {
+      // Second click - complete range
       const start = new Date(firstClick) <= date ? new Date(firstClick) : date;
       const end = new Date(firstClick) <= date ? date : new Date(firstClick);
       const rangeDays = eachDayOfInterval({ start, end });
       const rangeDateStrings = rangeDays.map((d) => format(d, "yyyy-MM-dd"));
       setTempDates(rangeDateStrings);
-      setFirstClick(null);
+    } else {
+      // Third click - reset and start new selection
+      setFirstClick(dateStr);
+      setTempDates([dateStr]);
     }
   };
 
@@ -144,17 +154,25 @@ export function CustomCalendar({
     const isSelected = selectedDates.includes(dateStr);
     const isTempSelected = tempDates.includes(dateStr);
     const isToday_ = isToday(date);
-    const isDisabled = isBefore(date, startOfDay(new Date()));
+    const isDisabled =
+      !allowPastDates && isBefore(date, startOfDay(new Date()));
+
     let classes =
       "w-10 h-10 flex items-center justify-center rounded-lg text-sm font-medium transition-all";
-    if (isDisabled) classes += " text-gray-300 cursor-not-allowed";
-    else if (isSelected || isTempSelected)
+
+    if (isDisabled) {
+      classes += " text-gray-300 cursor-not-allowed";
+    } else if (isSelected || isTempSelected) {
       classes += " bg-teal text-white shadow-md";
-    else if (isToday_)
+    } else if (isToday_) {
       classes +=
         " bg-azul-profundo/10 text-azul-profundo font-bold border-2 border-azul-profundo/30";
-    else if (!isCurrentMonth) classes += " text-gray-400";
-    else classes += " text-azul-profundo hover:bg-hielo/30";
+    } else if (!isCurrentMonth) {
+      classes += " text-gray-400";
+    } else {
+      classes += " text-azul-profundo hover:bg-hielo/30 cursor-pointer";
+    }
+
     return classes;
   };
 
@@ -201,7 +219,9 @@ export function CustomCalendar({
                 <button
                   key={index}
                   onClick={() => handleDateClick(date)}
-                  disabled={isBefore(date, startOfDay(new Date()))}
+                  disabled={
+                    !allowPastDates && isBefore(date, startOfDay(new Date()))
+                  }
                   className={getDayStyle(date)}
                 >
                   {format(date, "d")}
@@ -210,8 +230,10 @@ export function CustomCalendar({
             </div>
             <div className="border-t border-hielo/30 pt-4">
               <div className="text-xs text-azul-profundo/60 text-center pb-3">
-                {firstClick
-                  ? "Selecciona la fecha final del rango"
+                {tempDates.length === 1
+                  ? "Selecciona la fecha final del rango o haz clic en otra fecha"
+                  : tempDates.length > 1
+                  ? "Rango seleccionado. Haz clic en otra fecha para reiniciar"
                   : "Haz clic en una fecha o selecciona un rango"}
               </div>
               <div className="flex gap-2">
@@ -269,7 +291,9 @@ export function CustomCalendar({
               <button
                 key={index}
                 onClick={() => handleDateClick(date)}
-                disabled={isBefore(date, startOfDay(new Date()))}
+                disabled={
+                  !allowPastDates && isBefore(date, startOfDay(new Date()))
+                }
                 className={getDayStyle(date)}
               >
                 {format(date, "d")}
@@ -278,21 +302,23 @@ export function CustomCalendar({
           </div>
           <div className="border-t border-hielo/30 pt-4">
             <div className="text-xs text-azul-profundo/60 text-center pb-3">
-              {firstClick
-                ? "Selecciona la fecha final del rango"
+              {tempDates.length === 1
+                ? "Selecciona la fecha final del rango o haz clic en otra fecha"
+                : tempDates.length > 1
+                ? "Rango seleccionado. Haz clic en otra fecha para reiniciar"
                 : "Haz clic en una fecha o selecciona un rango"}
             </div>
             <div className="flex gap-2">
               <button
                 onClick={handleCancel}
-                className="flex-1 px-3 py-2 text-sm border border-hielo/50 text-azul-profundo rounded-lg hover:bg-hielo/20"
+                className="flex-1 px-3 py-2 text-sm border border-hielo/50 text-azul-profundo rounded-lg hover:bg-hielo/20 cursor-pointer"
               >
                 Cancelar
               </button>
               <button
                 onClick={handleConfirm}
                 disabled={tempDates.length === 0}
-                className="flex-1 px-3 py-2 text-sm bg-teal text-white rounded-lg hover:bg-teal/90 disabled:opacity-50"
+                className="flex-1 px-3 py-2 text-sm bg-teal text-white rounded-lg hover:bg-teal/90 disabled:opacity-50 cursor-pointer"
               >
                 Confirmar ({tempDates.length})
               </button>

@@ -78,7 +78,21 @@ export function AdminPanel({ currentUser }: AdminPanelProps) {
       setIsRecordsLoading(true);
       setError(null);
       const records = await AdminService.getUserRecords(userId, range);
-      setUserRecords(records);
+
+      // Sort records antichronologically (newest first)
+      const sortedRecords = records.sort((a, b) => {
+        const dateA =
+          a.tipoRegistro === "entrada"
+            ? a.fechaEntrada
+            : a.fechaSalida || a.fechaEntrada;
+        const dateB =
+          b.tipoRegistro === "entrada"
+            ? b.fechaEntrada
+            : b.fechaSalida || b.fechaEntrada;
+        return new Date(dateB).getTime() - new Date(dateA).getTime();
+      });
+
+      setUserRecords(sortedRecords);
     } catch (err) {
       setError(
         err instanceof Error ? err.message : "Error loading user records"
@@ -310,7 +324,11 @@ export function AdminPanel({ currentUser }: AdminPanelProps) {
                     </div>
                     <div className="text-right">
                       <div className="font-mono font-bold text-white">
-                        {DateFormatUtils.formatTime(record.fechaEntrada)}
+                        {record.tipoRegistro === "entrada"
+                          ? DateFormatUtils.formatTime(record.fechaEntrada)
+                          : DateFormatUtils.formatTime(
+                              record.fechaSalida || record.fechaEntrada
+                            )}
                       </div>
                     </div>
                   </div>

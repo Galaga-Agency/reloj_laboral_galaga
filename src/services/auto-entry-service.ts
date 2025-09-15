@@ -14,7 +14,7 @@ interface UserWorkSettings {
   autoEntryEnabled: boolean;
 }
 
-const CANARY_UTC_OFFSET = 1; // Canary Islands is UTC+1
+const CANARY_UTC_OFFSET = 1;
 
 export class AutoEntryService {
   static async getUserWorkSettings(
@@ -134,7 +134,6 @@ export class AutoEntryService {
     const result = new Date(baseDate);
     result.setHours(hours, minutes, Math.floor(Math.random() * 60), 0);
 
-    // Convert to UTC by subtracting the offset
     const utcResult = addHours(result, -CANARY_UTC_OFFSET);
 
     console.log(
@@ -156,7 +155,6 @@ export class AutoEntryService {
       return;
     }
 
-    // ONLY PROCESS YESTERDAY
     const yesterday = subDays(startOfDay(new Date()), 1);
 
     if (!this.shouldProcessDay(yesterday, settings)) {
@@ -168,7 +166,6 @@ export class AutoEntryService {
 
     const existingRecords = await TimeRecordsService.getRecordsByUser(userId);
 
-    // Check if yesterday already has records
     const yesterdayRecords = existingRecords.filter((record) => {
       const localRecordTime = addHours(record.fechaEntrada, CANARY_UTC_OFFSET);
       const recordDate = startOfDay(localRecordTime);
@@ -182,7 +179,42 @@ export class AutoEntryService {
       );
       await this.createDayEntries(userId, yesterday, settings);
     } else {
-      console.log(`Yesterday already has ${yesterdayRecords.length} records`);
+      // Check for missing exit entries
+      const entryRecords = yesterdayRecords.filter(
+        (r) => r.tipoRegistro === "entrada"
+      );
+      const exitRecords = yesterdayRecords.filter(
+        (r) => r.tipoRegistro === "salida"
+      );
+
+      if (entryRecords.length > exitRecords.length) {
+        console.log(
+          `Found ${entryRecords.length} entries but only ${exitRecords.length} exits. Creating missing exit entries.`
+        );
+
+        for (const entryRecord of entryRecords) {
+          const hasMatchingExit = exitRecords.some(
+            (exit) =>
+              Math.abs(
+                exit.fechaEntrada.getTime() - entryRecord.fechaEntrada.getTime()
+              ) < 1000
+          );
+
+          if (!hasMatchingExit) {
+            console.log(
+              `Creating missing exit for entry at ${entryRecord.fechaEntrada}`
+            );
+            await this.createMissingExitEntry(
+              userId,
+              yesterday,
+              settings,
+              entryRecord
+            );
+          }
+        }
+      } else {
+        console.log(`Yesterday already has ${yesterdayRecords.length} records`);
+      }
     }
   }
 
@@ -193,14 +225,12 @@ export class AutoEntryService {
   ): Promise<void> {
     const dayStart = startOfDay(date);
 
-    // Generate entry time (in local time, converted to UTC)
     const entryTime = this.generateRandomTime(
       settings.horaEntradaMin,
       settings.horaEntradaMax,
       dayStart
     );
 
-    // Generate exit time (in local time, converted to UTC)
     const exitTime = this.generateRandomTime(
       settings.horaSalidaMin,
       settings.horaSalidaMax,
@@ -218,7 +248,6 @@ export class AutoEntryService {
     );
 
     try {
-      // Create ENTRADA record first
       await TimeRecordsService.createRecord({
         usuarioId: userId,
         fechaEntrada: entryTime,
@@ -233,10 +262,9 @@ export class AutoEntryService {
         )} local time`
       );
 
-      // Create SALIDA record second
       await TimeRecordsService.createRecord({
         usuarioId: userId,
-        fechaEntrada: entryTime, // Reference to the entry time
+        fechaEntrada: entryTime,
         fechaSalida: exitTime,
         tipoRegistro: "salida",
         esSimulado: true,
@@ -258,6 +286,54 @@ export class AutoEntryService {
     } catch (error) {
       console.error(
         `Error creating auto entries for user ${userId} on ${format(
+          date,
+          "yyyy-MM-dd"
+        )}:`,
+        error
+      );
+      throw error;
+    }
+  }
+
+  static async createMissingExitEntry(
+    userId: string,
+    date: Date,
+    settings: UserWorkSettings,
+    entryRecord: any
+  ): Promise<void> {
+    const dayStart = startOfDay(date);
+
+    const exitTime = this.generateRandomTime(
+      settings.horaSalidaMin,
+      settings.horaSalidaMax,
+      dayStart
+    );
+
+    console.log(
+      `Creating missing exit at ${format(
+        addHours(exitTime, CANARY_UTC_OFFSET),
+        "HH:mm:ss"
+      )} local time`
+    );
+
+    try {
+      await TimeRecordsService.createRecord({
+        usuarioId: userId,
+        fechaEntrada: entryRecord.fechaEntrada,
+        fechaSalida: exitTime,
+        tipoRegistro: "salida",
+        esSimulado: true,
+      });
+
+      console.log(
+        `Successfully created missing exit entry for user ${userId} on ${format(
+          date,
+          "yyyy-MM-dd"
+        )}`
+      );
+    } catch (error) {
+      console.error(
+        `Error creating missing exit entry for user ${userId} on ${format(
           date,
           "yyyy-MM-dd"
         )}:`,

@@ -28,12 +28,22 @@ export class AuthService {
       );
     }
 
+    // Check if user is active
+    if (userRecord.is_active === false) {
+      // Sign out the user immediately since they shouldn't be logged in
+      await supabase.auth.signOut();
+      throw new Error(
+        "Tu cuenta está desactivada. Contacta con el administrador."
+      );
+    }
+
     return {
       id: userRecord.id,
       nombre: userRecord.nombre,
       email: userRecord.email,
       firstLogin: userRecord.first_login,
       isAdmin: userRecord.is_admin,
+      isActive: userRecord.is_active ?? true,
     };
   }
 
@@ -122,12 +132,20 @@ export class AuthService {
           );
         }
 
+        // Check if user is active - if not, sign them out
+        if (userRecord.is_active === false) {
+          console.log("User is inactive, signing them out");
+          await supabase.auth.signOut();
+          return null;
+        }
+
         const result = {
           id: userRecord.id,
           nombre: userRecord.nombre,
           email: userRecord.email,
           firstLogin: userRecord.first_login,
           isAdmin: userRecord.is_admin,
+          isActive: userRecord.is_active ?? true,
         };
 
         console.log("Returning user:", result);

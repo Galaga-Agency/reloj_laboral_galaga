@@ -8,6 +8,8 @@ import {
   FiPlus,
   FiEdit2,
   FiTrash2,
+  FiEyeOff,
+  FiEye,
 } from "react-icons/fi";
 import { TimeRecordsUtils } from "@/utils/time-records";
 import { DateFormatUtils } from "@/utils/date-format";
@@ -39,6 +41,12 @@ export function AdminPanel({ currentUser }: AdminPanelProps) {
     userId: string;
     userName: string;
   }>({ isOpen: false, userId: "", userName: "" });
+  const [deactivateConfirm, setDeactivateConfirm] = useState<{
+    isOpen: boolean;
+    userId: string;
+    userName: string;
+    currentStatus: boolean;
+  }>({ isOpen: false, userId: "", userName: "", currentStatus: true });
 
   const timeRangeOptions = [
     { value: "yesterday", label: "Ayer" },
@@ -79,7 +87,6 @@ export function AdminPanel({ currentUser }: AdminPanelProps) {
       setError(null);
       const records = await AdminService.getUserRecords(userId, range);
 
-      // Sort records antichronologically (newest first)
       const sortedRecords = records.sort((a, b) => {
         const dateA =
           a.tipoRegistro === "entrada"
@@ -131,6 +138,53 @@ export function AdminPanel({ currentUser }: AdminPanelProps) {
       userId,
       userName,
     });
+  };
+
+  const handleToggleUserStatus = (user: Usuario) => {
+    if (user.id === currentUser.id) {
+      setError("No puedes cambiar el estado de tu propia cuenta");
+      return;
+    }
+
+    setDeactivateConfirm({
+      isOpen: true,
+      userId: user.id,
+      userName: user.nombre,
+      currentStatus: user.isActive,
+    });
+  };
+
+  const confirmToggleUserStatus = async () => {
+    try {
+      setError(null);
+      await AdminService.updateUserActiveStatus(
+        deactivateConfirm.userId,
+        !deactivateConfirm.currentStatus
+      );
+      await loadUsers();
+      if (selectedUser?.id === deactivateConfirm.userId) {
+        const updatedUser = users.find(
+          (u) => u.id === deactivateConfirm.userId
+        );
+        if (updatedUser) {
+          setSelectedUser({
+            ...updatedUser,
+            isActive: !deactivateConfirm.currentStatus,
+          });
+        }
+      }
+    } catch (err) {
+      setError(
+        err instanceof Error ? err.message : "Error updating user status"
+      );
+    } finally {
+      setDeactivateConfirm({
+        isOpen: false,
+        userId: "",
+        userName: "",
+        currentStatus: true,
+      });
+    }
   };
 
   const confirmDeleteUser = async () => {
@@ -193,7 +247,6 @@ export function AdminPanel({ currentUser }: AdminPanelProps) {
         </div>
       )}
 
-      {/* Users Management Section */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <div className="bg-white/10 backdrop-blur-md rounded-2xl p-6">
           <div className="flex items-center justify-between pb-4">
@@ -211,8 +264,10 @@ export function AdminPanel({ currentUser }: AdminPanelProps) {
             {users.map((user) => (
               <div
                 key={user.id}
-                className={`w-[120vw] md:w-full p-4 rounded-lg border cursor-pointer transition-colors ${
-                  selectedUser?.id === user.id
+                className={`w-[120vw] md:w-full p-4 rounded-lg border cursor-pointer transition-all duration-200 ${
+                  !user.isActive
+                    ? "opacity-50 bg-gray-500/10 border-gray-500/20 blur-[0.5px]"
+                    : selectedUser?.id === user.id
                     ? "bg-white/20 border-white/30"
                     : "bg-white/5 border-white/10 hover:bg-white/10"
                 }`}
@@ -221,7 +276,13 @@ export function AdminPanel({ currentUser }: AdminPanelProps) {
                 <div className="flex items-center justify-between">
                   <div>
                     <div className="flex items-center gap-2">
-                      <span className="text-white font-medium">
+                      <span
+                        className={`font-medium ${
+                          !user.isActive
+                            ? "text-white/60 line-through"
+                            : "text-white"
+                        }`}
+                      >
                         {user.nombre}
                       </span>
                       {user.isAdmin && (
@@ -230,10 +291,44 @@ export function AdminPanel({ currentUser }: AdminPanelProps) {
                           title="Administrador"
                         />
                       )}
+                      {!user.isActive && (
+                        <span className="text-xs bg-gray-500/20 text-gray-300 px-2 py-1 rounded-full">
+                          Inactivo
+                        </span>
+                      )}
                     </div>
-                    <div className="text-white/70 text-sm">{user.email}</div>
+                    <div
+                      className={`text-sm ${
+                        !user.isActive ? "text-white/50" : "text-white/70"
+                      }`}
+                    >
+                      {user.email}
+                    </div>
                   </div>
                   <div className="flex items-center gap-2">
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleToggleUserStatus(user);
+                      }}
+                      disabled={user.id === currentUser.id}
+                      className={`p-1 rounded transition-colors ${
+                        user.id === currentUser.id
+                          ? "text-gray-400 cursor-not-allowed"
+                          : user.isActive
+                          ? "text-orange-400 cursor-pointer hover:text-orange-300 hover:bg-orange-500/10"
+                          : "text-green-400 cursor-pointer hover:text-green-300 hover:bg-green-500/10"
+                      }`}
+                      title={
+                        user.isActive ? "Desactivar usuario" : "Activar usuario"
+                      }
+                    >
+                      {user.isActive ? (
+                        <FiEyeOff className="w-4 h-4" />
+                      ) : (
+                        <FiEye className="w-4 h-4" />
+                      )}
+                    </button>
                     <button
                       onClick={(e) => {
                         e.stopPropagation();
@@ -291,50 +386,60 @@ export function AdminPanel({ currentUser }: AdminPanelProps) {
           </div>
 
           {selectedUser ? (
-            <div className="flex flex-col gap-3 max-h-96 overflow-y-auto">
-              {isRecordsLoading ? (
-                <div className="text-center flex flex-col items-center text-white/70 py-8">
-                  <div className="animate-spin w-8 h-8 border-2 border-white/20 border-t-white mx-auto pb-3 rounded-full"></div>
-                  Cargando registros...
+            <>
+              {!selectedUser.isActive && (
+                <div className="mb-4 p-3 bg-orange-500/10 border border-orange-500/20 rounded-lg text-orange-300 text-sm">
+                  <FiEyeOff className="inline w-4 h-4 mr-2" />
+                  Este usuario está desactivado y no puede acceder al sistema
                 </div>
-              ) : userRecords.length === 0 ? (
-                <div className="text-center text-white/70 py-8">
-                  Este usuario no tiene registros en el período seleccionado
-                </div>
-              ) : (
-                userRecords.map((record) => (
-                  <div
-                    key={record.id}
-                    className="flex items-center justify-between p-4 bg-white/5 rounded-lg border border-white/10"
-                  >
-                    <div className="flex items-center gap-4">
-                      <div className="flex items-center justify-center w-8 h-8 rounded-full bg-white/20 flex-shrink-0">
-                        {TimeRecordsUtils.getTypeIcon(record.tipoRegistro)}
-                      </div>
-                      <div className="flex flex-col gap-1">
-                        <div className="flex items-center gap-2">
-                          <span className="font-medium text-white">
-                            {TimeRecordsUtils.getTypeText(record.tipoRegistro)}
-                          </span>
-                        </div>
-                        <div className="text-sm text-white/70">
-                          {DateFormatUtils.formatDate(record.fechaEntrada)}
-                        </div>
-                      </div>
-                    </div>
-                    <div className="text-right">
-                      <div className="font-mono font-bold text-white">
-                        {record.tipoRegistro === "entrada"
-                          ? DateFormatUtils.formatTime(record.fechaEntrada)
-                          : DateFormatUtils.formatTime(
-                              record.fechaSalida || record.fechaEntrada
-                            )}
-                      </div>
-                    </div>
-                  </div>
-                ))
               )}
-            </div>
+              <div className="flex flex-col gap-3 max-h-96 overflow-y-auto">
+                {isRecordsLoading ? (
+                  <div className="text-center flex flex-col items-center text-white/70 py-8">
+                    <div className="animate-spin w-8 h-8 border-2 border-white/20 border-t-white mx-auto pb-3 rounded-full"></div>
+                    Cargando registros...
+                  </div>
+                ) : userRecords.length === 0 ? (
+                  <div className="text-center text-white/70 py-8">
+                    Este usuario no tiene registros en el período seleccionado
+                  </div>
+                ) : (
+                  userRecords.map((record) => (
+                    <div
+                      key={record.id}
+                      className="flex items-center justify-between p-4 bg-white/5 rounded-lg border border-white/10"
+                    >
+                      <div className="flex items-center gap-4">
+                        <div className="flex items-center justify-center w-8 h-8 rounded-full bg-white/20 flex-shrink-0">
+                          {TimeRecordsUtils.getTypeIcon(record.tipoRegistro)}
+                        </div>
+                        <div className="flex flex-col gap-1">
+                          <div className="flex items-center gap-2">
+                            <span className="font-medium text-white">
+                              {TimeRecordsUtils.getTypeText(
+                                record.tipoRegistro
+                              )}
+                            </span>
+                          </div>
+                          <div className="text-sm text-white/70">
+                            {DateFormatUtils.formatDate(record.fechaEntrada)}
+                          </div>
+                        </div>
+                      </div>
+                      <div className="text-right">
+                        <div className="font-mono font-bold text-white">
+                          {record.tipoRegistro === "entrada"
+                            ? DateFormatUtils.formatTime(record.fechaEntrada)
+                            : DateFormatUtils.formatTime(
+                                record.fechaSalida || record.fechaEntrada
+                              )}
+                        </div>
+                      </div>
+                    </div>
+                  ))
+                )}
+              </div>
+            </>
           ) : (
             <div className="text-center text-white/70 py-8">
               Selecciona un usuario para ver sus registros
@@ -343,7 +448,6 @@ export function AdminPanel({ currentUser }: AdminPanelProps) {
         </div>
       </div>
 
-      {/* User Reports Section */}
       {selectedUser && (
         <AdminUserReports
           selectedUser={selectedUser}
@@ -353,7 +457,6 @@ export function AdminPanel({ currentUser }: AdminPanelProps) {
 
       <AdminSystemDocumentation currentUser={currentUser} />
 
-      {/* Modals */}
       <UserFormModal
         isOpen={showUserForm}
         onClose={() => setShowUserForm(false)}
@@ -371,6 +474,31 @@ export function AdminPanel({ currentUser }: AdminPanelProps) {
         title="Eliminar Usuario"
         message={`¿Estás seguro de que quieres eliminar a ${deleteConfirm.userName}? Esta acción no se puede deshacer y eliminará todos sus registros de tiempo.`}
         confirmText="Eliminar"
+        cancelText="Cancelar"
+      />
+
+      <ConfirmModal
+        isOpen={deactivateConfirm.isOpen}
+        onConfirm={confirmToggleUserStatus}
+        onCancel={() =>
+          setDeactivateConfirm({
+            isOpen: false,
+            userId: "",
+            userName: "",
+            currentStatus: true,
+          })
+        }
+        title={
+          deactivateConfirm.currentStatus
+            ? "Desactivar Usuario"
+            : "Activar Usuario"
+        }
+        message={
+          deactivateConfirm.currentStatus
+            ? `¿Estás seguro de que quieres desactivar a ${deactivateConfirm.userName}? El usuario no podrá acceder al sistema hasta que sea reactivado.`
+            : `¿Estás seguro de que quieres reactivar a ${deactivateConfirm.userName}? El usuario podrá volver a acceder al sistema.`
+        }
+        confirmText={deactivateConfirm.currentStatus ? "Desactivar" : "Activar"}
         cancelText="Cancelar"
       />
     </div>

@@ -51,6 +51,7 @@ export class AdminService {
       email: user.email,
       firstLogin: user.first_login,
       isAdmin: user.is_admin,
+      isActive: user.is_active ?? true, // Default to true for existing users
     }));
 
     console.log("Mapped users:", mappedUsers);
@@ -185,6 +186,23 @@ export class AdminService {
 
     if (error) {
       throw new Error(`Error updating user admin status: ${error.message}`);
+    }
+  }
+
+  static async updateUserActiveStatus(
+    userId: string,
+    isActive: boolean
+  ): Promise<void> {
+    const { error } = await supabase
+      .from("usuarios")
+      .update({
+        is_active: isActive,
+        updated_at: new Date().toISOString(),
+      } as any)
+      .eq("id", userId);
+
+    if (error) {
+      throw new Error(`Error updating user active status: ${error.message}`);
     }
   }
 

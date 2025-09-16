@@ -54,10 +54,10 @@ export class AutoEntryService {
       .insert({
         usuario_id: userId,
         horas_diarias: 8,
-        hora_entrada_min: "08:30",
-        hora_entrada_max: "09:30",
-        hora_salida_min: "17:30",
-        hora_salida_max: "18:30",
+        hora_entrada_min: "08:45",
+        hora_entrada_max: "09:15",
+        hora_salida_min: "17:02",
+        hora_salida_max: "17:30",
         dias_libres: [],
         auto_entry_enabled: true,
       })

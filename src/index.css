@@ -58,17 +58,6 @@
   --color-descanso: #f59e0b;
 }
 
-/* Reset */
-*,
-*::before,
-*::after {
-  box-sizing: border-box;
-}
-
-* {
-  margin: 0;
-}
-
 html {
   font-family: var(--font-family-primary);
   scroll-behavior: smooth;

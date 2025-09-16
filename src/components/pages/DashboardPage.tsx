@@ -10,6 +10,8 @@ import { useTimeRecords } from "@/hooks/useTimeRecords";
 import { useGSAPAnimations } from "@/hooks/useGSAPAnimations";
 import { FiClock, FiList, FiSettings, FiShield } from "react-icons/fi";
 import { initEntranceAnimation } from "@/utils/animations/entrance-animations";
+import { useOvertimeCalculations } from "@/hooks/useOvertimeCalculations";
+import { OvertimeAlert } from "@/components/OvertimeAlert";
 
 interface DashboardPageProps {
   usuario: Usuario;
@@ -77,6 +79,8 @@ export function DashboardPage({ usuario, onLogout }: DashboardPageProps) {
     }
   };
 
+  const { overtimeData } = useOvertimeCalculations(usuario.id);
+
   return (
     <div className="min-h-screen flex flex-col bg-gradient-to-br from-azul-profundo via-[#123243] to-teal pb-16">
       <div className="dashboard-header">
@@ -86,6 +90,8 @@ export function DashboardPage({ usuario, onLogout }: DashboardPageProps) {
           onLogout={onLogout}
         />
       </div>
+
+      <OvertimeAlert overtimeData={overtimeData} />
 
       <div className="dashboard-tabs">
         <DashboardTabs

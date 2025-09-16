@@ -7,23 +7,7 @@ import { AdvancedWorkSettings } from "@/components/AdvancedWorkSettings";
 import { PasswordChangeBlock } from "./PasswordChangeBlock";
 import SecondaryButton from "./ui/SecondaryButton";
 import { FiSave, FiCheck, FiX } from "react-icons/fi";
-
-interface Usuario {
-  id: string;
-  nombre: string;
-  email: string;
-  firstLogin?: boolean;
-  isAdmin: boolean;
-}
-
-interface RegistroTiempo {
-  id: string;
-  usuarioId: string;
-  fechaEntrada: Date;
-  fechaSalida?: Date;
-  tipoRegistro: "entrada" | "salida";
-  esSimulado?: boolean;
-}
+import { RegistroTiempo, Usuario } from "@/types";
 
 interface WorkSettingsProps {
   usuario: Usuario;
@@ -43,10 +27,10 @@ interface WorkSettings {
 export function WorkSettings({ usuario, registros = [] }: WorkSettingsProps) {
   const [settings, setSettings] = useState<WorkSettings>({
     horasDiarias: 8,
-    horaEntradaMin: "08:30",
-    horaEntradaMax: "09:30",
-    horaSalidaMin: "17:30",
-    horaSalidaMax: "18:30",
+    horaEntradaMin: "08:45",
+    horaEntradaMax: "09:00",
+    horaSalidaMin: "17:00",
+    horaSalidaMax: "17:30",
     diasLibres: [],
     autoEntryEnabled: true,
   });
@@ -156,46 +140,6 @@ export function WorkSettings({ usuario, registros = [] }: WorkSettingsProps) {
 
   return (
     <div className="flex flex-col gap-6">
-      {message && (
-        <div
-          className={`p-4 rounded-lg ${
-            message.type === "success"
-              ? "bg-green-50 border border-green-200 text-green-800"
-              : "bg-red-50 border border-red-200 text-red-800"
-          }`}
-        >
-          {message.text}
-        </div>
-      )}
-
-      {progress > 0 && !isUnlocked && (
-        <div className="bg-red-50 border border-red-200 rounded-lg p-3">
-          <div className="flex items-center gap-2">
-            <div className="text-red-800 text-sm">
-              Secuencia: {progress}/{totalSteps}
-            </div>
-            <div className="flex gap-1">
-              {Array.from({ length: totalSteps }).map((_, i) => (
-                <div
-                  key={i}
-                  className={`w-2 h-2 rounded-full ${
-                    i < progress ? "bg-red-500" : "bg-red-200"
-                  }`}
-                />
-              ))}
-            </div>
-          </div>
-        </div>
-      )}
-
-      {isUnlocked && (
-        <AdvancedWorkSettings
-          settings={settings}
-          onSettingsChange={setSettings}
-          onLock={lock}
-        />
-      )}
-
       <GenerateInformes
         registros={registros.filter((r) => r.usuarioId === usuario.id)}
         usuario={usuario}
@@ -214,6 +158,14 @@ export function WorkSettings({ usuario, registros = [] }: WorkSettingsProps) {
           setTimeout(() => setMessage(null), 3000);
         }}
       />
+
+      {isUnlocked && (
+        <AdvancedWorkSettings
+          settings={settings}
+          onSettingsChange={setSettings}
+          onLock={lock}
+        />
+      )}
 
       <div className="flex justify-end items-center gap-3">
         <SecondaryButton onClick={saveSettings} disabled={isSaving} darkBg>

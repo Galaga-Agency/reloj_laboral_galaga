@@ -13,12 +13,18 @@ import {
   subMonths,
 } from "date-fns";
 import { es } from "date-fns/locale";
-import { FiRefreshCw, FiClock } from "react-icons/fi";
+import { FiRefreshCw, FiClock, FiAlertCircle } from "react-icons/fi";
 import PrimaryButton from "@/components/ui/PrimaryButton";
 import { TimeRecordsUtils } from "@/utils/time-records";
 import { TimeRecordsService } from "@/services/time-records-service";
 import { CustomDropdown } from "./ui/CustomDropdown";
 import { WorkStatistics } from "./WorkStatistics";
+import {
+  TimeCorrectionsService,
+  type TimeCorrection,
+} from "@/services/time-corrections-service";
+import { DailyHoursCalculator } from "@/utils/daily-hours-calculator";
+import { DailyOvertimeIndicator } from "@/components/DailyOvertimeIndicator";
 
 export type DateRangeFilter =
   | "today"
@@ -52,6 +58,10 @@ export function HistorialTrabajo({
   const [isLoading, setIsLoading] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [showCustomPicker, setShowCustomPicker] = useState(false);
+  const [corrections, setCorrections] = useState<Map<string, TimeCorrection[]>>(
+    new Map()
+  );
+  const [loadingCorrections, setLoadingCorrections] = useState(false);
 
   const getDateRange = (filter: DateRangeFilter): DateRange => {
     const now = new Date();
@@ -59,26 +69,29 @@ export function HistorialTrabajo({
     switch (filter) {
       case "today":
         return { start: startOfDay(now), end: endOfDay(now) };
-      case "yesterday":
+      case "yesterday": {
         const yesterday = subDays(now, 1);
         return { start: startOfDay(yesterday), end: endOfDay(yesterday) };
+      }
       case "this_week":
         return {
           start: startOfWeek(now, { weekStartsOn: 1 }),
           end: endOfWeek(now, { weekStartsOn: 1 }),
         };
-      case "last_week":
+      case "last_week": {
         const lastWeekStart = startOfWeek(subWeeks(now, 1), {
           weekStartsOn: 1,
         });
         const lastWeekEnd = endOfWeek(subWeeks(now, 1), { weekStartsOn: 1 });
         return { start: lastWeekStart, end: lastWeekEnd };
+      }
       case "this_month":
         return { start: startOfMonth(now), end: endOfMonth(now) };
-      case "last_month":
+      case "last_month": {
         const lastMonthStart = startOfMonth(subMonths(now, 1));
         const lastMonthEnd = endOfMonth(subMonths(now, 1));
         return { start: lastMonthStart, end: lastMonthEnd };
+      }
       case "custom":
         return customDateRange;
       default:
@@ -107,6 +120,28 @@ export function HistorialTrabajo({
       setIsLoading(false);
     }
   };
+
+  // Load corrections whenever registros change (mirrors UserRecordsList logic)
+  useEffect(() => {
+    const load = async () => {
+      if (registros.length === 0) {
+        setCorrections(new Map());
+        return;
+      }
+      try {
+        setLoadingCorrections(true);
+        const ids = registros.map((r) => r.id);
+        const map = await TimeCorrectionsService.getCorrectionsForRecords(ids);
+        setCorrections(map);
+      } catch (e) {
+        console.error("Failed to load corrections", e);
+        setCorrections(new Map());
+      } finally {
+        setLoadingCorrections(false);
+      }
+    };
+    load();
+  }, [registros]);
 
   const handleRefresh = async () => {
     if (isRefreshing) return;
@@ -139,7 +174,7 @@ export function HistorialTrabajo({
   };
 
   const registrosOrdenados = useMemo(() => {
-    return registros.sort((a, b) => {
+    return [...registros].sort((a, b) => {
       const timeA =
         a.tipoRegistro === "salida" && a.fechaSalida
           ? new Date(a.fechaSalida).getTime()
@@ -156,6 +191,7 @@ export function HistorialTrabajo({
 
   useEffect(() => {
     fetchRegistros();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [usuarioId]);
 
   const filterOptions: { key: DateRangeFilter; label: string }[] = [
@@ -169,6 +205,65 @@ export function HistorialTrabajo({
   ];
 
   const currentRange = getDateRange(filtroFecha);
+
+  // === helpers copied from the approach in UserRecordsList ===
+
+  const getModificationInfo = (record: RegistroTiempo) => {
+    const list = corrections.get(record.id) || [];
+    const latest = list[0];
+    return {
+      isModified: list.length > 0,
+      modifiedBy: latest?.adminUserName ?? "Admin",
+    };
+  };
+
+  const getOriginalTime = (record: RegistroTiempo): string | null => {
+    const recordCorrections = corrections.get(record.id);
+    if (!recordCorrections || recordCorrections.length === 0) return null;
+
+    const fieldToFind =
+      record.tipoRegistro === "entrada" ? "fecha_entrada" : "fecha_salida";
+
+    const correction = recordCorrections.find(
+      (c) => c.campoModificado === fieldToFind
+    );
+    if (!correction) return null;
+
+    try {
+      const prev =
+        correction.valorAnterior && correction.valorAnterior !== "null"
+          ? new Date(correction.valorAnterior)
+          : null;
+      return prev ? format(prev, "HH:mm:ss") : null;
+    } catch {
+      return null;
+    }
+  };
+
+  const isBusy = isLoading || loadingCorrections;
+
+  const dailyHoursMap = useMemo(() => {
+    return DailyHoursCalculator.calculateDailyHours(registros);
+  }, [registros]);
+
+  // Group records by date for display
+  const recordsByDate = useMemo(() => {
+    const groups = new Map<string, RegistroTiempo[]>();
+
+    registrosOrdenados.forEach((record) => {
+      const dateStr = record.fechaEntrada.toISOString().split("T")[0];
+      if (!groups.has(dateStr)) {
+        groups.set(dateStr, []);
+      }
+      groups.get(dateStr)!.push(record);
+    });
+
+    return Array.from(groups.entries()).map(([dateStr, records]) => ({
+      date: dateStr,
+      records,
+      totalHours: DailyHoursCalculator.getHoursForDate(dateStr, dailyHoursMap),
+    }));
+  }, [registrosOrdenados, dailyHoursMap]);
 
   return (
     <div className="flex flex-col gap-6">
@@ -185,7 +280,7 @@ export function HistorialTrabajo({
           </div>
           <PrimaryButton
             onClick={handleRefresh}
-            disabled={isRefreshing || isLoading}
+            disabled={isBusy || isRefreshing}
             size="sm"
             className={isRefreshing ? "opacity-70" : ""}
           >
@@ -254,7 +349,7 @@ export function HistorialTrabajo({
                   <PrimaryButton
                     onClick={handleCustomDateChange}
                     size="sm"
-                    disabled={isLoading}
+                    disabled={isBusy}
                   >
                     Aplicar
                   </PrimaryButton>
@@ -266,18 +361,18 @@ export function HistorialTrabajo({
 
         <WorkStatistics registros={registros} />
 
-        {isLoading && (
+        {isBusy && (
           <div className="text-center py-8 flex flex-col items-center">
-            <FiRefreshCw className="w-8 h-8 mx-auto animate-spin text-azul-profundo/50 pb-2" />
-            <p className="text-sm text-azul-profundo/60">
+            <FiRefreshCw className="w-8 h-8 mx-auto animate-spin text-azul-profundo/50" />
+            <p className="text-sm text-azul-profundo/60 pt-2">
               Cargando registros...
             </p>
           </div>
         )}
 
-        {!isLoading && (
-          <div className="flex flex-col gap-2 max-h-96 overflow-y-auto">
-            {registrosOrdenados.length === 0 ? (
+        {!isBusy && (
+          <div className="flex flex-col gap-4 max-h-96 overflow-y-auto">
+            {recordsByDate.length === 0 ? (
               <div className="text-center py-8 text-azul-profundo/60 flex flex-col items-center">
                 <FiClock className="w-12 h-12 mx-auto opacity-30 pb-2" />
                 <p className="text-sm">
@@ -285,35 +380,78 @@ export function HistorialTrabajo({
                 </p>
               </div>
             ) : (
-              registrosOrdenados.map((registro) => (
-                <div
-                  key={registro.id}
-                  className="flex items-center justify-between p-4 bg-hielo/20 rounded-lg border border-hielo/50 hover:bg-hielo/30 transition-colors duration-200"
-                >
-                  <div className="flex items-center gap-4">
-                    <div className="flex items-center justify-center w-8 h-8 rounded-full bg-blanco/80">
-                      {TimeRecordsUtils.getTypeIcon(registro.tipoRegistro)}
-                    </div>
-                    <div className="flex flex-col gap-1">
-                      <div className="flex items-center gap-2">
-                        <span className="font-medium text-azul-profundo">
-                          {TimeRecordsUtils.getTypeText(registro.tipoRegistro)}
-                        </span>
-                      </div>
-                      <div className="text-sm text-azul-profundo/70">
-                        {format(new Date(registro.fechaEntrada), "PPP", {
-                          locale: es,
-                        })}
-                      </div>
-                    </div>
+              recordsByDate.map(({ date, records, totalHours }) => (
+                <div key={date} className="mb-4">
+                  {/* Daily Header */}
+                  <div className="flex items-center justify-between mb-2 px-2">
+                    <h3 className="font-medium text-azul-profundo">
+                      {format(new Date(date + "T00:00:00"), "PPP", {
+                        locale: es,
+                      })}
+                    </h3>
+                    <DailyOvertimeIndicator totalHours={totalHours} />
                   </div>
-                  <div className="text-right">
-                    <div className="font-mono font-bold text-azul-profundo">
-                      {registro.tipoRegistro === "salida" &&
-                      registro.fechaSalida
-                        ? format(new Date(registro.fechaSalida), "HH:mm:ss")
-                        : format(new Date(registro.fechaEntrada), "HH:mm:ss")}
-                    </div>
+
+                  {/* Records for this day */}
+                  <div className="space-y-2">
+                    {records.map((registro) => {
+                      const { isModified, modifiedBy } =
+                        getModificationInfo(registro);
+                      const displayTime =
+                        registro.tipoRegistro === "salida" &&
+                        registro.fechaSalida
+                          ? format(new Date(registro.fechaSalida), "HH:mm:ss")
+                          : format(new Date(registro.fechaEntrada), "HH:mm:ss");
+
+                      return (
+                        <div
+                          key={registro.id}
+                          className={`relative p-4 rounded-lg border transition-colors duration-200 flex flex-col gap-3 md:flex-row md:items-center md:justify-between bg-hielo/20 border-hielo/50 hover:bg-hielo/30`}
+                        >
+                          {/* Left side: icon + labels */}
+                          <div className="w-full md:flex-1 flex items-start gap-4 md:items-center">
+                            <div className="flex items-center justify-center w-8 h-8 rounded-full bg-blanco/80 flex-shrink-0">
+                              {TimeRecordsUtils.getTypeIcon(
+                                registro.tipoRegistro
+                              )}
+                            </div>
+                            <div className="flex flex-col gap-1">
+                              <div className="flex items-center gap-2">
+                                <span className="font-medium text-azul-profundo">
+                                  {TimeRecordsUtils.getTypeText(
+                                    registro.tipoRegistro
+                                  )}
+                                </span>
+                              </div>
+                            </div>
+                          </div>
+
+                          {/* Right side: time + original */}
+                          <div className="w-full md:w-auto text-center md:text-right">
+                            {isModified ? (
+                              <div className="flex flex-col items-center md:items-end gap-1">
+                                <div className="font-mono font-bold text-azul-profundo">
+                                  {displayTime}
+                                </div>
+                                {getOriginalTime(registro) && (
+                                  <div className="text-[12px] text-yellow-700/80">
+                                    Original: {getOriginalTime(registro)}
+                                  </div>
+                                )}
+                                <div className="inline-flex items-center gap-1 text-xs text-yellow-700/80">
+                                  <FiAlertCircle className="w-3 h-3 flex-shrink-0" />
+                                  Modificado por {modifiedBy}
+                                </div>
+                              </div>
+                            ) : (
+                              <div className="font-mono font-bold text-azul-profundo">
+                                {displayTime}
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      );
+                    })}
                   </div>
                 </div>
               ))

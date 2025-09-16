@@ -4,8 +4,11 @@ export interface RegistroTiempo {
   fechaEntrada: Date;
   fechaSalida?: Date;
   tipoRegistro: "entrada" | "salida";
-  esSimulado?: boolean;
+  esSimulado: boolean;
+  fueModificado?: boolean;
+  fechaUltimaModificacion?: Date;
+  modificadoPorAdmin?: string;
+  nombreAdminModificador?: string;
 }
 
-export type EstadoTrabajo = "parado" | "trabajando"; 
- 67
+export type EstadoTrabajo = "parado" | "trabajando" | "en_pausa";

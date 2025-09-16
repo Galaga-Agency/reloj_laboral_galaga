@@ -92,7 +92,6 @@ export class TimeRecordsUtils {
   }
 
   private static calculateDaySeconds(registrosDia: RegistroTiempo[]): number {
-    // FIXED SORTING: Sort by fechaEntrada, then by tipoRegistro (entrada first)
     const registrosOrdenados = registrosDia.sort((a, b) => {
       const timeA = new Date(a.fechaEntrada).getTime();
       const timeB = new Date(b.fechaEntrada).getTime();
@@ -128,6 +127,12 @@ export class TimeRecordsUtils {
         totalSeconds += secondsWorked;
         currentEntrada = null;
       }
+    }
+
+    // Add mandatory 15-minute break if worked more than 6 hours
+    const workedHours = totalSeconds / 3600;
+    if (workedHours >= 6) {
+      totalSeconds += 15 * 60; // Add 15 minutes in seconds
     }
 
     return totalSeconds;
@@ -185,5 +190,27 @@ export class TimeRecordsUtils {
           .includes(busquedaLower) ||
         r.tipoRegistro.toLowerCase().includes(busquedaLower)
     );
+  }
+
+  static convertTimeStringToHours(timeString: string): number {
+    let totalHours = 0;
+
+    const hoursMatch = timeString.match(/(\d+)h/);
+    const minutesMatch = timeString.match(/(\d+)m/);
+    const secondsMatch = timeString.match(/(\d+)s/);
+
+    if (hoursMatch) {
+      totalHours += parseInt(hoursMatch[1]);
+    }
+
+    if (minutesMatch) {
+      totalHours += parseInt(minutesMatch[1]) / 60;
+    }
+
+    if (secondsMatch) {
+      totalHours += parseInt(secondsMatch[1]) / 3600;
+    }
+
+    return totalHours;
   }
 }

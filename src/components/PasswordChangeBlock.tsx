@@ -58,15 +58,6 @@ export function PasswordChangeBlock({ onMessage }: PasswordChangeBlockProps) {
           Cambiar Contraseña
         </h2>
       </div>
-
-      {!showPasswordChange ? (
-        <SecondaryButton
-          onClick={() => setShowPasswordChange(true)}
-          className="px-4 py-2"
-        >
-          Cambiar Contraseña
-        </SecondaryButton>
-      ) : (
         <div className="flex flex-col gap-4">
           <CustomInput
             label="Nueva contraseña"
@@ -117,7 +108,6 @@ export function PasswordChangeBlock({ onMessage }: PasswordChangeBlockProps) {
             </SecondaryButton>
           </div>
         </div>
-      )}
     </div>
   );
 }

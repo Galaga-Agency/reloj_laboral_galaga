@@ -1,0 +1,256 @@
+import { useState, useEffect } from "react";
+import { FiClock, FiEyeOff, FiEdit3, FiAlertCircle } from "react-icons/fi";
+import type { Usuario, RegistroTiempo } from "@/types";
+import { TimeRecordsUtils } from "@/utils/time-records";
+import { DateFormatUtils } from "@/utils/date-format";
+import { CustomDropdown } from "@/components/ui/CustomDropdown";
+import { TimeRecordCorrectionModal } from "@/components/modals/TimeRecordCorrectionModal";
+import {
+  TimeCorrectionsService,
+  type TimeCorrection,
+} from "@/services/time-corrections-service";
+import type { TimeRange } from "@/services/admin-service";
+
+interface UserRecordsListProps {
+  selectedUser: Usuario | null;
+  userRecords: RegistroTiempo[];
+  timeRange: TimeRange;
+  isRecordsLoading: boolean;
+  currentAdmin: Usuario;
+  onTimeRangeChange: (newRange: string) => void;
+  onRecordUpdated: () => void;
+}
+
+export function UserRecordsList({
+  selectedUser,
+  userRecords,
+  timeRange,
+  isRecordsLoading,
+  currentAdmin,
+  onTimeRangeChange,
+  onRecordUpdated,
+}: UserRecordsListProps) {
+  const [selectedRecord, setSelectedRecord] = useState<RegistroTiempo | null>(
+    null
+  );
+  const [showCorrectionModal, setShowCorrectionModal] = useState(false);
+
+  // map of recordId -> corrections[]
+  const [corrections, setCorrections] = useState<Map<string, TimeCorrection[]>>(
+    new Map()
+  );
+  const [loadingCorrections, setLoadingCorrections] = useState(false);
+
+  useEffect(() => {
+    const load = async () => {
+      try {
+        setLoadingCorrections(true);
+        const ids = userRecords.map((r) => r.id);
+        const map = await TimeCorrectionsService.getCorrectionsForRecords(ids);
+        setCorrections(map);
+      } catch (e) {
+        console.error("Failed to load corrections", e);
+        setCorrections(new Map());
+      } finally {
+        setLoadingCorrections(false);
+      }
+    };
+    if (userRecords.length > 0) load();
+    else setCorrections(new Map());
+  }, [userRecords]);
+
+  const timeRangeOptions = [
+    { value: "yesterday", label: "Ayer" },
+    { value: "past2days", label: "Últimos 2 días" },
+    { value: "thisweek", label: "Esta semana" },
+    { value: "past7days", label: "Últimos 7 días" },
+    { value: "thismonth", label: "Este mes" },
+    { value: "pastmonth", label: "Mes pasado" },
+    { value: "all", label: "Todo el historial" },
+  ];
+
+  const handleEditRecord = (record: RegistroTiempo) => {
+    setSelectedRecord(record);
+    setShowCorrectionModal(true);
+  };
+
+  const handleCorrectionSuccess = () => {
+    onRecordUpdated();
+    setShowCorrectionModal(false);
+    setSelectedRecord(null);
+  };
+
+  const getOriginalTime = (record: RegistroTiempo): string | null => {
+    const recordCorrections = corrections.get(record.id);
+    if (!recordCorrections || recordCorrections.length === 0) return null;
+
+    const fieldToFind =
+      record.tipoRegistro === "entrada" ? "fecha_entrada" : "fecha_salida";
+
+    const correction = recordCorrections.find(
+      (c) => c.campoModificado === fieldToFind
+    );
+    if (!correction) return null;
+
+    try {
+      const originalDate =
+        correction.valorAnterior && correction.valorAnterior !== "null"
+          ? new Date(correction.valorAnterior)
+          : null;
+      return originalDate ? DateFormatUtils.formatTime(originalDate) : null;
+    } catch {
+      return null;
+    }
+  };
+
+  const getModificationInfo = (record: RegistroTiempo) => {
+    const list = corrections.get(record.id) || [];
+    const latest = list[0];
+    return {
+      isModified: list.length > 0,
+      modifiedBy: latest?.adminUserName ?? "Admin",
+    };
+  };
+
+  return (
+    <>
+      <div className="bg-white/10 backdrop-blur-md rounded-2xl p-6">
+        <div className="flex flex-col md:flex-row md:items-center gap-4 justify-between pb-4">
+          <div className="flex items-center gap-2">
+            <FiClock className="w-5 h-5 text-white flex-shrink-0" />
+            <h2 className="text-xl font-semibold text-white">
+              {selectedUser
+                ? `Registros de ${selectedUser.nombre}`
+                : "Selecciona un usuario"}
+            </h2>
+          </div>
+
+          {selectedUser && (
+            <div className="w-48">
+              <CustomDropdown
+                options={timeRangeOptions}
+                value={timeRange as unknown as string}
+                onChange={onTimeRangeChange}
+                variant="dark"
+                className="text-sm"
+              />
+            </div>
+          )}
+        </div>
+
+        {selectedUser ? (
+          <>
+            {selectedUser.isActive === false && (
+              <div className="mb-4 p-3 bg-orange-500/10 border border-orange-500/20 rounded-lg text-orange-300 text-sm">
+                <FiEyeOff className="inline w-4 h-4 mr-2" />
+                Este usuario está desactivado y no puede acceder al sistema
+              </div>
+            )}
+
+            <div className="flex flex-col gap-3 max-h-96 overflow-y-auto">
+              {isRecordsLoading || loadingCorrections ? (
+                <div className="text-center flex flex-col items-center text-white/70 py-8">
+                  <div className="animate-spin w-8 h-8 border-2 border-white/20 border-t-white mx-auto pb-3 rounded-full"></div>
+                  Cargando registros...
+                </div>
+              ) : userRecords.length === 0 ? (
+                <div className="text-center text-white/70 py-8">
+                  Este usuario no tiene registros en el período seleccionado
+                </div>
+              ) : (
+                userRecords.map((record) => {
+                  const { isModified, modifiedBy } =
+                    getModificationInfo(record);
+                  const displayTime =
+                    record.tipoRegistro === "entrada"
+                      ? DateFormatUtils.formatTime(record.fechaEntrada)
+                      : DateFormatUtils.formatTime(
+                          record.fechaSalida || record.fechaEntrada
+                        );
+
+                  return (
+                    <div
+                      key={record.id}
+                      className={`relative group p-4 rounded-lg border transition-all hover:bg-white/10 bg-white/5 border-white/10 flex flex-col gap-3 md:flex-row md:items-center md:justify-between pr-10 md:pr-4`}
+                    >
+                      {/* Left block */}
+                      <div className="w-full md:flex-1 flex items-start gap-4 md:items-center">
+                        <div className="flex items-center justify-center w-8 h-8 rounded-full bg-white/20 flex-shrink-0">
+                          {TimeRecordsUtils.getTypeIcon(record.tipoRegistro)}
+                        </div>
+
+                        <div className="flex flex-col gap-1">
+                          <div className="flex items-center gap-2">
+                            <span className="font-medium text-white">
+                              {TimeRecordsUtils.getTypeText(
+                                record.tipoRegistro
+                              )}
+                            </span>
+                          </div>
+                          <div className="text-sm text-white/70">
+                            {DateFormatUtils.formatDate(record.fechaEntrada)}
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Right block */}
+                      <div className="w-full md:w-auto flex flex-col gap-2 md:flex-row md:items-center md:gap-3 md:justify-end">
+                        <div className="text-left md:text-right">
+                          {isModified ? (
+                            <div className="flex flex-col items-start md:items-end">
+                              <div className="font-mono font-bold text-white">
+                                {displayTime}
+                              </div>
+                              <div className="text-xs text-yellow-300/70 flex items-center gap-2">
+                                <FiAlertCircle className="w-3 h-3 flex-shrink-0 text-yellow-400" />
+                                Modificado por {modifiedBy}
+                              </div>
+                              {getOriginalTime(record) && (
+                                <div className="text-[12px] text-yellow-300/70">
+                                  Original: {getOriginalTime(record)}
+                                </div>
+                              )}
+                            </div>
+                          ) : (
+                            <div className="font-mono font-bold text-white">
+                              {displayTime}
+                            </div>
+                          )}
+                        </div>
+
+                        <button
+                          onClick={() => handleEditRecord(record)}
+                          className="absolute top-2 right-2 md:static p-1 text-white/50 hover:text-white hover:bg-blue-500/20 rounded transition-colors opacity-100 md:opacity-0 md:group-hover:opacity-100"
+                          title="Editar registro"
+                        >
+                          <FiEdit3 className="w-4 h-4" />
+                        </button>
+                      </div>
+                    </div>
+                  );
+                })
+              )}
+            </div>
+          </>
+        ) : (
+          <div className="text-center text-white/70 py-8">
+            Selecciona un usuario para ver sus registros
+          </div>
+        )}
+      </div>
+
+      {/* Correction Modal */}
+      <TimeRecordCorrectionModal
+        isOpen={showCorrectionModal}
+        onClose={() => {
+          setShowCorrectionModal(false);
+          setSelectedRecord(null);
+        }}
+        record={selectedRecord}
+        user={selectedUser}
+        currentAdmin={currentAdmin}
+        onSuccess={handleCorrectionSuccess}
+      />
+    </>
+  );
+}

@@ -1,25 +1,11 @@
 import { useState, useEffect } from "react";
 import { AdminService, type TimeRange } from "@/services/admin-service";
 import type { Usuario, RegistroTiempo } from "@/types";
-import {
-  FiUsers,
-  FiClock,
-  FiShield,
-  FiPlus,
-  FiEdit2,
-  FiTrash2,
-  FiEyeOff,
-  FiEye,
-} from "react-icons/fi";
-import { TimeRecordsUtils } from "@/utils/time-records";
-import { DateFormatUtils } from "@/utils/date-format";
-import PrimaryButton from "@/components/ui/PrimaryButton";
-import { CustomDropdown } from "@/components/ui/CustomDropdown";
-import { ConfirmModal } from "@/components/modals/ConfirmModal";
-import { UserFormModal } from "@/components/modals/UserFormModal";
-import type { UserFormData } from "@/components/forms/CreateUserForm";
+import { UsersList } from "@/components/UsersList";
+import { UserRecordsList } from "@/components/UserRecordsList";
 import { AdminSystemDocumentation } from "./AdminSystemDocs";
 import { AdminUserReports } from "@/components/AdminUserReports";
+import { useSecretSequence } from "@/hooks/useSecretSequence";
 
 interface AdminPanelProps {
   currentUser: Usuario;
@@ -32,31 +18,23 @@ export function AdminPanel({ currentUser }: AdminPanelProps) {
   const [timeRange, setTimeRange] = useState<TimeRange>("past2days");
   const [isLoading, setIsLoading] = useState(false);
   const [isRecordsLoading, setIsRecordsLoading] = useState(false);
-  const [isFormLoading, setIsFormLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [showUserForm, setShowUserForm] = useState(false);
-  const [editingUser, setEditingUser] = useState<Usuario | null>(null);
-  const [deleteConfirm, setDeleteConfirm] = useState<{
-    isOpen: boolean;
-    userId: string;
-    userName: string;
-  }>({ isOpen: false, userId: "", userName: "" });
-  const [deactivateConfirm, setDeactivateConfirm] = useState<{
-    isOpen: boolean;
-    userId: string;
-    userName: string;
-    currentStatus: boolean;
-  }>({ isOpen: false, userId: "", userName: "", currentStatus: true });
+  const [message, setMessage] = useState<{
+    type: "success" | "error";
+    text: string;
+  } | null>(null);
 
-  const timeRangeOptions = [
-    { value: "yesterday", label: "Ayer" },
-    { value: "past2days", label: "Últimos 2 días" },
-    { value: "thisweek", label: "Esta semana" },
-    { value: "past7days", label: "Últimos 7 días" },
-    { value: "thismonth", label: "Este mes" },
-    { value: "pastmonth", label: "Mes pasado" },
-    { value: "all", label: "Todo el historial" },
-  ];
+  const { isUnlocked, progress, totalSteps, lock } = useSecretSequence({
+    sequence: ["s", "e", "c", "r", "e", "t"],
+    resetTimeout: 5000,
+    onSequenceComplete: () => {
+      setMessage({
+        type: "success",
+        text: "Documentación de sistema desbloqueada",
+      });
+      setTimeout(() => setMessage(null), 2000);
+    },
+  });
 
   useEffect(() => {
     loadUsers();
@@ -117,111 +95,20 @@ export function AdminPanel({ currentUser }: AdminPanelProps) {
     setTimeRange(newRange as TimeRange);
   };
 
-  const handleCreateUser = () => {
-    setEditingUser(null);
-    setShowUserForm(true);
+  const handleUsersUpdated = () => {
+    loadUsers();
   };
 
-  const handleEditUser = (user: Usuario) => {
-    setEditingUser(user);
-    setShowUserForm(true);
-  };
-
-  const handleDeleteUser = (userId: string, userName: string) => {
-    if (userId === currentUser.id) {
-      setError("No puedes eliminar tu propia cuenta");
-      return;
-    }
-
-    setDeleteConfirm({
-      isOpen: true,
-      userId,
-      userName,
-    });
-  };
-
-  const handleToggleUserStatus = (user: Usuario) => {
-    if (user.id === currentUser.id) {
-      setError("No puedes cambiar el estado de tu propia cuenta");
-      return;
-    }
-
-    setDeactivateConfirm({
-      isOpen: true,
-      userId: user.id,
-      userName: user.nombre,
-      currentStatus: user.isActive,
-    });
-  };
-
-  const confirmToggleUserStatus = async () => {
-    try {
-      setError(null);
-      await AdminService.updateUserActiveStatus(
-        deactivateConfirm.userId,
-        !deactivateConfirm.currentStatus
-      );
-      await loadUsers();
-      if (selectedUser?.id === deactivateConfirm.userId) {
-        const updatedUser = users.find(
-          (u) => u.id === deactivateConfirm.userId
-        );
-        if (updatedUser) {
-          setSelectedUser({
-            ...updatedUser,
-            isActive: !deactivateConfirm.currentStatus,
-          });
-        }
-      }
-    } catch (err) {
-      setError(
-        err instanceof Error ? err.message : "Error updating user status"
-      );
-    } finally {
-      setDeactivateConfirm({
-        isOpen: false,
-        userId: "",
-        userName: "",
-        currentStatus: true,
-      });
+  const handleRecordUpdated = () => {
+    if (selectedUser) {
+      loadUserRecords(selectedUser.id, timeRange);
     }
   };
 
-  const confirmDeleteUser = async () => {
-    try {
-      setError(null);
-      await AdminService.deleteUser(deleteConfirm.userId);
-      await loadUsers();
-      if (selectedUser?.id === deleteConfirm.userId) {
-        setSelectedUser(null);
-        setUserRecords([]);
-      }
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Error deleting user");
-    } finally {
-      setDeleteConfirm({ isOpen: false, userId: "", userName: "" });
-    }
-  };
-
-  const handleSubmitForm = async (userData: UserFormData) => {
-    try {
-      setIsFormLoading(true);
-      setError(null);
-
-      if (editingUser) {
-        await AdminService.updateUser(editingUser.id, userData);
-      } else {
-        await AdminService.createUser(userData);
-      }
-
-      await loadUsers();
-      setShowUserForm(false);
-      setEditingUser(null);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Error saving user");
-    } finally {
-      setIsFormLoading(false);
-    }
+  const handleError = (errorMessage: string) => {
+    setError(errorMessage);
+    // Clear error after 5 seconds
+    setTimeout(() => setError(null), 5000);
   };
 
   if (isLoading && users.length === 0) {
@@ -248,204 +135,24 @@ export function AdminPanel({ currentUser }: AdminPanelProps) {
       )}
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <div className="bg-white/10 backdrop-blur-md rounded-2xl p-6">
-          <div className="flex items-center justify-between pb-4">
-            <div className="flex items-center gap-2">
-              <FiUsers className="w-5 h-5 text-white" />
-              <h2 className="text-xl font-semibold text-white">Usuarios</h2>
-            </div>
-            <PrimaryButton onClick={handleCreateUser} size="sm">
-              <FiPlus className="w-4 h-4" />
-              <span className="hidden md:block">Crear Usuario</span>
-            </PrimaryButton>
-          </div>
+        <UsersList
+          users={users}
+          selectedUser={selectedUser}
+          currentUser={currentUser}
+          onUserSelect={handleUserSelect}
+          onUsersUpdated={handleUsersUpdated}
+          onError={handleError}
+        />
 
-          <div className="flex flex-col gap-3 max-h-96 overflow-y-auto">
-            {users.map((user) => (
-              <div
-                key={user.id}
-                className={`w-[120vw] md:w-full p-4 rounded-lg border cursor-pointer transition-all duration-200 ${
-                  !user.isActive
-                    ? "opacity-50 bg-gray-500/10 border-gray-500/20 blur-[0.5px]"
-                    : selectedUser?.id === user.id
-                    ? "bg-white/20 border-white/30"
-                    : "bg-white/5 border-white/10 hover:bg-white/10"
-                }`}
-                onClick={() => handleUserSelect(user)}
-              >
-                <div className="flex items-center justify-between">
-                  <div>
-                    <div className="flex items-center gap-2">
-                      <span
-                        className={`font-medium ${
-                          !user.isActive
-                            ? "text-white/60 line-through"
-                            : "text-white"
-                        }`}
-                      >
-                        {user.nombre}
-                      </span>
-                      {user.isAdmin && (
-                        <FiShield
-                          className="w-4 h-4 text-yellow-400 flex-shrink-0"
-                          title="Administrador"
-                        />
-                      )}
-                      {!user.isActive && (
-                        <span className="text-xs bg-gray-500/20 text-gray-300 px-2 py-1 rounded-full">
-                          Inactivo
-                        </span>
-                      )}
-                    </div>
-                    <div
-                      className={`text-sm ${
-                        !user.isActive ? "text-white/50" : "text-white/70"
-                      }`}
-                    >
-                      {user.email}
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        handleToggleUserStatus(user);
-                      }}
-                      disabled={user.id === currentUser.id}
-                      className={`p-1 rounded transition-colors ${
-                        user.id === currentUser.id
-                          ? "text-gray-400 cursor-not-allowed"
-                          : user.isActive
-                          ? "text-orange-400 cursor-pointer hover:text-orange-300 hover:bg-orange-500/10"
-                          : "text-green-400 cursor-pointer hover:text-green-300 hover:bg-green-500/10"
-                      }`}
-                      title={
-                        user.isActive ? "Desactivar usuario" : "Activar usuario"
-                      }
-                    >
-                      {user.isActive ? (
-                        <FiEyeOff className="w-4 h-4" />
-                      ) : (
-                        <FiEye className="w-4 h-4" />
-                      )}
-                    </button>
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        handleEditUser(user);
-                      }}
-                      className="p-1 text-white hover:text-white/70 hover:bg-blue-500/10 rounded cursor-pointer"
-                      title="Editar usuario"
-                    >
-                      <FiEdit2 className="w-4 h-4" />
-                    </button>
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        handleDeleteUser(user.id, user.nombre);
-                      }}
-                      disabled={user.id === currentUser.id}
-                      className={`p-1 rounded transition-colors ${
-                        user.id === currentUser.id
-                          ? "text-gray-400 cursor-not-allowed"
-                          : "text-red-400 cursor-pointer hover:text-red-300 hover:bg-red-500/10"
-                      }`}
-                      title="Eliminar usuario"
-                    >
-                      <FiTrash2 className="w-4 h-4" />
-                    </button>
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-
-        <div className="bg-white/10 backdrop-blur-md rounded-2xl p-6">
-          <div className="flex flex-col md:flex-row md:items-center gap-4 md:gap-unset justify-between pb-4">
-            <div className="flex items-center gap-2">
-              <FiClock className="w-5 h-5 text-white flex-shrink-0" />
-              <h2 className="text-xl font-semibold text-white">
-                {selectedUser
-                  ? `Registros de ${selectedUser.nombre}`
-                  : "Selecciona un usuario"}
-              </h2>
-            </div>
-
-            {selectedUser && (
-              <div className="w-48">
-                <CustomDropdown
-                  options={timeRangeOptions}
-                  value={timeRange}
-                  onChange={handleTimeRangeChange}
-                  variant="dark"
-                  className="text-sm"
-                />
-              </div>
-            )}
-          </div>
-
-          {selectedUser ? (
-            <>
-              {!selectedUser.isActive && (
-                <div className="mb-4 p-3 bg-orange-500/10 border border-orange-500/20 rounded-lg text-orange-300 text-sm">
-                  <FiEyeOff className="inline w-4 h-4 mr-2" />
-                  Este usuario está desactivado y no puede acceder al sistema
-                </div>
-              )}
-              <div className="flex flex-col gap-3 max-h-96 overflow-y-auto">
-                {isRecordsLoading ? (
-                  <div className="text-center flex flex-col items-center text-white/70 py-8">
-                    <div className="animate-spin w-8 h-8 border-2 border-white/20 border-t-white mx-auto pb-3 rounded-full"></div>
-                    Cargando registros...
-                  </div>
-                ) : userRecords.length === 0 ? (
-                  <div className="text-center text-white/70 py-8">
-                    Este usuario no tiene registros en el período seleccionado
-                  </div>
-                ) : (
-                  userRecords.map((record) => (
-                    <div
-                      key={record.id}
-                      className="flex items-center justify-between p-4 bg-white/5 rounded-lg border border-white/10"
-                    >
-                      <div className="flex items-center gap-4">
-                        <div className="flex items-center justify-center w-8 h-8 rounded-full bg-white/20 flex-shrink-0">
-                          {TimeRecordsUtils.getTypeIcon(record.tipoRegistro)}
-                        </div>
-                        <div className="flex flex-col gap-1">
-                          <div className="flex items-center gap-2">
-                            <span className="font-medium text-white">
-                              {TimeRecordsUtils.getTypeText(
-                                record.tipoRegistro
-                              )}
-                            </span>
-                          </div>
-                          <div className="text-sm text-white/70">
-                            {DateFormatUtils.formatDate(record.fechaEntrada)}
-                          </div>
-                        </div>
-                      </div>
-                      <div className="text-right">
-                        <div className="font-mono font-bold text-white">
-                          {record.tipoRegistro === "entrada"
-                            ? DateFormatUtils.formatTime(record.fechaEntrada)
-                            : DateFormatUtils.formatTime(
-                                record.fechaSalida || record.fechaEntrada
-                              )}
-                        </div>
-                      </div>
-                    </div>
-                  ))
-                )}
-              </div>
-            </>
-          ) : (
-            <div className="text-center text-white/70 py-8">
-              Selecciona un usuario para ver sus registros
-            </div>
-          )}
-        </div>
+        <UserRecordsList
+          selectedUser={selectedUser}
+          userRecords={userRecords}
+          timeRange={timeRange}
+          isRecordsLoading={isRecordsLoading}
+          currentAdmin={currentUser}
+          onTimeRangeChange={handleTimeRangeChange}
+          onRecordUpdated={handleRecordUpdated}
+        />
       </div>
 
       {selectedUser && (
@@ -455,52 +162,9 @@ export function AdminPanel({ currentUser }: AdminPanelProps) {
         />
       )}
 
-      <AdminSystemDocumentation currentUser={currentUser} />
-
-      <UserFormModal
-        isOpen={showUserForm}
-        onClose={() => setShowUserForm(false)}
-        onSubmit={handleSubmitForm}
-        isLoading={isFormLoading}
-        editingUser={editingUser}
-      />
-
-      <ConfirmModal
-        isOpen={deleteConfirm.isOpen}
-        onConfirm={confirmDeleteUser}
-        onCancel={() =>
-          setDeleteConfirm({ isOpen: false, userId: "", userName: "" })
-        }
-        title="Eliminar Usuario"
-        message={`¿Estás seguro de que quieres eliminar a ${deleteConfirm.userName}? Esta acción no se puede deshacer y eliminará todos sus registros de tiempo.`}
-        confirmText="Eliminar"
-        cancelText="Cancelar"
-      />
-
-      <ConfirmModal
-        isOpen={deactivateConfirm.isOpen}
-        onConfirm={confirmToggleUserStatus}
-        onCancel={() =>
-          setDeactivateConfirm({
-            isOpen: false,
-            userId: "",
-            userName: "",
-            currentStatus: true,
-          })
-        }
-        title={
-          deactivateConfirm.currentStatus
-            ? "Desactivar Usuario"
-            : "Activar Usuario"
-        }
-        message={
-          deactivateConfirm.currentStatus
-            ? `¿Estás seguro de que quieres desactivar a ${deactivateConfirm.userName}? El usuario no podrá acceder al sistema hasta que sea reactivado.`
-            : `¿Estás seguro de que quieres reactivar a ${deactivateConfirm.userName}? El usuario podrá volver a acceder al sistema.`
-        }
-        confirmText={deactivateConfirm.currentStatus ? "Desactivar" : "Activar"}
-        cancelText="Cancelar"
-      />
+      {isUnlocked && (
+        <AdminSystemDocumentation currentUser={currentUser} onLock={lock} />
+      )}
     </div>
   );
 }

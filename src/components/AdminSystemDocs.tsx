@@ -11,14 +11,17 @@ import {
   FiChevronUp,
   FiGlobe,
   FiGithub,
+  FiX,
 } from "react-icons/fi";
 
 interface AdminSystemDocumentationProps {
   currentUser: { nombre: string; email: string; isAdmin: boolean };
+  onLock?: () => void;
 }
 
 export function AdminSystemDocumentation({
   currentUser,
+  onLock,
 }: AdminSystemDocumentationProps) {
   const [showPasswords, setShowPasswords] = useState(false);
   const [expandedSections, setExpandedSections] = useState<
@@ -40,6 +43,18 @@ export function AdminSystemDocumentation({
 
   return (
     <div className="flex flex-col gap-4 md:gap-6">
+      {onLock && (
+        <div className="flex justify-end">
+          <button
+            onClick={onLock}
+            className="inline-flex items-center gap-2 px-3 py-2 bg-white/10 hover:bg-white/20 text-white  rounded-lg text-sm transition-colors cursor-pointersecretsecret"
+          >
+            <FiX className="w-4 h-4" />
+            Ocultar Documentación
+          </button>
+        </div>
+      )}
+
       {/* Credentials Section */}
       <div className="bg-white/10 backdrop-blur-md rounded-2xl p-4 md:p-6">
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 pb-3 md:pb-4">

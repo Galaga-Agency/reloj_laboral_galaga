@@ -1,8 +1,11 @@
-// utils/pdf-reports.ts
 import jsPDF from "jspdf";
 import { format } from "date-fns";
 import { es } from "date-fns/locale";
 import type { RegistroTiempo } from "@/types";
+import {
+  TimeCorrectionsService,
+  type TimeCorrection,
+} from "@/services/time-corrections-service";
 
 export interface ReportData {
   usuario: { id: string; nombre: string; email: string; firstLogin?: boolean };
@@ -10,7 +13,6 @@ export interface ReportData {
   periodo: string;
   fechaInicio: Date;
   fechaFin: Date;
-  // kept for compatibility with your hook
   estadisticas: {
     tiempoTotal: string;
     diasTrabajados: number;
@@ -24,29 +26,41 @@ export class PDFReportGenerator {
   private static readonly PAGE_HEIGHT = 297;
   private static readonly ROW_HEIGHT = 8;
 
-  static generateReport(data: ReportData): void {
+  static async generateReport(data: ReportData): Promise<void> {
     const doc = new jsPDF();
     let y = this.MARGIN;
 
+    // Fetch corrections for all records
+    const recordIds = data.registros.map((r) => r.id);
+    const correctionsMap =
+      await TimeCorrectionsService.getCorrectionsForRecords(recordIds);
+    const hasCorrections = correctionsMap.size > 0;
+
     y = this.addHeader(doc, data, y);
+
+    // Add corrections notice if any exist
+    if (hasCorrections) {
+      y = this.addCorrectionsNotice(doc, y, correctionsMap.size);
+    }
+
     y = this.addTableHeader(doc, y);
 
-    const days = this.buildDayBlocks(data.registros);
+    const days = this.buildDayBlocks(data.registros, correctionsMap);
 
     let periodTotalMs = 0;
 
     for (const day of days) {
       for (const row of day.rows) {
-        if (y > this.PAGE_HEIGHT - this.MARGIN - this.ROW_HEIGHT) {
+        if (y > this.PAGE_HEIGHT - this.MARGIN - this.ROW_HEIGHT * 2) {
           doc.addPage();
           y = this.MARGIN;
           y = this.addHeader(doc, data, y);
           y = this.addTableHeader(doc, y);
         }
-        y = this.drawRow(doc, y, row.fecha, row.inicio, row.stop, row.duracion);
+        y = this.drawRow(doc, y, row);
       }
 
-      // ----- TOTAL DEL DÍA -----
+      // Total del día
       if (y > this.PAGE_HEIGHT - this.MARGIN - this.ROW_HEIGHT) {
         doc.addPage();
         y = this.MARGIN;
@@ -54,7 +68,6 @@ export class PDFReportGenerator {
         y = this.addTableHeader(doc, y);
       }
 
-      // padding above the total line
       y += 8;
       doc.setLineWidth(0.2);
       doc.line(this.MARGIN, y - 6, this.PAGE_WIDTH - this.MARGIN, y - 6);
@@ -70,7 +83,7 @@ export class PDFReportGenerator {
       periodTotalMs += day.totalMs;
     }
 
-    // ----- TOTAL DEL PERÍODO -----
+    // Total del período
     if (y > this.PAGE_HEIGHT - this.MARGIN - this.ROW_HEIGHT) {
       doc.addPage();
       y = this.MARGIN;
@@ -89,11 +102,144 @@ export class PDFReportGenerator {
     doc.setFont("helvetica", "normal");
     y += this.ROW_HEIGHT;
 
+    // Add corrections appendix if any exist
+    if (hasCorrections) {
+      y = this.addCorrectionsAppendix(doc, y, correctionsMap);
+    }
+
     this.addFooters(doc);
     doc.save(this.generateFilename(data));
   }
 
-  // ---------- LAYOUT ----------
+  // Corrections helper methods
+  private static addCorrectionsNotice(
+    doc: jsPDF,
+    y: number,
+    correctionCount: number
+  ): number {
+    doc.setFontSize(9);
+    doc.setFont("helvetica", "italic");
+    doc.text(
+      `Este informe contiene ${correctionCount} corrección${
+        correctionCount > 1 ? "es" : ""
+      } administrativas marcadas con (*), con detalles al fin de este documento`,
+      this.MARGIN,
+      y
+    );
+    doc.setFont("helvetica", "normal");
+    return y + 8;
+  }
+
+  private static addCorrectionsAppendix(
+    doc: jsPDF,
+    y: number,
+    correctionsMap: Map<string, TimeCorrection[]>
+  ): number {
+    const estimatedHeight = correctionsMap.size * 20 + 40;
+    if (y + estimatedHeight > this.PAGE_HEIGHT - this.MARGIN) {
+      doc.addPage();
+      y = this.MARGIN;
+    }
+
+    y += 10;
+    doc.setLineWidth(0.3);
+    doc.line(this.MARGIN, y, this.PAGE_WIDTH - this.MARGIN, y);
+    y += 8;
+
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(12);
+    doc.text("Registro de Correcciones Administrativas", this.MARGIN, y);
+    y += 8;
+
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(8);
+
+    let correctionNumber = 1;
+    for (const [recordId, corrections] of correctionsMap.entries()) {
+      for (const correction of corrections) {
+        if (y + 20 > this.PAGE_HEIGHT - this.MARGIN) {
+          doc.addPage();
+          y = this.MARGIN;
+        }
+
+        doc.text(
+          `${correctionNumber}. Corrección aplicada el ${format(
+            correction.fechaCorreccion,
+            "dd/MM/yyyy HH:mm",
+            { locale: es }
+          )}`,
+          this.MARGIN,
+          y
+        );
+        y += 4;
+
+        doc.text(
+          `   Administrador: ${correction.adminUserName}`,
+          this.MARGIN,
+          y
+        );
+        y += 4;
+
+        doc.text(
+          `   Campo modificado: ${this.getFieldDisplayName(
+            correction.campoModificado
+          )}`,
+          this.MARGIN,
+          y
+        );
+        y += 4;
+
+        doc.text(
+          `   Valor anterior: ${this.formatCorrectionValue(
+            correction.valorAnterior
+          )}`,
+          this.MARGIN,
+          y
+        );
+        y += 4;
+
+        doc.text(
+          `   Valor nuevo: ${this.formatCorrectionValue(
+            correction.valorNuevo
+          )}`,
+          this.MARGIN,
+          y
+        );
+        y += 4;
+
+        doc.text(`   Razón: ${correction.razon}`, this.MARGIN, y);
+        y += 8;
+
+        correctionNumber++;
+      }
+    }
+
+    return y;
+  }
+
+  private static getFieldDisplayName(field: string): string {
+    const names: Record<string, string> = {
+      fecha_entrada: "Hora de entrada",
+      fecha_salida: "Hora de salida",
+      tipo_registro: "Tipo de registro",
+    };
+    return names[field] || field;
+  }
+
+  private static formatCorrectionValue(value: string): string {
+    if (value === "null") return "Sin valor";
+
+    try {
+      const date = new Date(value);
+      if (!isNaN(date.getTime())) {
+        return format(date, "dd/MM/yyyy HH:mm:ss", { locale: es });
+      }
+    } catch {}
+
+    return value;
+  }
+
+  // Layout methods
   private static addHeader(doc: jsPDF, data: ReportData, y: number): number {
     doc.setFont("helvetica", "bold");
     doc.setFontSize(16);
@@ -137,26 +283,22 @@ export class PDFReportGenerator {
     return y + 6;
   }
 
-  private static drawRow(
-    doc: jsPDF,
-    y: number,
-    fecha: string,
-    inicio: string,
-    stop: string,
-    duracion: string
-  ): number {
+  private static drawRow(doc: jsPDF, y: number, row: any): number {
     const { dateX, inX, outX, durX } = this.columns();
     doc.setFont("helvetica", "normal");
     doc.setFontSize(10);
-    doc.text(fecha, dateX, y);
-    doc.text(inicio, inX, y);
-    doc.text(stop, outX, y);
-    doc.text(duracion, durX, y);
+
+    const dateText = row.isModified ? `${row.fecha} *` : row.fecha;
+    doc.text(dateText, dateX, y);
+    doc.text(row.inicio, inX, y);
+    doc.text(row.stop, outX, y);
+    doc.text(row.duracion, durX, y);
+
     return y + this.ROW_HEIGHT;
   }
 
   private static columns() {
-    const usable = this.PAGE_WIDTH - this.MARGIN * 2; // 178
+    const usable = this.PAGE_WIDTH - this.MARGIN * 2;
     const dateW = 92;
     const timeW = 34;
     const dateX = this.MARGIN;
@@ -193,14 +335,18 @@ export class PDFReportGenerator {
     return `fichajes_${nombre}_${start}_${end}.pdf`;
   }
 
-  // ---------- BUILD DAY BLOCKS (pair sequentially + treat zero-length full as STOP) ----------
-  private static buildDayBlocks(registros: RegistroTiempo[]) {
-    type Segment = { start: Date; end?: Date };
+  // Build day blocks with correction tracking
+  private static buildDayBlocks(
+    registros: RegistroTiempo[],
+    correctionsMap: Map<string, TimeCorrection[]>
+  ) {
+    type Segment = { start: Date; end?: Date; recordId?: string | null };
     type Row = {
       fecha: string;
       inicio: string;
       stop: string;
       duracion: string;
+      isModified: boolean;
     };
     type DayBlock = {
       key: string;
@@ -240,10 +386,10 @@ export class PDFReportGenerator {
         );
 
       const segments: Segment[] = [];
-      const coveredTimes: number[] = []; // timestamps used by non-zero full segments
-      const extraStopEvents: Date[] = []; // zero-length full records become STOP events
+      const coveredTimes: number[] = [];
+      const extraStopEvents: Date[] = [];
 
-      // PASS 1: Full records
+      // Process full records
       for (const r of list) {
         if (r.fechaSalida) {
           const start = new Date(r.fechaEntrada);
@@ -252,55 +398,70 @@ export class PDFReportGenerator {
           const tOut = end.getTime();
 
           if (tOut > tIn) {
-            // normal full segment
-            segments.push({ start, end });
+            segments.push({ start, end, recordId: r.id });
             coveredTimes.push(tIn, tOut);
           } else if (tOut === tIn) {
-            // ZERO-LENGTH full record => this is actually a STOP event
             extraStopEvents.push(end);
           }
-          // if tOut < tIn we ignore it as corrupted
         }
       }
 
-      // PASS 2: Build event list from remaining single-timestamp records
-      const events = list
-        .filter((r) => !r.fechaSalida) // single timestamp rows
-        .map((r) => new Date(r.fechaEntrada))
-        .filter((t) => !coveredTimes.some((ct) => sameTs(ct, t.getTime())))
-        .concat(extraStopEvents) // add converted stops from zero-length full records
-        .sort((a, b) => a.getTime() - b.getTime());
+      // Process single timestamp records
+      const singleEvents = list
+        .filter((r) => !r.fechaSalida)
+        .map((r) => ({
+          time: new Date(r.fechaEntrada),
+          recordId: r.id as string | null,
+        }))
+        .filter(
+          (e) => !coveredTimes.some((ct) => sameTs(ct, e.time.getTime()))
+        );
 
-      // Deduplicate events within tolerance (avoid double log at same ms)
-      const dedup: Date[] = [];
-      for (const t of events) {
+      const stopEvents = extraStopEvents.map((t) => ({
+        time: t,
+        recordId: null as string | null,
+      }));
+
+      const events = [...singleEvents, ...stopEvents].sort(
+        (a, b) => a.time.getTime() - b.time.getTime()
+      );
+
+      // Deduplicate events
+      const dedup: { time: Date; recordId: string | null }[] = [];
+      for (const e of events) {
         const last = dedup.length ? dedup[dedup.length - 1] : null;
-        if (!last || !sameTs(last.getTime(), t.getTime())) dedup.push(t);
+        if (!last || !sameTs(last.time.getTime(), e.time.getTime()))
+          dedup.push(e);
       }
 
-      // Pair sequentially: [start, stop], [start, stop], ...
+      // Pair sequentially
       for (let i = 0; i < dedup.length; i += 2) {
         const start = dedup[i];
         const end = dedup[i + 1];
         if (start && end) {
-          if (end.getTime() > start.getTime()) {
-            segments.push({ start, end });
+          if (end.time.getTime() > start.time.getTime()) {
+            segments.push({
+              start: start.time,
+              end: end.time,
+              recordId: start.recordId,
+            });
           } else {
-            // anomaly: stop before start -> treat start as open and re-use this 'end' as next start
-            segments.push({ start });
+            segments.push({ start: start.time, recordId: start.recordId });
             i -= 1;
           }
         } else if (start && !end) {
-          segments.push({ start }); // open segment
+          segments.push({ start: start.time, recordId: start.recordId });
         }
       }
 
-      // Normalize → rows
+      // Create rows
       const rows: Row[] = [];
       let totalMs = 0;
       for (const s of segments) {
         const f = fmtDay(s.start);
         const startStr = fmtTime(s.start);
+        const isModified = s.recordId ? correctionsMap.has(s.recordId) : false;
+
         if (s.end) {
           const dur = s.end.getTime() - s.start.getTime();
           if (dur <= 0) continue;
@@ -309,14 +470,21 @@ export class PDFReportGenerator {
             inicio: startStr,
             stop: fmtTime(s.end),
             duracion: this.msLabel(dur),
+            isModified,
           });
           totalMs += dur;
         } else {
-          rows.push({ fecha: f, inicio: startStr, stop: "—", duracion: "—" });
+          rows.push({
+            fecha: f,
+            inicio: startStr,
+            stop: "—",
+            duracion: "—",
+            isModified,
+          });
         }
       }
 
-      // Sort rows by start time within the day (HH:mm:ss -> numeric)
+      // Sort rows by start time
       rows.sort((a, b) => {
         const ta = a.inicio === "—" ? 0 : Number(a.inicio.replace(/:/g, ""));
         const tb = b.inicio === "—" ? 0 : Number(b.inicio.replace(/:/g, ""));

@@ -8,16 +8,12 @@ interface PrimaryButtonProps {
   className?: string;
   size?: Size;
   disabled?: boolean;
-  /** If provided, renders an <a>; otherwise a <button> */
   href?: string;
-  /** open href in new tab */
   external?: boolean;
-  /** background color style */
   bgColor?: BgColor;
-  /** optional click handler (works for both <a> and <button>) */
   onClick?: (e: React.MouseEvent<HTMLElement>) => void;
-  /** inline styles */
   style?: React.CSSProperties;
+  type?: string
 }
 
 export default function PrimaryButton({
@@ -29,6 +25,7 @@ export default function PrimaryButton({
   external = false,
   bgColor = "teal",
   onClick,
+  type,
   style,
 }: PrimaryButtonProps) {
   const sizeStyles: Record<Size, string> = {

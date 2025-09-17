@@ -51,7 +51,8 @@ export class AdminService {
       email: user.email,
       firstLogin: user.first_login,
       isAdmin: user.is_admin,
-      isActive: user.is_active ?? true, // Default to true for existing users
+      isActive: user.is_active ?? true, 
+      role: user.role
     }));
 
     console.log("Mapped users:", mappedUsers);
@@ -211,6 +212,7 @@ export class AdminService {
     email: string;
     password: string;
     isAdmin: boolean;
+    role: string;
   }): Promise<void> {
     const {
       data: { session },
@@ -261,6 +263,7 @@ export class AdminService {
       email: string;
       password?: string;
       isAdmin: boolean;
+      role: string;
     }
   ): Promise<void> {
     const {

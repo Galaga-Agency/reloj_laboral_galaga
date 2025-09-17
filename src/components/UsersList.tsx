@@ -4,12 +4,9 @@ import {
   FiPlus,
   FiEdit2,
   FiTrash2,
-  FiEyeOff,
-  FiEye,
   FiShield,
   FiUserCheck,
   FiUserX,
-  FiXCircle,
 } from "react-icons/fi";
 import type { Usuario } from "@/types";
 import PrimaryButton from "@/components/ui/PrimaryButton";
@@ -17,7 +14,6 @@ import { ConfirmModal } from "@/components/modals/ConfirmModal";
 import { UserFormModal } from "@/components/modals/UserFormModal";
 import type { UserFormData } from "@/components/forms/CreateUserForm";
 import { AdminService } from "@/services/admin-service";
-import { FaUserLargeSlash } from "react-icons/fa6";
 
 interface UsersListProps {
   users: Usuario[];

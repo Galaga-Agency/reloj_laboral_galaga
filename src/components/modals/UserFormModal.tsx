@@ -15,6 +15,7 @@ interface UserFormModalProps {
     nombre: string;
     email: string;
     isAdmin: boolean;
+    role: string;
   } | null;
 }
 

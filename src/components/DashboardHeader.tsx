@@ -81,23 +81,35 @@ export function DashboardHeader({
 
             <div className="flex items-center gap-8 fade-right opacity-0">
               <div className="text-right">
-                <p className="text-xl font-bold text-azul-profundo">
-                  {usuario.nombre}
-                </p>
-                <div className="flex items-center justify-end gap-3 mt-2">
-                  <div
-                    className={`w-3 h-3 rounded-full ${
-                      estadoActual === "trabajando"
-                        ? "bg-activo"
-                        : "bg-inactivo"
-                    }`}
-                  />
-                  <span className="text-azul-profundo/70 font-medium capitalize">
-                    {estadoActual === "trabajando"
-                      ? "Trabajando"
-                      : "Desconectado"}
-                  </span>
-                </div>
+                {usuario.role === "employee" ? (
+                  <>
+                    <p className="text-xl font-bold text-azul-profundo">
+                      {usuario.nombre}
+                    </p>
+                    <div className="flex items-center justify-end gap-3 mt-2">
+                      <div
+                        className={`w-3 h-3 rounded-full ${
+                          estadoActual === "trabajando"
+                            ? "bg-activo"
+                            : "bg-inactivo"
+                        }`}
+                      />
+                      <span className="text-azul-profundo/70 font-medium capitalize">
+                        {estadoActual === "trabajando"
+                          ? "Trabajando"
+                          : "Desconectado"}
+                      </span>
+                    </div>
+                  </>
+                ) : (
+                  <div className="text-right flex items-center gap-2">
+                    <div className="w-3 h-3 rounded-full bg-activo" />
+
+                    <p className="text-xl font-bold text-azul-profundo">
+                      {usuario.nombre}
+                    </p>
+                  </div>
+                )}
               </div>
 
               <SecondaryButton

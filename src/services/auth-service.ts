@@ -44,6 +44,7 @@ export class AuthService {
       firstLogin: userRecord.first_login,
       isAdmin: userRecord.is_admin,
       isActive: userRecord.is_active ?? true,
+      role: userRecord.role
     };
   }
 
@@ -146,6 +147,7 @@ export class AuthService {
           firstLogin: userRecord.first_login,
           isAdmin: userRecord.is_admin,
           isActive: userRecord.is_active ?? true,
+          role: userRecord.role
         };
 
         console.log("Returning user:", result);

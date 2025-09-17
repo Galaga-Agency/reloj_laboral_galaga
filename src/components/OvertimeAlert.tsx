@@ -1,4 +1,4 @@
-import { OvertimeData } from "@/types/overtime";
+import { OvertimeData } from "@/types";
 
 interface OvertimeAlertProps {
   overtimeData: OvertimeData | null;

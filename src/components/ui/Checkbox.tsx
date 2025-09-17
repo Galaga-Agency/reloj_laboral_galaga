@@ -1,4 +1,3 @@
-// components/ui/Checkbox.tsx
 import { forwardRef } from 'react'
 import { FiCheck } from 'react-icons/fi'
 

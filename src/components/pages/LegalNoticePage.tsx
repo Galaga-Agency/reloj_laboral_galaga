@@ -29,7 +29,7 @@ export function LegalNoticePage() {
             <BackButton />
           </div>
 
-          <article className="p-8 text-white flex flex-col gap-6 fade-up opacity-0">
+          <article className="p-8 text-white flex flex-col gap-6 fade-up opacity-0 section">
             <header className="fade-zoom opacity-0">
               <h1 className="text-3xl font-bold">Aviso Legal</h1>
               <p className="pt-2 opacity-80 text-sm">

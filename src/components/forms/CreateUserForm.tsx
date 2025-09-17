@@ -12,6 +12,7 @@ interface CreateUserFormProps {
     nombre: string;
     email: string;
     isAdmin: boolean;
+    role: string
   } | null;
 }
 
@@ -20,6 +21,7 @@ export interface UserFormData {
   email: string;
   password: string;
   isAdmin: boolean;
+  role: string;
 }
 
 export function CreateUserForm({
@@ -33,6 +35,7 @@ export function CreateUserForm({
     email: editingUser?.email || "",
     password: "",
     isAdmin: editingUser?.isAdmin || false,
+    role: editingUser?.role || ""
   });
   const [errors, setErrors] = useState<Partial<UserFormData>>({});
 

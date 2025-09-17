@@ -1,0 +1,87 @@
+import { useState, useEffect } from "react";
+import type { Usuario } from "@/types";
+import {
+  MonthlyReportsService,
+  type MonthlyReportStatus,
+} from "@/services/monthly-reports-service";
+
+interface UseMonthlyReportsReturn {
+  reportStatus: MonthlyReportStatus | null;
+  isLoading: boolean;
+  error: string | null;
+  showModal: boolean;
+  handleAcceptReport: () => void;
+  handleCloseModal: () => void;
+  refetch: () => Promise<void>;
+}
+
+export function useMonthlyReports(usuario: Usuario): UseMonthlyReportsReturn {
+  const [reportStatus, setReportStatus] = useState<MonthlyReportStatus | null>(
+    null
+  );
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [showModal, setShowModal] = useState(false);
+
+  const fetchReportStatus = async () => {
+    try {
+      setError(null);
+
+      // First, try to generate any missing reports
+      await MonthlyReportsService.generateMissingReportsForUser(usuario);
+
+      // Then fetch the current status
+      const status = await MonthlyReportsService.getCurrentMonthReportStatus(
+        usuario.id
+      );
+
+      setReportStatus(status);
+      setShowModal(status.needsReview);
+    } catch (err) {
+      const errorMessage =
+        err instanceof Error ? err.message : "Error desconocido";
+      setError(errorMessage);
+      console.error("Error fetching monthly report status:", err);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleAcceptReport = () => {
+    setShowModal(false);
+    if (reportStatus) {
+      setReportStatus({
+        ...reportStatus,
+        needsReview: false,
+        report: reportStatus.report
+          ? {
+              ...reportStatus.report,
+              isAccepted: true,
+              acceptedAt: new Date(),
+            }
+          : undefined,
+      });
+    }
+  };
+
+  const handleCloseModal = () => {
+    // Modal cannot be closed until report is handled
+    console.warn("Monthly report must be reviewed before closing");
+  };
+
+  useEffect(() => {
+    if (usuario?.id) {
+      fetchReportStatus();
+    }
+  }, [usuario?.id]);
+
+  return {
+    reportStatus,
+    isLoading,
+    error,
+    showModal,
+    handleAcceptReport,
+    handleCloseModal,
+    refetch: fetchReportStatus,
+  };
+}

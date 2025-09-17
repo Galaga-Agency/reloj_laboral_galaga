@@ -7,6 +7,8 @@ import {
 } from "react";
 import { supabase } from "@/lib/supabase";
 import { AuthService } from "@/services/auth-service";
+import { useMonthlyReports } from "@/hooks/useMonthlyReports";
+import { MonthlyReportModal } from "@/components/modals/MonthlyReportModal";
 import type { Usuario } from "@/types";
 
 interface AuthContextType {
@@ -38,6 +40,15 @@ export function AuthProvider({ children }: AuthProviderProps) {
   const [usuario, setUsuario] = useState<Usuario | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isLoggingOut, setIsLoggingOut] = useState(false);
+
+  // Monthly reports check for authenticated users
+  const {
+    reportStatus,
+    isLoading: isLoadingReport,
+    showModal: showMonthlyModal,
+    handleAcceptReport,
+    handleCloseModal,
+  } = useMonthlyReports(usuario || ({ id: "" } as Usuario));
 
   useEffect(() => {
     let mounted = true;
@@ -155,7 +166,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
 
   const value: AuthContextType = {
     usuario,
-    isLoading,
+    isLoading: isLoading || isLoadingReport,
     isLoggingOut,
     isAuthenticated: !!usuario,
     login,
@@ -164,5 +175,17 @@ export function AuthProvider({ children }: AuthProviderProps) {
     markPasswordUpdated,
   };
 
-  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
+  return (
+    <AuthContext.Provider value={value}>
+      {children}
+
+      {showMonthlyModal && reportStatus?.report && usuario && (
+        <MonthlyReportModal
+          report={reportStatus.report}
+          onAccept={handleAcceptReport}
+          onClose={handleCloseModal}
+        />
+      )}
+    </AuthContext.Provider>
+  );
 }

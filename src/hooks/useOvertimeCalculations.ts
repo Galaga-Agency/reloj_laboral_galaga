@@ -1,7 +1,7 @@
 import { useState, useCallback, useEffect } from "react";
 import { useTimeRecords } from "./useTimeRecords";
-import { OvertimeData } from "@/types/overtime";
-import { RegistroTiempo } from "@/types/tiempo";
+import { OvertimeData } from "@/types";
+import { RegistroTiempo } from "@/types";
 
 export function useOvertimeCalculations(userId: string) {
   const [overtimeData, setOvertimeData] = useState<OvertimeData | null>(null);

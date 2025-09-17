@@ -29,7 +29,7 @@ export function PrivacyPolicyPage() {
             <BackButton />
           </div>
 
-          <article className="p-8 text-white flex flex-col gap-6 fade-up opacity-0">
+          <article className="p-8 text-white flex flex-col gap-6 fade-up opacity-0 section">
             <header className="fade-zoom opacity-0">
               <h1 className="text-3xl font-bold">Política de Privacidad</h1>
               <p className="pt-2 opacity-80 text-sm">
@@ -427,7 +427,7 @@ export function PrivacyPolicyPage() {
                 tratamiento de tus datos:
               </p>
               <ul className="list-disc list-inside space-y-1 mt-2">
-                              <li>
+                <li>
                   Delegado de Protección de Datos y Soporte general:{" "}
                   <a
                     href="mailto:soporte@galagaagency.com"

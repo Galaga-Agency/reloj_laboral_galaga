@@ -39,15 +39,8 @@ export function TimeRecordCorrectionModal({
 
   useEffect(() => {
     if (record && isOpen) {
-      // For entrada records, use fecha_entrada
-      // For salida records, use fecha_salida if available, otherwise fecha_entrada
-      const targetDate =
-        record.tipoRegistro === "salida" && record.fechaSalida
-          ? record.fechaSalida
-          : record.fechaEntrada;
-
-      setFecha(format(targetDate, "yyyy-MM-dd"));
-      setHora(format(targetDate, "HH:mm:ss"));
+      setFecha(format(record.fecha, "yyyy-MM-dd"));
+      setHora(format(record.fecha, "HH:mm:ss"));
       setRazon("");
       setError(null);
     }
@@ -71,21 +64,9 @@ export function TimeRecordCorrectionModal({
       const changes: CorrectionRequest["changes"] = {};
       let hasChanges = false;
 
-      if (record.tipoRegistro === "entrada") {
-        // We're correcting the entrada time
-        if (newDateTime.getTime() !== record.fechaEntrada.getTime()) {
-          changes.fechaEntrada = newDateTime;
-          hasChanges = true;
-        }
-      } else {
-        // We're correcting the salida time
-        const currentSalida = record.fechaSalida?.getTime() || null;
-        const newSalida = newDateTime.getTime();
-
-        if (currentSalida !== newSalida) {
-          changes.fechaSalida = newDateTime;
-          hasChanges = true;
-        }
+      if (newDateTime.getTime() !== record.fecha.getTime()) {
+        changes.fecha = newDateTime;
+        hasChanges = true;
       }
 
       if (!hasChanges) {
@@ -133,18 +114,12 @@ export function TimeRecordCorrectionModal({
 
   const recordTypeText =
     record.tipoRegistro === "entrada" ? "Entrada" : "Salida";
-  const currentDateTime =
-    record.tipoRegistro === "salida" && record.fechaSalida
-      ? record.fechaSalida
-      : record.fechaEntrada;
 
   return (
     <>
-      {/* Backdrop */}
       <div className="fixed inset-0 bg-azul-profundo/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
         <div className="bg-blanco rounded-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto shadow-2xl">
           <div className="p-6">
-            {/* Header */}
             <div className="flex items-center justify-between pb-6 border-b border-hielo/30">
               <div className="flex items-center gap-3">
                 <div className="p-2 bg-teal/10 rounded-lg">
@@ -165,7 +140,6 @@ export function TimeRecordCorrectionModal({
               </button>
             </div>
 
-            {/* Current Record Info */}
             <div className="mt-6 p-4 bg-hielo/20 rounded-xl border border-hielo/30">
               <h3 className="text-azul-profundo font-semibold pb-3">
                 Registro Actual:
@@ -180,7 +154,7 @@ export function TimeRecordCorrectionModal({
                 <div className="flex justify-between">
                   <span className="text-azul-profundo/70">Fecha y Hora:</span>
                   <span className="font-medium text-azul-profundo">
-                    {DateFormatUtils.formatDateTime(currentDateTime)}
+                    {DateFormatUtils.formatDateTime(record.fecha)}
                   </span>
                 </div>
               </div>
@@ -192,9 +166,7 @@ export function TimeRecordCorrectionModal({
               </div>
             )}
 
-            {/* Correction Form */}
             <form onSubmit={handleSubmit} className="pt-6 flex flex-col gap-4">
-              {/* Date Selection */}
               <div>
                 <label className="block text-sm font-medium text-azul-profundo pb-2">
                   Fecha
@@ -216,7 +188,6 @@ export function TimeRecordCorrectionModal({
                 </div>
               </div>
 
-              {/* Time Input */}
               <CustomInput
                 label="Hora"
                 type="time"
@@ -226,7 +197,6 @@ export function TimeRecordCorrectionModal({
                 required
               />
 
-              {/* Reason */}
               <div>
                 <label className="block text-sm font-medium text-azul-profundo pb-2">
                   Razón de la Corrección *
@@ -245,7 +215,6 @@ export function TimeRecordCorrectionModal({
                 </p>
               </div>
 
-              {/* Actions */}
               <div className="flex justify-end gap-3 pt-6 border-t border-hielo/30">
                 <SecondaryButton onClick={onClose} size="sm">
                   Cancelar
@@ -259,7 +228,6 @@ export function TimeRecordCorrectionModal({
         </div>
       </div>
 
-      {/* Calendar Modal */}
       {showCalendar && (
         <CustomCalendar
           selectedDates={fecha ? [fecha] : []}

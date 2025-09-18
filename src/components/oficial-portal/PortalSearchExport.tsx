@@ -13,7 +13,7 @@ export function PortalSearchExport({
   onExport,
 }: PortalSearchExportProps) {
   return (
-    <div className="bg-white/95 backdrop-blur-sm rounded-2xl shadow-lg p-6 mb-8">
+    <div className="bg-white/95 backdrop-blur-sm rounded-2xl shadow-lg p-6 mb-8 z-10">
       <div className="flex flex-col md:flex-row gap-4 items-start md:items-center justify-between">
         <div className="flex-1 max-w-lg">
           <div className="relative">

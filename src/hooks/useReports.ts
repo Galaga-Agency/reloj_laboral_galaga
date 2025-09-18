@@ -27,7 +27,6 @@ export function useReports({ registros, usuario }: UseReportsProps) {
   });
   const [isGenerating, setIsGenerating] = useState(false);
 
-  // Calculate date range based on selected period
   const dateRange = useMemo(() => {
     const today = new Date();
 
@@ -68,22 +67,19 @@ export function useReports({ registros, usuario }: UseReportsProps) {
     }
   }, [selectedPeriod, customDateRange]);
 
-  // Filter records for the selected period
   const filteredRecords = useMemo(() => {
     if (!dateRange) return [];
 
     return registros.filter((registro) => {
-      const recordDate = new Date(registro.fechaEntrada);
+      const recordDate = new Date(registro.fecha);
       return recordDate >= dateRange.start && recordDate <= dateRange.end;
     });
   }, [registros, dateRange]);
 
-  // Calculate statistics for filtered records
   const statistics = useMemo(() => {
     return TimeRecordsUtils.calculateStatistics(filteredRecords);
   }, [filteredRecords]);
 
-  // Generate PDF report
   const generatePDFReport = async () => {
     if (!dateRange || filteredRecords.length === 0) {
       throw new Error("No hay datos para generar el informe");
@@ -92,7 +88,6 @@ export function useReports({ registros, usuario }: UseReportsProps) {
     setIsGenerating(true);
 
     try {
-      // Simulate async operation for UI feedback
       await new Promise((resolve) => setTimeout(resolve, 500));
 
       const reportData: ReportData = {
@@ -115,7 +110,6 @@ export function useReports({ registros, usuario }: UseReportsProps) {
     }
   };
 
-  // Validation for custom date range
   const isCustomRangeValid = useMemo(() => {
     if (selectedPeriod !== "custom") return true;
 
@@ -126,7 +120,6 @@ export function useReports({ registros, usuario }: UseReportsProps) {
     );
   }, [selectedPeriod, customDateRange]);
 
-  // Check if report can be generated
   const canGenerateReport = useMemo(() => {
     return !!(
       dateRange &&
@@ -137,26 +130,21 @@ export function useReports({ registros, usuario }: UseReportsProps) {
   }, [dateRange, filteredRecords.length, isCustomRangeValid, isGenerating]);
 
   return {
-    // State
     selectedPeriod,
     customDateRange,
     isGenerating,
 
-    // Data
     dateRange,
     filteredRecords,
     statistics,
 
-    // Actions
     setSelectedPeriod,
     setCustomDateRange,
     generatePDFReport,
 
-    // Validation
     isCustomRangeValid,
     canGenerateReport,
 
-    // Computed values
     recordCount: filteredRecords.length,
     hasData: filteredRecords.length > 0,
   };

@@ -2,6 +2,7 @@ import { BrowserRouter } from "react-router-dom";
 import { AuthProvider } from "@/context/AuthContext";
 import { RouteRenderer } from "@/components/RouteRenderer";
 import { Footer } from "@/components/layout/Footer";
+
 function App() {
   return (
     <BrowserRouter>

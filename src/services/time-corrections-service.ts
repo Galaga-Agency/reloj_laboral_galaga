@@ -7,11 +7,7 @@ export interface TimeCorrection {
   usuarioId: string;
   adminUserId: string;
   adminUserName: string;
-  campoModificado:
-    | "fecha_entrada"
-    | "fecha_salida"
-    | "tipo_registro"
-    | "multiple";
+  campoModificado: "fecha" | "tipo_registro" | "multiple";
   valorAnterior: string;
   valorNuevo: string;
   razon: string;
@@ -26,13 +22,17 @@ export interface CorrectionRequest {
   adminId: string;
   reason: string;
   changes: {
-    fechaEntrada?: Date;
-    fechaSalida?: Date;
+    fecha?: Date;
     tipoRegistro?: "entrada" | "salida";
   };
   ipAddress?: string;
   userAgent?: string;
 }
+
+const CAMPO_MODIFICADO = {
+  fecha: "fecha",
+  tipoRegistro: "tipo_registro",
+} as const;
 
 export class TimeCorrectionsService {
   /**
@@ -124,41 +124,17 @@ export class TimeCorrectionsService {
       const auditRecords: Omit<TimeCorrection, "id">[] = [];
 
       // Track each change for audit
-      if (request.changes.fechaEntrada) {
-        const oldValue = new Date(currentRecord.fecha_entrada).toISOString();
-        const newValue = request.changes.fechaEntrada.toISOString();
+      if (request.changes.fecha) {
+        const oldValue = new Date(currentRecord.fecha).toISOString();
+        const newValue = request.changes.fecha.toISOString();
 
-        updates.fecha_entrada = newValue;
+        updates.fecha = newValue;
         auditRecords.push({
           registroTiempoId: request.recordId,
           usuarioId: request.userId,
           adminUserId: request.adminId,
           adminUserName: adminUser.nombre,
-          campoModificado: "fecha_entrada",
-          valorAnterior: oldValue,
-          valorNuevo: newValue,
-          razon: request.reason,
-          fechaCorreccion: new Date(),
-          ipAddress: request.ipAddress,
-          userAgent: request.userAgent,
-        });
-      }
-
-      if (request.changes.fechaSalida !== undefined) {
-        const oldValue = currentRecord.fecha_salida
-          ? new Date(currentRecord.fecha_salida).toISOString()
-          : "null";
-        const newValue = request.changes.fechaSalida
-          ? request.changes.fechaSalida.toISOString()
-          : "null";
-
-        updates.fecha_salida = request.changes.fechaSalida ? newValue : null;
-        auditRecords.push({
-          registroTiempoId: request.recordId,
-          usuarioId: request.userId,
-          adminUserId: request.adminId,
-          adminUserName: adminUser.nombre,
-          campoModificado: "fecha_salida",
+          campoModificado: "fecha",
           valorAnterior: oldValue,
           valorNuevo: newValue,
           razon: request.reason,

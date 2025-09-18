@@ -35,7 +35,6 @@ export function UserRecordsList({
   );
   const [showCorrectionModal, setShowCorrectionModal] = useState(false);
 
-  // map of recordId -> corrections[]
   const [corrections, setCorrections] = useState<Map<string, TimeCorrection[]>>(
     new Map()
   );
@@ -84,11 +83,8 @@ export function UserRecordsList({
     const recordCorrections = corrections.get(record.id);
     if (!recordCorrections || recordCorrections.length === 0) return null;
 
-    const fieldToFind =
-      record.tipoRegistro === "entrada" ? "fecha_entrada" : "fecha_salida";
-
     const correction = recordCorrections.find(
-      (c) => c.campoModificado === fieldToFind
+      (c) => c.campoModificado === "fecha"
     );
     if (!correction) return null;
 
@@ -161,19 +157,13 @@ export function UserRecordsList({
                 userRecords.map((record) => {
                   const { isModified, modifiedBy } =
                     getModificationInfo(record);
-                  const displayTime =
-                    record.tipoRegistro === "entrada"
-                      ? DateFormatUtils.formatTime(record.fechaEntrada)
-                      : DateFormatUtils.formatTime(
-                          record.fechaSalida || record.fechaEntrada
-                        );
+                  const displayTime = DateFormatUtils.formatTime(record.fecha);
 
                   return (
                     <div
                       key={record.id}
                       className={`relative group p-4 rounded-lg border transition-all hover:bg-white/10 bg-white/5 border-white/10 flex flex-col gap-3 md:flex-row md:items-center md:justify-between pr-10 md:pr-4`}
                     >
-                      {/* Left block */}
                       <div className="w-full md:flex-1 flex items-start gap-4 md:items-center">
                         <div className="flex items-center justify-center w-8 h-8 rounded-full bg-white/20 flex-shrink-0">
                           {TimeRecordsUtils.getTypeIcon(record.tipoRegistro)}
@@ -188,12 +178,11 @@ export function UserRecordsList({
                             </span>
                           </div>
                           <div className="text-sm text-white/70">
-                            {DateFormatUtils.formatDate(record.fechaEntrada)}
+                            {DateFormatUtils.formatDate(record.fecha)}
                           </div>
                         </div>
                       </div>
 
-                      {/* Right block */}
                       <div className="w-full md:w-auto flex flex-col gap-2 md:flex-row md:items-center md:gap-3 md:justify-end">
                         <div className="text-left md:text-right">
                           {isModified ? (
@@ -239,7 +228,6 @@ export function UserRecordsList({
         )}
       </div>
 
-      {/* Correction Modal */}
       <TimeRecordCorrectionModal
         isOpen={showCorrectionModal}
         onClose={() => {

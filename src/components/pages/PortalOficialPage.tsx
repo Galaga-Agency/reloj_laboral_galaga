@@ -1,17 +1,16 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { format } from "date-fns";
 import { es } from "date-fns/locale";
 import { FiLogOut } from "react-icons/fi";
 import type { Usuario } from "@/types";
 import SecondaryButton from "@/components/ui/SecondaryButton";
 import { useDeviceDetect } from "@/hooks/useDeviceDetect";
-import {
-  OfficialPortalService,
-  type EmployeeData,
-} from "@/services/official-portal-service";
+import { CustomDropdown } from "@/components/ui/CustomDropdown";
+import { OfficialPortalService } from "@/services/official-portal-service";
 import { PortalSearchExport } from "../oficial-portal/PortalSearchExport";
 import { PortalStatisticsCards } from "../oficial-portal/PortalStatisticsCards";
 import { PortalEmployeesTable } from "../oficial-portal/PortalEmployeesTable";
+import type { ComplianceAlert, EmployeeData } from "@/types/official-portal";
 
 interface PortalOficialPageProps {
   usuario: Usuario;
@@ -25,11 +24,37 @@ export function PortalOficialPage({
   const [employees, setEmployees] = useState<EmployeeData[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
+  const [dateRange, setDateRange] = useState("thismonth");
   const [error, setError] = useState<string | null>(null);
+  const [complianceAlerts, setComplianceAlerts] = useState<ComplianceAlert[]>(
+    []
+  );
   const { isMobile, isTablet } = useDeviceDetect();
+
+  const dateRangeOptions = [
+    { value: "thisweek", label: "Esta Semana" },
+    { value: "thismonth", label: "Este Mes" },
+    { value: "lastmonth", label: "Mes Pasado" },
+    { value: "past7days", label: "Últimos 7 Días" },
+    { value: "past30days", label: "Últimos 30 Días" },
+    { value: "all", label: "Todo el Historial" },
+  ];
 
   useEffect(() => {
     fetchEmployeesData();
+  }, [dateRange]);
+
+  const hasLoggedRef = useRef(false);
+
+  useEffect(() => {
+    if (!hasLoggedRef.current) {
+      hasLoggedRef.current = true;
+      OfficialPortalService.logAccess(usuario.id, "view", {
+        action: "view_portal",
+        date_range: { from: dateRange, to: dateRange },
+      });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const fetchEmployeesData = async () => {
@@ -37,14 +62,15 @@ export function PortalOficialPage({
       setLoading(true);
       setError(null);
 
-      const employeesData = await OfficialPortalService.getAllEmployeesData();
+      const employeesData = await OfficialPortalService.getAllEmployeesData(
+        dateRange
+      );
       setEmployees(employeesData);
 
-      // Log this access
-      await OfficialPortalService.logAccess(usuario.id, "view", {
-        action: "view_all_employees",
-        count: employeesData.length,
-      });
+      const alerts = await OfficialPortalService.generateComplianceAlerts(
+        employeesData
+      );
+      setComplianceAlerts(alerts);
     } catch (error) {
       console.error("Error fetching employees data:", error);
       setError(
@@ -71,12 +97,14 @@ export function PortalOficialPage({
 
       OfficialPortalService.downloadCSV(csvContent, filename);
 
-      // Log this access
+      // ✅ log export
       await OfficialPortalService.logAccess(usuario.id, "export", {
         action: "export_csv",
         format: "csv",
         employees_count: filteredEmployees.length,
         exported_at: new Date().toISOString(),
+        search_term: searchTerm,
+        date_range: { from: dateRange, to: dateRange },
       });
     } catch (error) {
       console.error("Error exporting data:", error);
@@ -84,16 +112,13 @@ export function PortalOficialPage({
     }
   };
 
-  if (loading) {
-    return (
-      <div className="min-h-screen bg-gradient-to-br from-azul-profundo via-azul-profundo to-teal flex items-center justify-center">
-        <div className="text-white text-xl">Cargando portal oficial...</div>
-      </div>
-    );
-  }
+  const getCurrentRangeLabel = () => {
+    const option = dateRangeOptions.find((opt) => opt.value === dateRange);
+    return option?.label || "Período Seleccionado";
+  };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-azul-profundo via-azul-profundo to-teal">
+    <div className="min-h-screen bg-gradient-to-br from-azul-profundo via-azul-profundo to-teal pb-24">
       {/* Header */}
       <header className="bg-blanco border-b border-hielo/30 relative z-50">
         <div className="px-4 py-4 md:px-6 md:py-5 lg:px-10 lg:py-7">
@@ -142,7 +167,6 @@ export function PortalOficialPage({
               <div className="flex items-center gap-8">
                 <div className="text-right flex items-center gap-2">
                   <div className="w-3 h-3 rounded-full bg-activo" />
-
                   <p className="text-xl font-bold text-azul-profundo">
                     {usuario.nombre}
                   </p>
@@ -169,6 +193,32 @@ export function PortalOficialPage({
           </div>
         )}
 
+        {/* Date Range Selector */}
+        <div className="bg-white/95 backdrop-blur-sm rounded-2xl shadow-lg p-6 mb-8 relative z-50">
+          <div className="flex flex-col md:flex-row gap-4 items-start md:items-center justify-between">
+            <div>
+              <h2 className="text-lg font-semibold text-azul-profundo mb-2">
+                Período de Datos
+              </h2>
+              <p className="text-sm text-azul-profundo/70">
+                Mostrando información de:{" "}
+                <span className="font-medium text-teal">
+                  {getCurrentRangeLabel()}
+                </span>
+              </p>
+            </div>
+            <div className="w-full md:w-64 z-[999]">
+              <CustomDropdown
+                options={dateRangeOptions}
+                value={dateRange}
+                onChange={setDateRange}
+                placeholder="Seleccionar período..."
+                variant="light"
+              />
+            </div>
+          </div>
+        </div>
+
         {/* Search and Export */}
         <PortalSearchExport
           searchTerm={searchTerm}
@@ -176,11 +226,25 @@ export function PortalOficialPage({
           onExport={handleExport}
         />
 
-        {/* Statistics Cards */}
-        <PortalStatisticsCards employees={filteredEmployees} />
+        {loading ? (
+          <div className="flex items-center justify-center min-h-[40vh]">
+            <div className="text-white text-xl">Cargando datos...</div>
+          </div>
+        ) : (
+          <>
+            {/* Statistics Cards */}
+            <PortalStatisticsCards
+              employees={filteredEmployees}
+              selectedPeriod={dateRange}
+            />
 
-        {/* Employees Table */}
-        <PortalEmployeesTable employees={filteredEmployees} />
+            {/* Employees Table */}
+            <PortalEmployeesTable
+              employees={filteredEmployees}
+              selectedRange={getCurrentRangeLabel()}
+            />
+          </>
+        )}
       </main>
     </div>
   );

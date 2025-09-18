@@ -7,13 +7,11 @@ export class ClockStateManager {
    * Logic: if last record TODAY is 'entrada' -> 'trabajando', if 'salida' -> 'parado'
    */
   static getCurrentState(registros: RegistroTiempo[]): EstadoTrabajo {
-    // ONLY look at today's records to determine current state
     const todayRecords = this.getTodayRecords(registros);
 
     if (todayRecords.length === 0) return "parado";
 
-    // Get the latest record from TODAY only
-    const latestTodayRecord = todayRecords[0]; // Assuming sorted by date desc
+    const latestTodayRecord = todayRecords[0];
 
     return latestTodayRecord.tipoRegistro === "entrada"
       ? "trabajando"
@@ -24,7 +22,7 @@ export class ClockStateManager {
    * Gets today's records for a specific user
    */
   static getTodayRecords(registros: RegistroTiempo[]): RegistroTiempo[] {
-    return registros.filter((record) => isToday(record.fechaEntrada));
+    return registros.filter((record) => isToday(record.fecha));
   }
 
   /**
@@ -37,22 +35,17 @@ export class ClockStateManager {
     let totalMinutes = 0;
     let currentEntrada: Date | null = null;
 
-    // Process records in chronological order (reverse the array since it's desc)
     const chronologicalRecords = [...todayRecords].reverse();
 
     for (const record of chronologicalRecords) {
       if (record.tipoRegistro === "entrada") {
-        // Start a new work session
-        currentEntrada = record.fechaEntrada;
+        currentEntrada = record.fecha;
       } else if (record.tipoRegistro === "salida" && currentEntrada) {
-        // End the current work session
-        const endTime = record.fechaSalida || record.fechaEntrada;
-        totalMinutes += differenceInMinutes(endTime, currentEntrada);
+        totalMinutes += differenceInMinutes(record.fecha, currentEntrada);
         currentEntrada = null;
       }
     }
 
-    // If currently working (unpaired entrada), add time from entrada to now
     if (currentEntrada) {
       totalMinutes += differenceInMinutes(new Date(), currentEntrada);
     }
@@ -126,8 +119,7 @@ export class ClockStateManager {
    */
   static calculateDayMinutes(registrosDia: RegistroTiempo[]): number {
     const registrosOrdenados = registrosDia.sort(
-      (a, b) =>
-        new Date(a.fechaEntrada).getTime() - new Date(b.fechaEntrada).getTime()
+      (a, b) => new Date(a.fecha).getTime() - new Date(b.fecha).getTime()
     );
 
     let totalMinutos = 0;
@@ -135,12 +127,12 @@ export class ClockStateManager {
 
     for (const registro of registrosOrdenados) {
       if (registro.tipoRegistro === "entrada") {
-        currentEntrada = new Date(registro.fechaEntrada);
+        currentEntrada = new Date(registro.fecha);
       } else if (registro.tipoRegistro === "salida" && currentEntrada) {
-        const salida = registro.fechaSalida
-          ? new Date(registro.fechaSalida)
-          : new Date(registro.fechaEntrada);
-        totalMinutos += differenceInMinutes(salida, currentEntrada);
+        totalMinutos += differenceInMinutes(
+          new Date(registro.fecha),
+          currentEntrada
+        );
         currentEntrada = null;
       }
     }

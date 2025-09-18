@@ -29,13 +29,13 @@ export class TimeRecordsUtils {
 
     switch (period) {
       case "hoy":
-        return registros.filter((r) => isToday(new Date(r.fechaEntrada)));
+        return registros.filter((r) => isToday(new Date(r.fecha)));
 
       case "semana":
         const inicioSemana = startOfWeek(ahora, { weekStartsOn: 1 });
         const finSemana = endOfWeek(ahora, { weekStartsOn: 1 });
         return registros.filter((r) => {
-          const fecha = new Date(r.fechaEntrada);
+          const fecha = new Date(r.fecha);
           return fecha >= inicioSemana && fecha <= finSemana;
         });
 
@@ -43,7 +43,7 @@ export class TimeRecordsUtils {
         const inicioMes = startOfMonth(ahora);
         const finMes = endOfMonth(ahora);
         return registros.filter((r) => {
-          const fecha = new Date(r.fechaEntrada);
+          const fecha = new Date(r.fecha);
           return fecha >= inicioMes && fecha <= finMes;
         });
 
@@ -51,17 +51,12 @@ export class TimeRecordsUtils {
         return registros;
     }
   }
-
+  
   static calculateStatistics(registros: RegistroTiempo[]): WorkStatistics {
     const registrosPorDia = new Map<string, RegistroTiempo[]>();
 
     registros.forEach((registro) => {
-      const actionDate =
-        registro.tipoRegistro === "salida" && registro.fechaSalida
-          ? new Date(registro.fechaSalida)
-          : new Date(registro.fechaEntrada);
-
-      const dia = format(actionDate, "yyyy-MM-dd");
+      const dia = format(new Date(registro.fecha), "yyyy-MM-dd");
 
       if (!registrosPorDia.has(dia)) {
         registrosPorDia.set(dia, []);
@@ -93,15 +88,13 @@ export class TimeRecordsUtils {
 
   private static calculateDaySeconds(registrosDia: RegistroTiempo[]): number {
     const registrosOrdenados = registrosDia.sort((a, b) => {
-      const timeA = new Date(a.fechaEntrada).getTime();
-      const timeB = new Date(b.fechaEntrada).getTime();
+      const timeA = new Date(a.fecha).getTime();
+      const timeB = new Date(b.fecha).getTime();
 
-      // First sort by time
       if (timeA !== timeB) {
         return timeA - timeB;
       }
 
-      // If same time, entrada comes before salida
       if (a.tipoRegistro === "entrada" && b.tipoRegistro === "salida") {
         return -1;
       }
@@ -117,22 +110,18 @@ export class TimeRecordsUtils {
 
     for (const registro of registrosOrdenados) {
       if (registro.tipoRegistro === "entrada") {
-        currentEntrada = new Date(registro.fechaEntrada);
+        currentEntrada = new Date(registro.fecha);
       } else if (registro.tipoRegistro === "salida" && currentEntrada) {
-        const salida = registro.fechaSalida
-          ? new Date(registro.fechaSalida)
-          : new Date(registro.fechaEntrada);
-
+        const salida = new Date(registro.fecha);
         const secondsWorked = differenceInSeconds(salida, currentEntrada);
         totalSeconds += secondsWorked;
         currentEntrada = null;
       }
     }
 
-    // Add mandatory 15-minute break if worked more than 6 hours
     const workedHours = totalSeconds / 3600;
     if (workedHours >= 6) {
-      totalSeconds += 15 * 60; // Add 15 minutes in seconds
+      totalSeconds += 15 * 60;
     }
 
     return totalSeconds;
@@ -183,7 +172,7 @@ export class TimeRecordsUtils {
     const busquedaLower = searchTerm.toLowerCase();
     return registros.filter(
       (r) =>
-        format(new Date(r.fechaEntrada), "PPP", {
+        format(new Date(r.fecha), "PPP", {
           locale: require("date-fns/locale/es"),
         })
           .toLowerCase()
@@ -214,3 +203,101 @@ export class TimeRecordsUtils {
     return totalHours;
   }
 }
+
+export interface PairedInterval {
+  entrada: Date;
+  salida: Date | null;
+  seconds: number | null;
+}
+
+export interface DayPairs {
+  dateKey: string; // yyyy-MM-dd (local)
+  pairs: PairedInterval[];
+  unpairedEntradas: Date[];
+  unpairedSalidas: Date[];
+  totalSeconds: number; // includes paid break if enabled
+  paidBreakIncluded: boolean;
+}
+
+/**
+ * Pairs sequential entrada→salida by local day.
+ * Adds a paid 15-minute break to that day if total worked >= 6 hours (when enabled).
+ */
+export function pairRecordsByDay(
+  registros: RegistroTiempo[],
+  opts: { includePaidBreak?: boolean } = {}
+): DayPairs[] {
+  const { includePaidBreak = true } = opts;
+
+  // Normalize & sort all registros
+  const sorted = registros
+    .map((r) => ({
+      ...r,
+      fecha: new Date(r.fecha),
+    }))
+    .sort((a, b) => a.fecha.getTime() - b.fecha.getTime());
+
+  // Group by local yyyy-MM-dd
+  const byDay = new Map<string, RegistroTiempo[]>();
+  for (const r of sorted) {
+    const key = format(r.fecha, "yyyy-MM-dd");
+    if (!byDay.has(key)) byDay.set(key, []);
+    byDay.get(key)!.push(r);
+  }
+
+  const days: DayPairs[] = [];
+
+  byDay.forEach((regs, dateKey) => {
+    let currentEntrada: Date | null = null;
+    const pairs: PairedInterval[] = [];
+    const unpairedEntradas: Date[] = [];
+    const unpairedSalidas: Date[] = [];
+    let totalSeconds = 0;
+
+    for (const r of regs) {
+      if (r.tipoRegistro === "entrada") {
+        // if an entrada is already open, mark it unpaired and start a new one
+        if (currentEntrada) unpairedEntradas.push(currentEntrada);
+        currentEntrada = new Date(r.fecha);
+      } else if (r.tipoRegistro === "salida") {
+        const salida = new Date(r.fecha);
+        if (currentEntrada) {
+          const secs = Math.max(0, differenceInSeconds(salida, currentEntrada));
+          pairs.push({ entrada: currentEntrada, salida, seconds: secs });
+          totalSeconds += secs;
+          currentEntrada = null;
+        } else {
+          // salida without a preceding entrada
+          unpairedSalidas.push(salida);
+        }
+      }
+    }
+
+    // leftover entrada at end of day (open shift)
+    if (currentEntrada) {
+      pairs.push({ entrada: currentEntrada, salida: null, seconds: null });
+      unpairedEntradas.push(currentEntrada);
+    }
+
+    // Add paid 15-minute break (once) if worked 6+ hours
+    let paidBreakIncluded = false;
+    if (includePaidBreak && totalSeconds / 3600 >= 6) {
+      totalSeconds += 15 * 60;
+      paidBreakIncluded = true;
+    }
+
+    days.push({
+      dateKey,
+      pairs,
+      unpairedEntradas,
+      unpairedSalidas,
+      totalSeconds,
+      paidBreakIncluded,
+    });
+  });
+
+  // Most recent day first
+  days.sort((a, b) => b.dateKey.localeCompare(a.dateKey));
+  return days;
+}
+

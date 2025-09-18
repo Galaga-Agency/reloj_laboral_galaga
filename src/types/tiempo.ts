@@ -1,8 +1,7 @@
 export interface RegistroTiempo {
   id: string;
   usuarioId: string;
-  fechaEntrada: Date;
-  fechaSalida?: Date;
+  fecha: Date;
   tipoRegistro: "entrada" | "salida";
   esSimulado: boolean;
   fueModificado?: boolean;
@@ -23,6 +22,5 @@ export interface OvertimeData {
   isOverLimit: boolean;
   warningLevel: "none" | "warning" | "critical";
 }
-
 
 export type EstadoTrabajo = "parado" | "trabajando" | "en_pausa";

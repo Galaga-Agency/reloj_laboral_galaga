@@ -23,7 +23,7 @@ export interface ReportData {
 interface WorkSegment {
   entrada: Date;
   salida?: Date;
-  duracion: number; // in milliseconds
+  duracion: number;
   isModified: boolean;
   recordIds: string[];
 }
@@ -40,7 +40,6 @@ export class PDFReportGenerator {
   private static readonly PAGE_HEIGHT = 297;
   private static readonly LINE_HEIGHT = 5;
 
-  // Table dimensions
   private static readonly TABLE_WIDTH = 180;
   private static readonly COL_DATE = 35;
   private static readonly COL_ENTRADA = 30;
@@ -52,34 +51,24 @@ export class PDFReportGenerator {
     const doc = new jsPDF();
     let y = this.MARGIN;
 
-    // Fetch corrections for all records
     const recordIds = data.registros.map((r) => r.id);
     const correctionsMap =
       await TimeCorrectionsService.getCorrectionsForRecords(recordIds);
     const hasCorrections = correctionsMap.size > 0;
 
-    // Add header
     y = this.addHeader(doc, data, y);
-
-    // Add summary statistics
     y = this.addSummary(doc, data, y);
 
-    // Add corrections notice if any exist
     if (hasCorrections) {
       y = this.addCorrectionsNotice(doc, y, correctionsMap.size);
     }
 
-    // Process records into daily segments
     const dailyData = this.processDailyData(data.registros, correctionsMap);
-
-    // Add table header
     y = this.addTableHeader(doc, y);
 
     let grandTotalMs = 0;
 
-    // Render each day in table format
     for (const dayData of dailyData) {
-      // Check if we need a new page
       const estimatedHeight = (dayData.segments.length + 1) * 7 + 15;
       if (y + estimatedHeight > this.PAGE_HEIGHT - this.MARGIN) {
         doc.addPage();
@@ -91,10 +80,8 @@ export class PDFReportGenerator {
       grandTotalMs += dayData.totalMs;
     }
 
-    // Add grand total
     y = this.addGrandTotal(doc, grandTotalMs, y);
 
-    // Add corrections appendix if any exist
     if (hasCorrections) {
       y = this.addCorrectionsAppendix(doc, y, correctionsMap);
     }
@@ -104,7 +91,6 @@ export class PDFReportGenerator {
   }
 
   private static addHeader(doc: jsPDF, data: ReportData, y: number): number {
-    // Company header
     doc.setFont("helvetica", "bold");
     doc.setFontSize(18);
     doc.text("GALAGA AGENCY", this.MARGIN, y);
@@ -112,7 +98,6 @@ export class PDFReportGenerator {
     doc.text("INFORME DE FICHAJES", this.MARGIN, y + 8);
     y += 20;
 
-    // Employee and period info
     doc.setFont("helvetica", "normal");
     doc.setFontSize(11);
     doc.text(`Empleado: ${data.usuario.nombre}`, this.MARGIN, y);
@@ -130,7 +115,6 @@ export class PDFReportGenerator {
     );
     y += 15;
 
-    // Separator line
     doc.setLineWidth(0.5);
     doc.line(this.MARGIN, y, this.PAGE_WIDTH - this.MARGIN, y);
     y += 10;
@@ -139,7 +123,6 @@ export class PDFReportGenerator {
   }
 
   private static addSummary(doc: jsPDF, data: ReportData, y: number): number {
-    // Summary box
     doc.setFillColor(240, 240, 240);
     doc.rect(this.MARGIN, y, this.TABLE_WIDTH, 25, "F");
     doc.setDrawColor(200, 200, 200);
@@ -176,11 +159,9 @@ export class PDFReportGenerator {
   }
 
   private static addTableHeader(doc: jsPDF, y: number): number {
-    // Table header background
     doc.setFillColor(50, 50, 50);
     doc.rect(this.MARGIN, y, this.TABLE_WIDTH, 10, "F");
 
-    // Header text
     doc.setTextColor(255, 255, 255);
     doc.setFont("helvetica", "bold");
     doc.setFontSize(10);
@@ -196,7 +177,6 @@ export class PDFReportGenerator {
     x += this.COL_DURACION;
     doc.text("TOTAL DÍA", x, y + 7);
 
-    // Reset text color
     doc.setTextColor(0, 0, 0);
 
     return y + 12;
@@ -206,55 +186,46 @@ export class PDFReportGenerator {
     const startY = y;
     const dateStr = format(dayData.date, "dd/MM/yyyy EEE", { locale: es });
 
-    // Day segments
     for (let i = 0; i < dayData.segments.length; i++) {
       const segment = dayData.segments[i];
       const isFirstSegment = i === 0;
 
-      // Alternating row colors
       const rowIndex = Math.floor((y - startY) / 7);
       if (rowIndex % 2 === 0) {
         doc.setFillColor(250, 250, 250);
         doc.rect(this.MARGIN, y, this.TABLE_WIDTH, 7, "F");
       }
 
-      // Row border
       doc.setDrawColor(220, 220, 220);
       doc.setLineWidth(0.1);
       doc.rect(this.MARGIN, y, this.TABLE_WIDTH, 7, "S");
 
-      // Content
       doc.setFont("helvetica", "normal");
       doc.setFontSize(9);
 
       let x = this.MARGIN + 2;
 
-      // Date (only show on first row of the day)
       if (isFirstSegment) {
         doc.text(dateStr, x, y + 5);
       }
       x += this.COL_DATE;
 
-      // Entry time
       const entradaText =
         format(segment.entrada, "HH:mm:ss") + (segment.isModified ? " *" : "");
       doc.text(entradaText, x, y + 5);
       x += this.COL_ENTRADA;
 
-      // Exit time
       const salidaText = segment.salida
         ? format(segment.salida, "HH:mm:ss") + (segment.isModified ? " *" : "")
         : "—";
       doc.text(salidaText, x, y + 5);
       x += this.COL_SALIDA;
 
-      // Duration
       const duracionText =
         segment.duracion > 0 ? this.formatDuration(segment.duracion) : "—";
       doc.text(duracionText, x, y + 5);
       x += this.COL_DURACION;
 
-      // Daily total (only show on last row of the day)
       if (i === dayData.segments.length - 1) {
         doc.setFont("helvetica", "bold");
         doc.text(this.formatDuration(dayData.totalMs), x, y + 5);
@@ -264,7 +235,6 @@ export class PDFReportGenerator {
       y += 7;
     }
 
-    // No separator line - just return the y position
     return y + 2;
   }
 
@@ -273,7 +243,6 @@ export class PDFReportGenerator {
     grandTotalMs: number,
     y: number
   ): number {
-    // Check if we need a new page
     if (y + 15 > this.PAGE_HEIGHT - this.MARGIN) {
       doc.addPage();
       y = this.MARGIN;
@@ -281,7 +250,6 @@ export class PDFReportGenerator {
 
     y += 5;
 
-    // Total row with dark background
     doc.setFillColor(50, 50, 50);
     doc.rect(this.MARGIN, y, this.TABLE_WIDTH, 10, "F");
 
@@ -295,7 +263,6 @@ export class PDFReportGenerator {
       y + 7
     );
 
-    // Reset colors
     doc.setTextColor(0, 0, 0);
     doc.setFont("helvetica", "normal");
 
@@ -306,11 +273,10 @@ export class PDFReportGenerator {
     registros: RegistroTiempo[],
     correctionsMap: Map<string, TimeCorrection[]>
   ): DayData[] {
-    // Group records by day
     const dailyRecords = new Map<string, RegistroTiempo[]>();
 
     for (const registro of registros) {
-      const dayKey = format(new Date(registro.fechaEntrada), "yyyy-MM-dd");
+      const dayKey = format(new Date(registro.fecha), "yyyy-MM-dd");
       if (!dailyRecords.has(dayKey)) {
         dailyRecords.set(dayKey, []);
       }
@@ -341,10 +307,8 @@ export class PDFReportGenerator {
     dayRecords: RegistroTiempo[],
     correctionsMap: Map<string, TimeCorrection[]>
   ): WorkSegment[] {
-    // Sort records by time
     const sortedRecords = dayRecords.sort(
-      (a, b) =>
-        new Date(a.fechaEntrada).getTime() - new Date(b.fechaEntrada).getTime()
+      (a, b) => new Date(a.fecha).getTime() - new Date(b.fecha).getTime()
     );
 
     const segments: WorkSegment[] = [];
@@ -354,7 +318,6 @@ export class PDFReportGenerator {
       const isModified = correctionsMap.has(record.id);
 
       if (record.tipoRegistro === "entrada") {
-        // If we already have an entrada without salida, close it as incomplete
         if (currentEntrada) {
           segments.push({
             entrada: currentEntrada.time,
@@ -366,14 +329,11 @@ export class PDFReportGenerator {
         }
 
         currentEntrada = {
-          time: new Date(record.fechaEntrada),
+          time: new Date(record.fecha),
           recordId: record.id,
         };
       } else if (record.tipoRegistro === "salida" && currentEntrada) {
-        const salida = record.fechaSalida
-          ? new Date(record.fechaSalida)
-          : new Date(record.fechaEntrada);
-
+        const salida = new Date(record.fecha);
         const duracion = differenceInMilliseconds(salida, currentEntrada.time);
 
         segments.push({
@@ -388,7 +348,6 @@ export class PDFReportGenerator {
       }
     }
 
-    // Handle case where day ends with entrada but no salida
     if (currentEntrada) {
       segments.push({
         entrada: currentEntrada.time,
@@ -431,7 +390,6 @@ export class PDFReportGenerator {
 
     y += 10;
 
-    // Header
     doc.setFillColor(50, 50, 50);
     doc.rect(this.MARGIN, y, this.TABLE_WIDTH, 8, "F");
     doc.setTextColor(255, 255, 255);
@@ -525,8 +483,7 @@ export class PDFReportGenerator {
 
   private static getFieldDisplayName(field: string): string {
     const names: Record<string, string> = {
-      fecha_entrada: "Hora de entrada",
-      fecha_salida: "Hora de salida",
+      fecha: "Fecha y hora",
       tipo_registro: "Tipo de registro",
     };
     return names[field] || field;

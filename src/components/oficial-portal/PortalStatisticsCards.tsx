@@ -1,29 +1,63 @@
-// components/PortalStatisticsCards.tsx
-import { FiUsers, FiEye, FiClock, FiCalendar } from "react-icons/fi";
-import type { EmployeeData } from "@/services/official-portal-service";
+import {
+  FiUsers,
+  FiEye,
+  FiClock,
+  FiCalendar,
+  FiAlertTriangle,
+  FiFileText,
+} from "react-icons/fi";
+import type { EmployeeData } from "@/types/official-portal";
 
 interface PortalStatisticsCardsProps {
   employees: EmployeeData[];
+  selectedPeriod: string;
 }
 
 export function PortalStatisticsCards({
   employees,
+  selectedPeriod,
 }: PortalStatisticsCardsProps) {
   const activeEmployees = employees.filter((e) => e.isActive).length;
-  const avgHoursPerDay =
-    employees.length > 0
-      ? Math.round(
-          (employees.reduce((sum, emp) => sum + emp.avgHoursPerDay, 0) /
-            employees.length) *
-            100
-        ) / 100
-      : 0;
-  const totalHours =
-    Math.round(employees.reduce((sum, emp) => sum + emp.totalHours, 0) * 100) /
-    100;
+
+  const totalOvertimeHours =
+    Math.round(
+      employees.reduce((sum, emp) => sum + emp.selectedPeriod.overtimeHours, 0) * 100
+    ) / 100;
+
+  // Selected period stats
+  const selectedPeriodHours =
+    Math.round(
+      employees.reduce((sum, emp) => sum + emp.selectedPeriod.totalHours, 0) *
+        100
+    ) / 100;
+    
+  const selectedPeriodDays = employees.reduce(
+    (sum, emp) => sum + emp.selectedPeriod.totalDays,
+    0
+  );
+
+  const getPeriodLabel = (period: string) => {
+    switch (period) {
+      case "thisweek":
+        return "Esta Semana";
+      case "thismonth":
+        return "Este Mes";
+      case "lastmonth":
+        return "Mes Pasado";
+      case "past7days":
+        return "Últimos 7 Días";
+      case "past30days":
+        return "Últimos 30 Días";
+      case "all":
+        return "Total";
+      default:
+        return "Período Seleccionado";
+    }
+  };
 
   return (
-    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
+      {/* Total Employees */}
       <div className="bg-white/95 backdrop-blur-sm p-4 rounded-xl border border-teal/20 shadow-sm">
         <div className="flex items-center gap-2 text-sm text-teal font-medium pb-2">
           <FiUsers className="w-4 h-4" />
@@ -33,43 +67,36 @@ export function PortalStatisticsCards({
           {employees.length}
         </div>
         <div className="text-sm text-azul-profundo/60 mt-1">
-          registrados en sistema
+          {activeEmployees} activos
         </div>
       </div>
 
-      <div className="bg-white/95 backdrop-blur-sm p-4 rounded-xl border border-teal/20 shadow-sm">
-        <div className="flex items-center gap-2 text-sm text-teal font-medium pb-2">
-          <FiEye className="w-4 h-4" />
-          Empleados Activos
-        </div>
-        <div className="text-2xl font-bold text-azul-profundo">
-          {activeEmployees}
-        </div>
-        <div className="text-sm text-azul-profundo/60 mt-1">
-          de {employees.length} totales
-        </div>
-      </div>
-
+      {/* Selected Period Hours */}
       <div className="bg-white/95 backdrop-blur-sm p-4 rounded-xl border border-teal/20 shadow-sm">
         <div className="flex items-center gap-2 text-sm text-teal font-medium pb-2">
           <FiClock className="w-4 h-4" />
-          Promedio H/Día
+          {getPeriodLabel(selectedPeriod)}
         </div>
         <div className="text-2xl font-bold text-azul-profundo">
-          {avgHoursPerDay}h
+          {selectedPeriodHours}h
         </div>
-        <div className="text-sm text-azul-profundo/60 mt-1">vs 8h estándar</div>
+        <div className="text-sm text-azul-profundo/60 mt-1">
+          {selectedPeriodDays} días trabajados
+        </div>
       </div>
 
+      {/* Overtime Hours */}
       <div className="bg-white/95 backdrop-blur-sm p-4 rounded-xl border border-teal/20 shadow-sm">
         <div className="flex items-center gap-2 text-sm text-teal font-medium pb-2">
-          <FiCalendar className="w-4 h-4" />
-          Total Horas
+          <FiAlertTriangle className="w-4 h-4" />
+          Horas Extra
         </div>
         <div className="text-2xl font-bold text-azul-profundo">
-          {totalHours}h
+          {totalOvertimeHours}h
         </div>
-        <div className="text-sm text-azul-profundo/60 mt-1">acumuladas</div>
+        <div className="text-sm text-azul-profundo/60 mt-1">
+          acumuladas totales
+        </div>
       </div>
     </div>
   );

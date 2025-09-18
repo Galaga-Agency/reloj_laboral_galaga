@@ -51,8 +51,8 @@ export class AdminService {
       email: user.email,
       firstLogin: user.first_login,
       isAdmin: user.is_admin,
-      isActive: user.is_active ?? true, 
-      role: user.role
+      isActive: user.is_active ?? true,
+      role: user.role,
     }));
 
     console.log("Mapped users:", mappedUsers);
@@ -69,12 +69,12 @@ export class AdminService {
       .from("registros_tiempo")
       .select("*")
       .eq("usuario_id", userId)
-      .order("fecha_entrada", { ascending: false });
+      .order("fecha", { ascending: false });
 
     if (timeRange !== "all") {
       query = query
-        .gte("fecha_entrada", startDate.toISOString())
-        .lte("fecha_entrada", endDate.toISOString());
+        .gte("fecha", startDate.toISOString())
+        .lte("fecha", endDate.toISOString());
     }
 
     const { data, error } = await query;
@@ -88,12 +88,14 @@ export class AdminService {
     return data.map((record: any) => ({
       id: record.id,
       usuarioId: record.usuario_id,
-      fechaEntrada: new Date(record.fecha_entrada),
-      fechaSalida: record.fecha_salida
-        ? new Date(record.fecha_salida)
-        : undefined,
+      fecha: new Date(record.fecha),
       tipoRegistro: record.tipo_registro,
       esSimulado: record.es_simulado,
+      fueModificado: record.fue_modificado,
+      fechaUltimaModificacion: record.fecha_ultima_modificacion
+        ? new Date(record.fecha_ultima_modificacion)
+        : undefined,
+      modificadoPorAdmin: record.modificado_por_admin,
     }));
   }
 

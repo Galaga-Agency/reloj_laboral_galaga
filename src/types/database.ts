@@ -72,8 +72,7 @@ export interface Database {
         Row: {
           id: string;
           usuario_id: string;
-          fecha_entrada: string;
-          fecha_salida: string | null;
+          fecha: string; // Single timestamp field
           tipo_registro: "entrada" | "salida";
           es_simulado: boolean;
           fue_modificado: boolean;
@@ -85,8 +84,7 @@ export interface Database {
         Insert: {
           id?: string;
           usuario_id: string;
-          fecha_entrada: string;
-          fecha_salida?: string | null;
+          fecha: string; // Single timestamp field
           tipo_registro: "entrada" | "salida";
           es_simulado?: boolean;
           fue_modificado?: boolean;
@@ -97,10 +95,9 @@ export interface Database {
         };
         Update: {
           id?: string;
-          usuario_id?: string;
-          fecha_entrada?: string;
-          fecha_salida?: string | null;
-          tipo_registro?: "entrada" | "salida";
+          usuario_id: string;
+          fecha: string; // Single timestamp field
+          tipo_registro: "entrada" | "salida";
           es_simulado?: boolean;
           fue_modificado?: boolean;
           fecha_ultima_modificacion?: string | null;

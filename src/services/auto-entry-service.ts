@@ -13,20 +13,20 @@ interface UserWorkSettings {
   id: string;
   usuarioId: string;
   horasDiarias: number;
-  horasViernes: number; // New field for Friday hours
+  horasViernes: number;
   horaEntradaMin: string;
   horaEntradaMax: string;
   horaSalidaMin: string;
   horaSalidaMax: string;
-  horaSalidaViernesMin: string; // New field for Friday end time
-  horaSalidaViernesMax: string; // New field for Friday end time
-  horaInicioDescanso: string; // Lunch break start
-  horaFinDescanso: string; // Lunch break end
-  duracionDescansoMin: number; // Minimum break duration in minutes
-  duracionDescansoMax: number; // Maximum break duration in minutes
+  horaSalidaViernesMin: string;
+  horaSalidaViernesMax: string;
+  horaInicioDescanso: string;
+  horaFinDescanso: string;
+  duracionDescansoMin: number;
+  duracionDescansoMax: number;
   diasLibres: string[];
   autoEntryEnabled: boolean;
-  includeLunchBreak: boolean; // New field to enable/disable lunch breaks
+  includeLunchBreak: boolean;
 }
 
 const CANARY_UTC_OFFSET = 1;
@@ -175,6 +175,7 @@ export class AutoEntryService {
 
     const randomMinutes =
       Math.floor(Math.random() * (maxMinutes - minMinutes + 1)) + minMinutes;
+
     const hours = Math.floor(randomMinutes / 60);
     const minutes = randomMinutes % 60;
 
@@ -197,21 +198,18 @@ export class AutoEntryService {
     settings: UserWorkSettings,
     baseDate: Date
   ): { lunchOutTime: Date; lunchInTime: Date } {
-    // Generate random lunch break start time within allowed window
     const lunchOutTime = this.generateRandomTime(
       settings.horaInicioDescanso,
       settings.horaFinDescanso,
       baseDate
     );
 
-    // Generate random break duration between min and max
     const breakDurationMinutes =
       Math.floor(
         Math.random() *
           (settings.duracionDescansoMax - settings.duracionDescansoMin + 1)
       ) + settings.duracionDescansoMin;
 
-    // Calculate lunch return time
     const lunchInTime = addMinutes(lunchOutTime, breakDurationMinutes);
 
     console.log(
@@ -246,9 +244,8 @@ export class AutoEntryService {
     }
 
     const existingRecords = await TimeRecordsService.getRecordsByUser(userId);
-
     const yesterdayRecords = existingRecords.filter((record) => {
-      const localRecordTime = addHours(record.fechaEntrada, CANARY_UTC_OFFSET);
+      const localRecordTime = addHours(record.fecha, CANARY_UTC_OFFSET);
       const recordDate = startOfDay(localRecordTime);
       const targetDate = startOfDay(yesterday);
       return recordDate.getTime() === targetDate.getTime();
@@ -261,7 +258,6 @@ export class AutoEntryService {
       await this.createDayEntries(userId, yesterday, settings);
     } else {
       console.log(`Yesterday already has ${yesterdayRecords.length} records`);
-      // Here you could add logic to validate existing records or fill gaps
     }
   }
 
@@ -279,14 +275,12 @@ export class AutoEntryService {
       })`
     );
 
-    // Generate morning entry time
     const entryTime = this.generateRandomTime(
       settings.horaEntradaMin,
       settings.horaEntradaMax,
       dayStart
     );
 
-    // Determine end time based on day of week
     const exitTime = isFriday
       ? this.generateRandomTime(
           settings.horaSalidaViernesMin,
@@ -301,66 +295,54 @@ export class AutoEntryService {
 
     const records: Array<Omit<any, "id">> = [];
 
-    // 1. Morning ENTRADA
     records.push({
       usuarioId: userId,
-      fechaEntrada: entryTime,
+      fecha: entryTime,
       tipoRegistro: "entrada",
       esSimulado: true,
     });
 
     if (settings.includeLunchBreak) {
-      // 2. Generate lunch break times
       const { lunchOutTime, lunchInTime } = this.generateLunchBreakTimes(
         settings,
         dayStart
       );
 
-      // 3. Lunch break SALIDA (temporary exit)
       records.push({
         usuarioId: userId,
-        fechaEntrada: entryTime, // Reference to morning entry
-        fechaSalida: lunchOutTime,
+        fecha: lunchOutTime,
         tipoRegistro: "salida",
         esSimulado: true,
       });
 
-      // 4. Lunch return ENTRADA
       records.push({
         usuarioId: userId,
-        fechaEntrada: lunchInTime,
+        fecha: lunchInTime,
         tipoRegistro: "entrada",
         esSimulado: true,
       });
 
-      // 5. Final SALIDA (end of day)
       records.push({
         usuarioId: userId,
-        fechaEntrada: lunchInTime, // Reference to afternoon entry
-        fechaSalida: exitTime,
+        fecha: exitTime,
         tipoRegistro: "salida",
         esSimulado: true,
       });
     } else {
-      // Simple workday without lunch break
       records.push({
         usuarioId: userId,
-        fechaEntrada: entryTime,
-        fechaSalida: exitTime,
+        fecha: exitTime,
         tipoRegistro: "salida",
         esSimulado: true,
       });
     }
 
     try {
-      // Create all records
       await TimeRecordsService.createMultipleRecords(records);
-
       const workType = isFriday ? "Friday (7h)" : "Regular (8h)";
       const breakType = settings.includeLunchBreak
         ? "with lunch break"
         : "simple";
-
       console.log(
         `Successfully created ${workType} workday ${breakType} for user ${userId} on ${format(
           date,
@@ -383,7 +365,7 @@ export class AutoEntryService {
     const { data: users, error } = await supabase
       .from("usuarios")
       .select("id, nombre")
-      .eq("is_active", true); // Only process active users
+      .eq("is_active", true);
 
     if (error) throw error;
     if (!users) return;

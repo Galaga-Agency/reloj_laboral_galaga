@@ -54,7 +54,6 @@ export function useTimeRecords(usuarioId: string): UseTimeRecordsReturn {
 
   const performAction = useCallback(
     async (action: "entrada" | "salida") => {
-      // Validate action
       const validation = ClockStateManager.canPerformAction(
         action,
         estadoActual
@@ -70,11 +69,10 @@ export function useTimeRecords(usuarioId: string): UseTimeRecordsReturn {
 
         // Create optimistic record
         const optimisticRecord: RegistroTiempo = {
-          id: "temp-" + Date.now(), // Temporary ID
+          id: "temp-" + Date.now(),
           usuarioId,
-          fechaEntrada: now,
+          fecha: now,
           tipoRegistro: action,
-          fechaSalida: action === "salida" ? now : undefined,
           esSimulado: false,
         };
 
@@ -85,9 +83,8 @@ export function useTimeRecords(usuarioId: string): UseTimeRecordsReturn {
 
         // Now do the server request in background
         const serverRecord = await TimeRecordsService.createRecord({
-          fechaEntrada: now,
+          fecha: now,
           tipoRegistro: action,
-          fechaSalida: action === "salida" ? now : undefined,
           esSimulado: false,
           usuarioId,
         });
@@ -127,7 +124,6 @@ export function useTimeRecords(usuarioId: string): UseTimeRecordsReturn {
     fetchRegistros();
   }, [fetchRegistros]);
 
-  // Get available actions based on current state
   const availableActions = ClockStateManager.getAvailableActions(estadoActual);
 
   return {
@@ -136,7 +132,7 @@ export function useTimeRecords(usuarioId: string): UseTimeRecordsReturn {
     tiempoTrabajado,
     availableActions,
     performAction,
-    isLoading: false, // Never show loading for button actions
+    isLoading: false,
     error,
     refetch: fetchRegistros,
   };

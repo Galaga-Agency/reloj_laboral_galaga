@@ -66,15 +66,7 @@ export function AdminPanel({ currentUser }: AdminPanelProps) {
       const records = await AdminService.getUserRecords(userId, range);
 
       const sortedRecords = records.sort((a, b) => {
-        const dateA =
-          a.tipoRegistro === "entrada"
-            ? a.fechaEntrada
-            : a.fechaSalida || a.fechaEntrada;
-        const dateB =
-          b.tipoRegistro === "entrada"
-            ? b.fechaEntrada
-            : b.fechaSalida || b.fechaEntrada;
-        return new Date(dateB).getTime() - new Date(dateA).getTime();
+        return new Date(b.fecha).getTime() - new Date(a.fecha).getTime();
       });
 
       setUserRecords(sortedRecords);

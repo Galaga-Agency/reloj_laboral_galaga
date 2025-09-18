@@ -1,7 +1,8 @@
+import { format } from "date-fns";
 import { RegistroTiempo } from "@/types";
 
 export interface DailyHours {
-  date: string; // YYYY-MM-DD
+  date: string; // YYYY-MM-DD (local)
   totalHours: number;
   records: RegistroTiempo[];
 }
@@ -12,9 +13,9 @@ export class DailyHoursCalculator {
   ): Map<string, DailyHours> {
     const dailyMap = new Map<string, DailyHours>();
 
-    // Group records by date
+    // Group by LOCAL date (avoid UTC shifting)
     records.forEach((record) => {
-      const dateStr = record.fechaEntrada.toISOString().split("T")[0];
+      const dateStr = format(record.fecha, "yyyy-MM-dd");
 
       if (!dailyMap.has(dateStr)) {
         dailyMap.set(dateStr, {
@@ -23,36 +24,36 @@ export class DailyHoursCalculator {
           records: [],
         });
       }
-
       dailyMap.get(dateStr)!.records.push(record);
     });
 
-    // Calculate hours for each day
-    dailyMap.forEach((dailyData, dateStr) => {
-      const dayRecords = dailyData.records.sort(
-        (a, b) => a.fechaEntrada.getTime() - b.fechaEntrada.getTime()
-      );
+    // Calculate hours per day
+    dailyMap.forEach((dailyData) => {
+      const dayRecords = dailyData.records
+        .slice()
+        .sort((a, b) => a.fecha.getTime() - b.fecha.getTime());
 
-      let totalHours = 0;
+      let totalSeconds = 0;
       let currentEntrada: Date | null = null;
 
       for (const record of dayRecords) {
         if (record.tipoRegistro === "entrada") {
-          currentEntrada = record.fechaEntrada;
-        } else if (
-          record.tipoRegistro === "salida" &&
-          currentEntrada &&
-          record.fechaSalida
-        ) {
-          const hours =
-            (record.fechaSalida.getTime() - currentEntrada.getTime()) /
-            (1000 * 60 * 60);
-          totalHours += Math.max(0, hours);
+          currentEntrada = record.fecha;
+        } else if (record.tipoRegistro === "salida" && currentEntrada) {
+          const seconds =
+            (record.fecha.getTime() - currentEntrada.getTime()) / 1000;
+          totalSeconds += Math.max(0, seconds);
           currentEntrada = null;
         }
       }
 
-      dailyData.totalHours = totalHours;
+      // Add paid 15-minute break if worked 6+ hours
+      const workedHours = totalSeconds / 3600;
+      if (workedHours >= 6) {
+        totalSeconds += 15 * 60;
+      }
+
+      dailyData.totalHours = totalSeconds / 3600;
     });
 
     return dailyMap;
@@ -62,6 +63,6 @@ export class DailyHoursCalculator {
     dateStr: string,
     dailyHoursMap: Map<string, DailyHours>
   ): number {
-    return dailyHoursMap.get(dateStr)?.totalHours || 0;
+    return dailyHoursMap.get(dateStr)?.totalHours ?? 0;
   }
 }

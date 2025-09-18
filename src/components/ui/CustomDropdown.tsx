@@ -137,7 +137,7 @@ export function CustomDropdown({
     if (variant === "dark") {
       return "bg-blanco/95 backdrop-blur-sm border border-hielo/30 rounded-xl shadow-2xl overflow-hidden";
     }
-    return "bg-blanco/95 backdrop-blur-sm border border-hielo/30 rounded-xl shadow-2xl overflow-hidden";
+    return "bg-blanco backdrop-blur-sm border border-hielo/30 rounded-xl shadow-2xl overflow-hidden";
   };
 
   const getOptionStyles = (option: DropdownOption) => {
@@ -201,9 +201,12 @@ export function CustomDropdown({
           />
 
           {/* Dropdown menu */}
-          <div className="absolute top-full left-0 right-0 mt-2 z-20">
+          <div className="absolute top-full left-0 right-0 mt-2 z-[999]">
             <div className={getDropdownMenuStyles()}>
-              <ul className="py-2 max-h-60 overflow-y-auto" role="listbox">
+              <ul
+                className="py-2 max-h-60 overflow-y-auto z-[999]"
+                role="listbox"
+              >
                 {options.map((option) => (
                   <li
                     key={option.value}

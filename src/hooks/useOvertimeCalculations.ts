@@ -9,13 +9,12 @@ export function useOvertimeCalculations(userId: string) {
 
   const getHoursForDate = useCallback(
     (targetDate: string, records: RegistroTiempo[]) => {
-      // targetDate format: "2025-09-16"
       const dayRecords = records
         .filter((record) => {
-          const recordDate = record.fechaEntrada.toISOString().split("T")[0];
+          const recordDate = record.fecha.toISOString().split("T")[0];
           return recordDate === targetDate;
         })
-        .sort((a, b) => a.fechaEntrada.getTime() - b.fechaEntrada.getTime());
+        .sort((a, b) => a.fecha.getTime() - b.fecha.getTime());
 
       if (dayRecords.length === 0) return 0;
 
@@ -24,14 +23,10 @@ export function useOvertimeCalculations(userId: string) {
 
       for (const record of dayRecords) {
         if (record.tipoRegistro === "entrada") {
-          currentEntrada = record.fechaEntrada;
-        } else if (
-          record.tipoRegistro === "salida" &&
-          currentEntrada &&
-          record.fechaSalida
-        ) {
+          currentEntrada = record.fecha;
+        } else if (record.tipoRegistro === "salida" && currentEntrada) {
           const hours =
-            (record.fechaSalida.getTime() - currentEntrada.getTime()) /
+            (record.fecha.getTime() - currentEntrada.getTime()) /
             (1000 * 60 * 60);
           totalHours += hours;
           currentEntrada = null;
@@ -49,7 +44,6 @@ export function useOvertimeCalculations(userId: string) {
     const today = new Date();
     const todayStr = today.toISOString().split("T")[0];
 
-    // Calculate this week (Monday to today)
     const weekStart = new Date(today);
     weekStart.setDate(today.getDate() - ((today.getDay() + 6) % 7));
 
@@ -59,7 +53,6 @@ export function useOvertimeCalculations(userId: string) {
       weeklyHours += getHoursForDate(dateStr, registros);
     }
 
-    // Calculate this month
     const monthStart = new Date(today.getFullYear(), today.getMonth(), 1);
     let monthlyHours = 0;
     for (let d = new Date(monthStart); d <= today; d.setDate(d.getDate() + 1)) {
@@ -74,12 +67,10 @@ export function useOvertimeCalculations(userId: string) {
     console.log(`This week: ${weeklyHours.toFixed(2)}h`);
     console.log(`This month: ${monthlyHours.toFixed(2)}h`);
 
-    // Calculate overtime for each period
     const dailyOvertime = Math.max(0, todayHours - 8);
     const weeklyOvertime = Math.max(0, weeklyHours - 40);
-    const monthlyOvertime = Math.max(0, monthlyHours - 40 * 4.33); // ~173h per month
+    const monthlyOvertime = Math.max(0, monthlyHours - 40 * 4.33);
 
-    // Only show if there's overtime in any period
     if (dailyOvertime === 0 && weeklyOvertime === 0 && monthlyOvertime === 0) {
       console.log("No overtime in any period - hiding alert");
       return null;

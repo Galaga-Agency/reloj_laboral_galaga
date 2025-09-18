@@ -121,7 +121,6 @@ export function HistorialTrabajo({
     }
   };
 
-  // Load corrections whenever registros change (mirrors UserRecordsList logic)
   useEffect(() => {
     const load = async () => {
       if (registros.length === 0) {
@@ -175,17 +174,7 @@ export function HistorialTrabajo({
 
   const registrosOrdenados = useMemo(() => {
     return [...registros].sort((a, b) => {
-      const timeA =
-        a.tipoRegistro === "salida" && a.fechaSalida
-          ? new Date(a.fechaSalida).getTime()
-          : new Date(a.fechaEntrada).getTime();
-
-      const timeB =
-        b.tipoRegistro === "salida" && b.fechaSalida
-          ? new Date(b.fechaSalida).getTime()
-          : new Date(b.fechaEntrada).getTime();
-
-      return timeB - timeA;
+      return new Date(b.fecha).getTime() - new Date(a.fecha).getTime();
     });
   }, [registros]);
 
@@ -206,8 +195,6 @@ export function HistorialTrabajo({
 
   const currentRange = getDateRange(filtroFecha);
 
-  // === helpers copied from the approach in UserRecordsList ===
-
   const getModificationInfo = (record: RegistroTiempo) => {
     const list = corrections.get(record.id) || [];
     const latest = list[0];
@@ -221,11 +208,8 @@ export function HistorialTrabajo({
     const recordCorrections = corrections.get(record.id);
     if (!recordCorrections || recordCorrections.length === 0) return null;
 
-    const fieldToFind =
-      record.tipoRegistro === "entrada" ? "fecha_entrada" : "fecha_salida";
-
     const correction = recordCorrections.find(
-      (c) => c.campoModificado === fieldToFind
+      (c) => c.campoModificado === "fecha"
     );
     if (!correction) return null;
 
@@ -251,7 +235,7 @@ export function HistorialTrabajo({
     const groups = new Map<string, RegistroTiempo[]>();
 
     registrosOrdenados.forEach((record) => {
-      const dateStr = record.fechaEntrada.toISOString().split("T")[0];
+      const dateStr = format(record.fecha, "yyyy-MM-dd");
       if (!groups.has(dateStr)) {
         groups.set(dateStr, []);
       }
@@ -389,7 +373,10 @@ export function HistorialTrabajo({
                         locale: es,
                       })}
                     </h3>
-                    <DailyOvertimeIndicator totalHours={totalHours} />
+                    <DailyOvertimeIndicator
+                      totalHours={totalHours}
+                      dateStr={date}
+                    />
                   </div>
 
                   {/* Records for this day */}
@@ -397,11 +384,10 @@ export function HistorialTrabajo({
                     {records.map((registro) => {
                       const { isModified, modifiedBy } =
                         getModificationInfo(registro);
-                      const displayTime =
-                        registro.tipoRegistro === "salida" &&
-                        registro.fechaSalida
-                          ? format(new Date(registro.fechaSalida), "HH:mm:ss")
-                          : format(new Date(registro.fechaEntrada), "HH:mm:ss");
+                      const displayTime = format(
+                        new Date(registro.fecha),
+                        "HH:mm:ss"
+                      );
 
                       return (
                         <div

@@ -2,4 +2,4 @@ export * from './usuario'
 export * from './tiempo'
 export * from './navegacion'
 export * from './database'
-export * from "./official-access-logs";
+export * from "./official-portal";

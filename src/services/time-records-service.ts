@@ -9,13 +9,12 @@ export class TimeRecordsService {
       .from("registros_tiempo")
       .insert({
         usuario_id: record.usuarioId,
-        fecha_entrada: record.fechaEntrada.toISOString(),
-        fecha_salida: record.fechaSalida?.toISOString() || null,
+        fecha: record.fecha.toISOString(),
         tipo_registro: record.tipoRegistro,
         es_simulado: record.esSimulado || false,
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
-      } as any)
+      })
       .select()
       .single();
 
@@ -26,10 +25,14 @@ export class TimeRecordsService {
     return {
       id: data.id,
       usuarioId: data.usuario_id,
-      fechaEntrada: new Date(data.fecha_entrada),
-      fechaSalida: data.fecha_salida ? new Date(data.fecha_salida) : undefined,
+      fecha: new Date(data.fecha),
       tipoRegistro: data.tipo_registro,
       esSimulado: data.es_simulado,
+      fueModificado: data.fue_modificado,
+      fechaUltimaModificacion: data.fecha_ultima_modificacion
+        ? new Date(data.fecha_ultima_modificacion)
+        : undefined,
+      modificadoPorAdmin: data.modificado_por_admin,
     };
   }
 
@@ -38,7 +41,7 @@ export class TimeRecordsService {
       .from("registros_tiempo")
       .select("*")
       .eq("usuario_id", userId)
-      .order("fecha_entrada", { ascending: false });
+      .order("fecha", { ascending: false });
 
     if (error) {
       throw new Error(`Error fetching time records: ${error.message}`);
@@ -49,12 +52,14 @@ export class TimeRecordsService {
     return data.map((record: any) => ({
       id: record.id,
       usuarioId: record.usuario_id,
-      fechaEntrada: new Date(record.fecha_entrada),
-      fechaSalida: record.fecha_salida
-        ? new Date(record.fecha_salida)
-        : undefined,
+      fecha: new Date(record.fecha),
       tipoRegistro: record.tipo_registro,
       esSimulado: record.es_simulado,
+      fueModificado: record.fue_modificado,
+      fechaUltimaModificacion: record.fecha_ultima_modificacion
+        ? new Date(record.fecha_ultima_modificacion)
+        : undefined,
+      modificadoPorAdmin: record.modificado_por_admin,
     }));
   }
 
@@ -63,8 +68,7 @@ export class TimeRecordsService {
   ): Promise<RegistroTiempo[]> {
     const recordsToInsert = records.map((record) => ({
       usuario_id: record.usuarioId,
-      fecha_entrada: record.fechaEntrada.toISOString(),
-      fecha_salida: record.fechaSalida?.toISOString() || null,
+      fecha: record.fecha.toISOString(),
       tipo_registro: record.tipoRegistro,
       es_simulado: record.esSimulado || false,
       created_at: new Date().toISOString(),
@@ -73,7 +77,7 @@ export class TimeRecordsService {
 
     const { data, error } = await supabase
       .from("registros_tiempo")
-      .insert(recordsToInsert as any)
+      .insert(recordsToInsert)
       .select();
 
     if (error) {
@@ -85,12 +89,14 @@ export class TimeRecordsService {
     return data.map((record: any) => ({
       id: record.id,
       usuarioId: record.usuario_id,
-      fechaEntrada: new Date(record.fecha_entrada),
-      fechaSalida: record.fecha_salida
-        ? new Date(record.fecha_salida)
-        : undefined,
+      fecha: new Date(record.fecha),
       tipoRegistro: record.tipo_registro,
       esSimulado: record.es_simulado,
+      fueModificado: record.fue_modificado,
+      fechaUltimaModificacion: record.fecha_ultima_modificacion
+        ? new Date(record.fecha_ultima_modificacion)
+        : undefined,
+      modificadoPorAdmin: record.modificado_por_admin,
     }));
   }
 
@@ -101,7 +107,7 @@ export class TimeRecordsService {
       .from("registros_tiempo")
       .select("*")
       .eq("usuario_id", userId)
-      .order("fecha_entrada", { ascending: false })
+      .order("fecha", { ascending: false })
       .limit(1)
       .single();
 
@@ -115,10 +121,14 @@ export class TimeRecordsService {
     return {
       id: data.id,
       usuarioId: data.usuario_id,
-      fechaEntrada: new Date(data.fecha_entrada),
-      fechaSalida: data.fecha_salida ? new Date(data.fecha_salida) : undefined,
+      fecha: new Date(data.fecha),
       tipoRegistro: data.tipo_registro,
       esSimulado: data.es_simulado,
+      fueModificado: data.fue_modificado,
+      fechaUltimaModificacion: data.fecha_ultima_modificacion
+        ? new Date(data.fecha_ultima_modificacion)
+        : undefined,
+      modificadoPorAdmin: data.modificado_por_admin,
     };
   }
 
@@ -127,12 +137,13 @@ export class TimeRecordsService {
     startDate: Date,
     endDate: Date
   ): Promise<RegistroTiempo[]> {
-    // Get ALL records for the user and filter in memory to handle both fecha_entrada and fecha_salida
     const { data, error } = await supabase
       .from("registros_tiempo")
       .select("*")
       .eq("usuario_id", userId)
-      .order("fecha_entrada", { ascending: false });
+      .gte("fecha", startDate.toISOString())
+      .lte("fecha", endDate.toISOString())
+      .order("fecha", { ascending: false });
 
     if (error) {
       throw new Error(
@@ -142,25 +153,17 @@ export class TimeRecordsService {
 
     if (!data) return [];
 
-    const allRecords = data.map((record: any) => ({
+    return data.map((record: any) => ({
       id: record.id,
       usuarioId: record.usuario_id,
-      fechaEntrada: new Date(record.fecha_entrada),
-      fechaSalida: record.fecha_salida
-        ? new Date(record.fecha_salida)
-        : undefined,
+      fecha: new Date(record.fecha),
       tipoRegistro: record.tipo_registro,
       esSimulado: record.es_simulado,
+      fueModificado: record.fue_modificado,
+      fechaUltimaModificacion: record.fecha_ultima_modificacion
+        ? new Date(record.fecha_ultima_modificacion)
+        : undefined,
+      modificadoPorAdmin: record.modificado_por_admin,
     }));
-
-    // Filter records where the ACTION happened within the date range
-    return allRecords.filter((record) => {
-      const actionDate =
-        record.tipoRegistro === "salida" && record.fechaSalida
-          ? record.fechaSalida
-          : record.fechaEntrada;
-
-      return actionDate >= startDate && actionDate <= endDate;
-    });
   }
 }

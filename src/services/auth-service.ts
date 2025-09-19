@@ -44,7 +44,12 @@ export class AuthService {
       firstLogin: userRecord.first_login,
       isAdmin: userRecord.is_admin,
       isActive: userRecord.is_active ?? true,
-      role: userRecord.role
+      role: userRecord.role,
+      gdprConsentGiven: userRecord.gdpr_consent_given ?? false,
+      gdprConsentDate: userRecord.gdpr_consent_date,
+      emailNotificationsConsent: userRecord.email_notifications_consent ?? false,
+      geolocationConsent: userRecord.geolocation_consent ?? false,
+      consentVersion: userRecord.consent_version
     };
   }
 
@@ -147,7 +152,12 @@ export class AuthService {
           firstLogin: userRecord.first_login,
           isAdmin: userRecord.is_admin,
           isActive: userRecord.is_active ?? true,
-          role: userRecord.role
+          role: userRecord.role,
+          gdprConsentGiven: userRecord.gdpr_consent_given ?? false,
+          gdprConsentDate: userRecord.gdpr_consent_date,
+          emailNotificationsConsent: userRecord.email_notifications_consent ?? false,
+          geolocationConsent: userRecord.geolocation_consent ?? false,
+          consentVersion: userRecord.consent_version
         };
 
         console.log("Returning user:", result);

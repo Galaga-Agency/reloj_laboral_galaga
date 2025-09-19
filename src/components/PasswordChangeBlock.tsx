@@ -10,24 +10,36 @@ interface PasswordChangeBlockProps {
 }
 
 export function PasswordChangeBlock({ onMessage }: PasswordChangeBlockProps) {
-  const [showPasswordChange, setShowPasswordChange] = useState(false);
   const [passwordData, setPasswordData] = useState({
     current: "",
     new: "",
     confirm: "",
   });
   const [passwordError, setPasswordError] = useState<string>("");
+  const [localMessage, setLocalMessage] = useState<{
+    type: "success" | "error";
+    text: string;
+  } | null>(null);
 
   const changePassword = async () => {
     setPasswordError("");
+    setLocalMessage(null);
 
     if (passwordData.new !== passwordData.confirm) {
       setPasswordError("Las contraseñas no coinciden");
+      onMessage({
+        type: "error",
+        text: "Las contraseñas no coinciden",
+      });
       return;
     }
 
     if (passwordData.new.length < 6) {
       setPasswordError("La contraseña debe tener al menos 6 caracteres");
+      onMessage({
+        type: "error",
+        text: "La contraseña debe tener al menos 6 caracteres",
+      });
       return;
     }
 
@@ -38,15 +50,24 @@ export function PasswordChangeBlock({ onMessage }: PasswordChangeBlockProps) {
 
       if (error) throw error;
 
-      onMessage({
-        type: "success",
+      const successMessage = {
+        type: "success" as const,
         text: "Contraseña actualizada correctamente",
-      });
+      };
+
+      setLocalMessage(successMessage);
+      onMessage(successMessage);
       setPasswordData({ current: "", new: "", confirm: "" });
-      setShowPasswordChange(false);
+      
+      setTimeout(() => setLocalMessage(null), 3000);
     } catch (error) {
       console.error("Error changing password:", error);
-      setPasswordError("Error cambiando contraseña");
+      const errorMessage = "Error cambiando contraseña";
+      setPasswordError(errorMessage);
+      onMessage({
+        type: "error",
+        text: errorMessage,
+      });
     }
   };
 
@@ -58,56 +79,67 @@ export function PasswordChangeBlock({ onMessage }: PasswordChangeBlockProps) {
           Cambiar Contraseña
         </h2>
       </div>
-        <div className="flex flex-col gap-4">
-          <CustomInput
-            label="Nueva contraseña"
-            type="password"
-            value={passwordData.new}
-            onChange={(e) =>
-              setPasswordData((prev) => ({ ...prev, new: e.target.value }))
-            }
-            placeholder="Mínimo 6 caracteres"
-            error={
-              passwordError && passwordData.new ? passwordError : undefined
-            }
-          />
-
-          <CustomInput
-            label="Confirmar contraseña"
-            type="password"
-            value={passwordData.confirm}
-            onChange={(e) =>
-              setPasswordData((prev) => ({
-                ...prev,
-                confirm: e.target.value,
-              }))
-            }
-            placeholder="Repite la nueva contraseña"
-            error={
-              passwordError && passwordData.confirm ? passwordError : undefined
-            }
-          />
-
-          <div className="flex flex-col md:flex-row gap-2">
-            <PrimaryButton
-              onClick={changePassword}
-              disabled={!passwordData.new || !passwordData.confirm}
-              className="flex-1"
-            >
-              Actualizar <span className="hidden md:block">Contraseña</span>
-            </PrimaryButton>
-            <SecondaryButton
-              onClick={() => {
-                setShowPasswordChange(false);
-                setPasswordData({ current: "", new: "", confirm: "" });
-                setPasswordError("");
-              }}
-              className="px-4 py-2 flex-1"
-            >
-              Cancelar
-            </SecondaryButton>
-          </div>
+      
+      {localMessage && (
+        <div className={`mb-4 p-3 rounded-lg ${
+          localMessage.type === "success" 
+            ? "bg-green-100 text-green-800 border border-green-200" 
+            : "bg-red-100 text-red-800 border border-red-200"
+        }`}>
+          {localMessage.text}
         </div>
+      )}
+
+      <div className="flex flex-col gap-4">
+        <CustomInput
+          label="Nueva contraseña"
+          type="password"
+          value={passwordData.new}
+          onChange={(e) =>
+            setPasswordData((prev) => ({ ...prev, new: e.target.value }))
+          }
+          placeholder="Mínimo 6 caracteres"
+          error={
+            passwordError && passwordData.new ? passwordError : undefined
+          }
+        />
+
+        <CustomInput
+          label="Confirmar contraseña"
+          type="password"
+          value={passwordData.confirm}
+          onChange={(e) =>
+            setPasswordData((prev) => ({
+              ...prev,
+              confirm: e.target.value,
+            }))
+          }
+          placeholder="Repite la nueva contraseña"
+          error={
+            passwordError && passwordData.confirm ? passwordError : undefined
+          }
+        />
+
+        <div className="flex flex-col md:flex-row gap-2">
+          <PrimaryButton
+            onClick={changePassword}
+            disabled={!passwordData.new || !passwordData.confirm}
+            className="flex-1"
+          >
+            Actualizar <span className="hidden md:block">Contraseña</span>
+          </PrimaryButton>
+          <SecondaryButton
+            onClick={() => {
+              setPasswordData({ current: "", new: "", confirm: "" });
+              setPasswordError("");
+              setLocalMessage(null);
+            }}
+            className="px-4 py-2 flex-1"
+          >
+            Cancelar
+          </SecondaryButton>
+        </div>
+      </div>
     </div>
   );
 }

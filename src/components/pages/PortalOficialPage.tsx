@@ -97,7 +97,6 @@ export function PortalOficialPage({
 
       OfficialPortalService.downloadCSV(csvContent, filename);
 
-      // ✅ log export
       await OfficialPortalService.logAccess(usuario.id, "export", {
         action: "export_csv",
         format: "csv",

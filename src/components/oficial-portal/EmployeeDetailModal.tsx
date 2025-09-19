@@ -21,7 +21,7 @@ interface EmployeeDetailModalProps {
   employeeId: string;
   isOpen: boolean;
   onClose: () => void;
-  selectedRange: any; // can be "thismonth" or {value,label}
+  selectedRange: string;
 }
 
 export function EmployeeDetailModal({
@@ -36,12 +36,6 @@ export function EmployeeDetailModal({
     "overview" | "records" | "corrections" | "reports"
   >("overview");
 
-  // normalize initial range
-  const initialRangeKey: string =
-    typeof selectedRange === "string"
-      ? selectedRange
-      : selectedRange?.value ?? "all";
-
   const dateRangeOptions = [
     { value: "thisweek", label: "Esta Semana" },
     { value: "thismonth", label: "Este Mes" },
@@ -51,15 +45,23 @@ export function EmployeeDetailModal({
     { value: "all", label: "Todo el Historial" },
   ];
 
-  const [rangeKey, setRangeKey] = useState<string>(initialRangeKey);
+  const [rangeKey, setRangeKey] = useState<string>("");
+
   const rangeLabel = useMemo(
     () =>
       dateRangeOptions.find((o) => o.value === rangeKey)?.label ?? "Período",
     [rangeKey]
   );
 
+  // Initialize rangeKey when modal opens
   useEffect(() => {
-    if (isOpen && employeeId) {
+    if (isOpen && selectedRange) {
+      setRangeKey(selectedRange);
+    }
+  }, [isOpen, selectedRange]);
+
+  useEffect(() => {
+    if (isOpen && employeeId && rangeKey) {
       fetchEmployeeDetail(rangeKey);
     }
   }, [isOpen, employeeId, rangeKey]);
@@ -79,7 +81,6 @@ export function EmployeeDetailModal({
     }
   };
 
-  // compute overview stats from the RANGE-FILTERED punches the service returns
   function computeSelectedStats() {
     if (!employee?.timeRecords) {
       return {
@@ -205,7 +206,7 @@ export function EmployeeDetailModal({
                     options={dateRangeOptions}
                     value={rangeKey}
                     onChange={setRangeKey}
-                    placeholder={selectedRange}
+                    placeholder="Seleccionar período..."
                     variant="light"
                   />
                 </div>
@@ -218,7 +219,7 @@ export function EmployeeDetailModal({
                 <div className="bg-hielo/20 rounded-xl p-4">
                   <h3 className="text-lg font-semibold text-azul-profundo mb-4 flex items-center gap-2">
                     <FiCalendar className="w-5 h-5" />
-                    Resumen — {selectedRange}
+                    Resumen — {rangeLabel}
                   </h3>
                   <div className="grid grid-cols-2 gap-4">
                     <div className="bg-white/60 rounded-xl p-4">
@@ -259,7 +260,6 @@ export function EmployeeDetailModal({
 
               {activeTab === "records" && (
                 <div className="space-y-6">
-                  {/* Title + EXPORT BUTTON */}
                   <div className="flex items-center justify-between">
                     <h3 className="text-lg font-semibold text-azul-profundo">
                       Registros de Tiempo — {rangeLabel}

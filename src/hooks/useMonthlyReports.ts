@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import type { Usuario } from "@/types";
 import {
   MonthlyReportsService,
@@ -15,15 +15,21 @@ interface UseMonthlyReportsReturn {
   refetch: () => Promise<void>;
 }
 
-export function useMonthlyReports(usuario: Usuario): UseMonthlyReportsReturn {
+export function useMonthlyReports(usuario: Usuario | null): UseMonthlyReportsReturn {
   const [reportStatus, setReportStatus] = useState<MonthlyReportStatus | null>(
     null
   );
-  const [isLoading, setIsLoading] = useState(true);
+  const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [showModal, setShowModal] = useState(false);
 
-  const fetchReportStatus = async () => {
+  const fetchReportStatus = useCallback(async () => {
+    if (!usuario?.id) {
+      setIsLoading(false);
+      return;
+    }
+
+    setIsLoading(true);
     try {
       setError(null);
 
@@ -45,9 +51,9 @@ export function useMonthlyReports(usuario: Usuario): UseMonthlyReportsReturn {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [usuario?.id]);
 
-  const handleAcceptReport = () => {
+  const handleAcceptReport = useCallback(() => {
     setShowModal(false);
     if (reportStatus) {
       setReportStatus({
@@ -62,18 +68,16 @@ export function useMonthlyReports(usuario: Usuario): UseMonthlyReportsReturn {
           : undefined,
       });
     }
-  };
+  }, [reportStatus]);
 
-  const handleCloseModal = () => {
+  const handleCloseModal = useCallback(() => {
     // Modal cannot be closed until report is handled
     console.warn("Monthly report must be reviewed before closing");
-  };
+  }, []);
 
   useEffect(() => {
-    if (usuario?.id) {
-      fetchReportStatus();
-    }
-  }, [usuario?.id]);
+    fetchReportStatus();
+  }, [fetchReportStatus]);
 
   return {
     reportStatus,

@@ -1,21 +1,52 @@
 import type { Usuario } from "@/types";
-import { useNavigate } from "react-router-dom";
 import { useGSAPAnimations } from "@/hooks/useGSAPAnimations";
 import { LoginForm } from "@/components/forms/LoginForm";
 import { initEntranceAnimation } from "@/utils/animations/entrance-animations";
+import { GDPRConsentPage } from "@/components/pages/GDPRConsentPage";
+import { PasswordUpdatePage } from "@/components/pages/PasswordUpdatePage";
+import { useState } from "react";
+
+type LoginStep = 'login' | 'password-update' | 'gdpr-consent' | 'complete';
 
 export function LoginPage() {
-  const navigate = useNavigate();
+  const [currentStep, setCurrentStep] = useState<LoginStep>('login');
+  const [currentUser, setCurrentUser] = useState<Usuario | null>(null);
 
   useGSAPAnimations({ animations: [initEntranceAnimation], delay: 100 });
 
   const handleLogin = (usuario: Usuario) => {
+    setCurrentUser(usuario);
+    
     if (usuario.firstLogin) {
-      navigate("/actualizar-contrasena");
+      setCurrentStep('password-update');
+    } else if (!usuario.gdprConsentGiven) {
+      setCurrentStep('gdpr-consent');
     } else {
-      navigate("/panel");
+      // Navigate to main panel
+      window.location.href = '/panel';
     }
   };
+
+  const handlePasswordUpdated = () => {
+    if (currentUser && !currentUser.gdprConsentGiven) {
+      setCurrentStep('gdpr-consent');
+    } else {
+      window.location.href = '/panel';
+    }
+  };
+
+  const handleGDPRConsentComplete = () => {
+    window.location.href = '/panel';
+  };
+
+  // Render different steps
+  if (currentStep === 'password-update' && currentUser) {
+    return <PasswordUpdatePage usuario={currentUser} onComplete={handlePasswordUpdated} />;
+  }
+
+  if (currentStep === 'gdpr-consent' && currentUser) {
+    return <GDPRConsentPage usuario={currentUser} onConsentComplete={handleGDPRConsentComplete} />;
+  }
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-azul-profundo to-teal relative">
@@ -26,7 +57,7 @@ export function LoginPage() {
           alt="Galaga Agency"
           className="absolute top-6 left-6 w-32 md:w-40 h-auto fade-down opacity-0"
         />
-
+        
         <div
           className="flex flex-col gap-8 text-center"
           style={{ width: "clamp(320px, 90vw, 600px)" }}

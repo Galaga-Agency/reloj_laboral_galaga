@@ -367,7 +367,7 @@ export function HistorialTrabajo({
               recordsByDate.map(({ date, records, totalHours }) => (
                 <div key={date} className="mb-4">
                   {/* Daily Header */}
-                  <div className="flex items-center justify-between mb-2 px-2">
+                  <div className="flex flex-col md:flex-row md:items-center justify-between mb-2 px-2">
                     <h3 className="font-medium text-azul-profundo">
                       {format(new Date(date + "T00:00:00"), "PPP", {
                         locale: es,
@@ -392,48 +392,44 @@ export function HistorialTrabajo({
                       return (
                         <div
                           key={registro.id}
-                          className={`relative p-4 rounded-lg border transition-colors duration-200 flex flex-col gap-3 md:flex-row md:items-center md:justify-between bg-hielo/20 border-hielo/50 hover:bg-hielo/30`}
+                          className="relative p-4 rounded-lg border transition-colors duration-200 bg-hielo/20 border-hielo/50 hover:bg-hielo/30"
                         >
-                          {/* Left side: icon + labels */}
-                          <div className="w-full md:flex-1 flex items-start gap-4 md:items-center">
-                            <div className="flex items-center justify-center w-8 h-8 rounded-full bg-blanco/80 flex-shrink-0">
-                              {TimeRecordsUtils.getTypeIcon(
-                                registro.tipoRegistro
-                              )}
-                            </div>
-                            <div className="flex flex-col gap-1">
-                              <div className="flex items-center gap-2">
-                                <span className="font-medium text-azul-profundo">
-                                  {TimeRecordsUtils.getTypeText(
-                                    registro.tipoRegistro
-                                  )}
-                                </span>
-                              </div>
-                            </div>
-                          </div>
-
-                          {/* Right side: time + original */}
-                          <div className="w-full md:w-auto text-center md:text-right">
-                            {isModified ? (
-                              <div className="flex flex-col items-center md:items-end gap-1">
-                                <div className="font-mono font-bold text-azul-profundo">
-                                  {displayTime}
-                                </div>
-                                {getOriginalTime(registro) && (
-                                  <div className="text-[12px] text-yellow-700/80">
-                                    Original: {getOriginalTime(registro)}
-                                  </div>
+                          <div className="flex items-center justify-between">
+                            {/* Left: Icon + Type */}
+                            <div className="flex items-center gap-3">
+                              <div className="flex items-center justify-center w-10 h-10 rounded-full bg-blanco/80 flex-shrink-0">
+                                {TimeRecordsUtils.getTypeIcon(
+                                  registro.tipoRegistro
                                 )}
-                                <div className="inline-flex items-center gap-1 text-xs text-yellow-700/80">
-                                  <FiAlertCircle className="w-3 h-3 flex-shrink-0" />
-                                  Modificado por {modifiedBy}
-                                </div>
                               </div>
-                            ) : (
-                              <div className="font-mono font-bold text-azul-profundo">
+                              <span className="font-medium text-azul-profundo text-left">
+                                {TimeRecordsUtils.getTypeText(
+                                  registro.tipoRegistro
+                                )}
+                              </span>
+                            </div>
+
+                            {/* Right: Time info */}
+                            <div className="text-right">
+                              <div className="font-mono font-bold text-azul-profundo text-lg">
                                 {displayTime}
                               </div>
-                            )}
+                              {isModified && (
+                                <div className="mt-1 space-y-1">
+                                  {getOriginalTime(registro) && (
+                                    <div className="text-xs text-yellow-700/80">
+                                      Original: {getOriginalTime(registro)}
+                                    </div>
+                                  )}
+                                  <div className="flex items-center justify-end gap-1 text-xs text-yellow-700/80">
+                                    <FiAlertCircle className="w-3 h-3 flex-shrink-0" />
+                                    <span className="truncate">
+                                      Modificado por {modifiedBy}
+                                    </span>
+                                  </div>
+                                </div>
+                              )}
+                            </div>
                           </div>
                         </div>
                       );

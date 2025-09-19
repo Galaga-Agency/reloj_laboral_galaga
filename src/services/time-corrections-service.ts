@@ -35,9 +35,6 @@ const CAMPO_MODIFICADO = {
 } as const;
 
 export class TimeCorrectionsService {
-  /**
-   * Get corrections for multiple records (for PDF reports)
-   */
   static async getCorrectionsForRecords(
     recordIds: string[]
   ): Promise<Map<string, TimeCorrection[]>> {
@@ -82,14 +79,10 @@ export class TimeCorrectionsService {
     return correctionsMap;
   }
 
-  /**
-   * Apply a time correction to an existing record
-   */
   static async applyCorrection(
     request: CorrectionRequest
   ): Promise<{ success: boolean; correctionId?: string; error?: string }> {
     try {
-      // 1. Get the current record
       const { data: currentRecord, error: fetchError } = await supabase
         .from("registros_tiempo")
         .select("*")
@@ -100,7 +93,6 @@ export class TimeCorrectionsService {
         return { success: false, error: "Record not found" };
       }
 
-      // 2. Get admin user details
       const { data: adminUser, error: adminError } = await supabase
         .from("usuarios")
         .select("nombre, is_admin")
@@ -114,7 +106,6 @@ export class TimeCorrectionsService {
         };
       }
 
-      // 3. Prepare the updates and audit records
       const updates: any = {
         updated_at: new Date().toISOString(),
         fue_modificado: true,
@@ -123,7 +114,6 @@ export class TimeCorrectionsService {
       };
       const auditRecords: Omit<TimeCorrection, "id">[] = [];
 
-      // Track each change for audit
       if (request.changes.fecha) {
         const oldValue = new Date(currentRecord.fecha).toISOString();
         const newValue = request.changes.fecha.toISOString();
@@ -168,7 +158,6 @@ export class TimeCorrectionsService {
         return { success: false, error: "No changes specified" };
       }
 
-      // 4. Update the main record
       console.log("Updating record with:", updates);
       const { error: updateError } = await supabase
         .from("registros_tiempo")
@@ -185,7 +174,6 @@ export class TimeCorrectionsService {
 
       console.log("Record updated successfully");
 
-      // 5. Insert audit records
       const { data: auditData, error: auditError } = await supabase
         .from("time_corrections")
         .insert(
@@ -203,8 +191,7 @@ export class TimeCorrectionsService {
             user_agent: record.userAgent,
           }))
         )
-        .select()
-        .single();
+        .select();
 
       if (auditError) {
         console.error("Failed to create audit record:", auditError);
@@ -216,7 +203,7 @@ export class TimeCorrectionsService {
 
       return {
         success: true,
-        correctionId: auditData?.id,
+        correctionId: auditData?.[0]?.id,
       };
     } catch (error) {
       console.error("Error applying time correction:", error);
@@ -227,9 +214,6 @@ export class TimeCorrectionsService {
     }
   }
 
-  /**
-   * Get all corrections for a specific record
-   */
   static async getRecordCorrections(
     recordId: string
   ): Promise<TimeCorrection[]> {
@@ -259,9 +243,6 @@ export class TimeCorrectionsService {
     }));
   }
 
-  /**
-   * Get all corrections for a specific user within a date range
-   */
   static async getUserCorrections(
     userId: string,
     startDate?: Date,
@@ -303,9 +284,6 @@ export class TimeCorrectionsService {
     }));
   }
 
-  /**
-   * Get admin correction statistics
-   */
   static async getAdminCorrectionStats(adminId: string): Promise<{
     totalCorrections: number;
     thisMonth: number;

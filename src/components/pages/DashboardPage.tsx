@@ -52,33 +52,6 @@ export function DashboardPage({ usuario, onLogout }: DashboardPageProps) {
       : []),
   ];
 
-  const renderTabContent = () => {
-    switch (vistaActual) {
-      case "reloj":
-        return (
-          <RelojPrincipal
-            usuario={usuario}
-            estadoActual={estadoActual}
-            onStatusChange={refetch}
-          />
-        );
-      case "historial":
-        return <HistorialTrabajo usuarioId={usuario.id} onRefresh={refetch} />;
-      case "configuracion":
-        return <WorkSettings usuario={usuario} registros={registros} />;
-      case "admin":
-        return usuario.isAdmin ? <AdminPanel currentUser={usuario} /> : null;
-      default:
-        return (
-          <RelojPrincipal
-            usuario={usuario}
-            estadoActual={estadoActual}
-            onStatusChange={refetch}
-          />
-        );
-    }
-  };
-
   const { overtimeData } = useOvertimeCalculations(usuario.id);
 
   return (
@@ -104,7 +77,22 @@ export function DashboardPage({ usuario, onLogout }: DashboardPageProps) {
       <main className="flex-1 w-full px-4 py-8">
         <div className="flex justify-center">
           <div className="w-full" style={{ maxWidth: "80rem" }}>
-            {renderTabContent()}
+            {vistaActual === "reloj" && (
+              <RelojPrincipal
+                usuario={usuario}
+                estadoActual={estadoActual}
+                onStatusChange={refetch}
+              />
+            )}
+            {vistaActual === "historial" && (
+              <HistorialTrabajo usuarioId={usuario.id} onRefresh={refetch} />
+            )}
+            {vistaActual === "configuracion" && (
+              <WorkSettings usuario={usuario} registros={registros} />
+            )}
+            {vistaActual === "admin" && usuario.isAdmin && (
+              <AdminPanel currentUser={usuario} />
+            )}
           </div>
         </div>
       </main>

@@ -6,6 +6,11 @@ export interface Usuario {
   isAdmin: boolean;
   isActive: boolean;
   role: "employee" | "official";
+    gdprConsentGiven?: boolean;
+  gdprConsentDate?: string;
+  emailNotificationsConsent?: boolean;
+  geolocationConsent?: boolean;
+  consentVersion?: string;
 }
 
 export interface OfficialUser {

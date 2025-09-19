@@ -427,16 +427,22 @@ export function EmployeeDetailModal({
                             <span className="text-sm text-azul-profundo/60">
                               {format(
                                 new Date(correction.fechaCorreccion),
-                                "dd/MM/yyyy HH:mm",
+                                "d 'de' MMMM yyyy 'a las' HH:mm",
                                 { locale: es }
                               )}
                             </span>
                           </div>
                           <div className="text-sm text-azul-profundo/80 mb-2">
                             <span className="text-red-600">Anterior:</span>{" "}
-                            {correction.valorAnterior} →{" "}
+                            {correction.valorAnterior?.includes('T') ? 
+                              format(new Date(correction.valorAnterior), "dd/MM/yyyy HH:mm", { locale: es }) : 
+                              correction.valorAnterior
+                            } →{" "}
                             <span className="text-green-600">Nuevo:</span>{" "}
-                            {correction.valorNuevo}
+                            {correction.valorNuevo?.includes('T') ? 
+                              format(new Date(correction.valorNuevo), "dd/MM/yyyy HH:mm", { locale: es }) : 
+                              correction.valorNuevo
+                            }
                           </div>
                           <div className="text-sm text-azul-profundo/60">
                             <strong>Razón:</strong> {correction.razon}

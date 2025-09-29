@@ -31,8 +31,12 @@ export function useAbsenceStatistics(startDate: Date, endDate: Date) {
     setIsLoading(true);
     setError(null);
     try {
-      const absences = await AbsenceService.getAllAbsences(startDate, endDate);
-      const calculatedStats = AbsenceStatisticsCalculator.calculate(absences);
+      const absences = await AbsenceService.getAllAbsences(
+        startDate,
+        endDate,
+        true
+      );
+      const calculatedStats = AbsenceStatisticsCalculator.calculate(absences, {});
       setStats(calculatedStats);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Error loading statistics");

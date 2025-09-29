@@ -302,7 +302,7 @@ export function AdminAbsenceStatistics() {
                     <div className="flex items-center justify-between mb-2">
                       <span className="text-white font-medium text-sm">
                         {index + 1}.{" "}
-                        {AbsenceStatisticsCalculator.getTypeLabel(type.tipo)}
+                        {AbsenceStatisticsCalculator.getReasonLabel(type.tipo)}
                       </span>
                       <span className="text-orange-400 font-bold">
                         {type.percentage}%

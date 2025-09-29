@@ -38,7 +38,7 @@ export function DashboardPage({ usuario, onLogout }: DashboardPageProps) {
     },
     {
       id: "configuracion" as const,
-      label: "Config",
+      label: "Ajustes",
       icon: <FiSettings className="w-5 h-5" />,
     },
     ...(usuario.isAdmin
@@ -85,7 +85,7 @@ export function DashboardPage({ usuario, onLogout }: DashboardPageProps) {
               />
             )}
             {vistaActual === "historial" && (
-              <HistorialTrabajo usuarioId={usuario.id} onRefresh={refetch} />
+              <HistorialTrabajo usuarioId={usuario.id} onRefresh={refetch}  currentUser={usuario}/>
             )}
             {vistaActual === "configuracion" && (
               <WorkSettings usuario={usuario} registros={registros} />

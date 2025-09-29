@@ -164,7 +164,6 @@ export function UserRecordsList({
                       key={record.id}
                       className="relative group p-4 rounded-lg border transition-all hover:bg-white/10 bg-white/5 border-white/10"
                     >
-                      {/* Mobile: Stacked layout */}
                       <div className="md:hidden">
                         <div className="flex items-center justify-between mb-3">
                           <div className="flex items-center gap-3">
@@ -214,7 +213,6 @@ export function UserRecordsList({
                         )}
                       </div>
 
-                      {/* Desktop: Single row layout */}
                       <div className="hidden md:flex items-center justify-between">
                         <div className="flex items-center gap-3 flex-1">
                           <div className="flex items-center justify-center w-10 h-10 rounded-full bg-white/20 flex-shrink-0">
@@ -282,7 +280,7 @@ export function UserRecordsList({
         }}
         record={selectedRecord}
         user={selectedUser}
-        currentAdmin={currentAdmin}
+        currentUser={currentAdmin}
         onSuccess={handleCorrectionSuccess}
       />
     </>

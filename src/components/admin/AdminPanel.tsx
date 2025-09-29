@@ -6,6 +6,7 @@ import { UserRecordsList } from "@/components/admin/UserRecordsList";
 import { AdminSystemDocumentation } from "../AdminSystemDocs";
 import { AdminUserReports } from "@/components/AdminUserReports";
 import { AdminAbsencesPanel } from "@/components/admin/AdminAbsencesPanel";
+import { PendingChangesPanel } from "@/components/admin/PendingChangesPanel";
 import { useSecretSequence } from "@/hooks/useSecretSequence";
 import {
   FiUsers,
@@ -15,15 +16,24 @@ import {
   FiClock,
   FiTrendingUp,
   FiCalendar,
+  FiBell,
 } from "react-icons/fi";
 import { AbsenceService } from "@/services/absence-service";
+import { TimeCorrectionsService } from "@/services/time-corrections-service";
 
 interface AdminPanelProps {
   currentUser: Usuario;
 }
 
-type AdminView = "users" | "absences";
-type AbsenceSubView = "pending" | "statistics" | "calendar" | "workers";
+type AdminView = "users" | "absences" | "pending-changes";
+
+type AbsenceSubView =
+  | "pending"
+  | "statistics"
+  | "calendar"
+  | "workers"
+  | "holidays"
+  | "days-off";
 
 export function AdminPanel({ currentUser }: AdminPanelProps) {
   const [activeView, setActiveView] = useState<AdminView>("users");
@@ -42,8 +52,9 @@ export function AdminPanel({ currentUser }: AdminPanelProps) {
     text: string;
   } | null>(null);
   const [pendingAbsencesCount, setPendingAbsencesCount] = useState(0);
+  const [pendingChangesCount, setPendingChangesCount] = useState(0);
 
-  const { isUnlocked, progress, totalSteps, lock } = useSecretSequence({
+  const { isUnlocked, lock } = useSecretSequence({
     sequence: ["s", "e", "c", "r", "e", "t"],
     resetTimeout: 5000,
     onSequenceComplete: () => {
@@ -56,10 +67,26 @@ export function AdminPanel({ currentUser }: AdminPanelProps) {
   });
 
   useEffect(() => {
+    loadPendingCounts();
+  }, []);
+
+  useEffect(() => {
     if (activeView === "absences") {
       loadPendingAbsencesCount();
     }
   }, [activeView]);
+
+  const loadPendingCounts = async () => {
+    try {
+      const [absencesCount, changesCount] = await Promise.all([
+        loadPendingAbsencesCount(),
+        TimeCorrectionsService.getPendingChangesCount(),
+      ]);
+      setPendingChangesCount(changesCount);
+    } catch (error) {
+      console.error("Error loading pending counts:", error);
+    }
+  };
 
   const loadPendingAbsencesCount = async () => {
     try {
@@ -70,8 +97,10 @@ export function AdminPanel({ currentUser }: AdminPanelProps) {
       );
       const pending = absences.filter((a) => a.estado === "pendiente").length;
       setPendingAbsencesCount(pending);
+      return pending;
     } catch (error) {
-      console.error("Error loading pending count:", error);
+      console.error("Error loading pending absences count:", error);
+      return 0;
     }
   };
 
@@ -156,11 +185,24 @@ export function AdminPanel({ currentUser }: AdminPanelProps) {
     setIsMobileMenuOpen(false);
   };
 
+  const handleChangesProcessed = () => {
+    loadPendingCounts();
+    if (selectedUser) {
+      loadUserRecords(selectedUser.id, timeRange);
+    }
+  };
+
   const navItems = [
     {
       id: "users" as const,
       label: "Usuarios y Registros",
       icon: FiUsers,
+    },
+    {
+      id: "pending-changes" as const,
+      label: "Cambios Pendientes",
+      icon: FiBell,
+      badge: pendingChangesCount > 0 ? pendingChangesCount : undefined,
     },
     {
       id: "absences" as const,
@@ -171,26 +213,12 @@ export function AdminPanel({ currentUser }: AdminPanelProps) {
   ];
 
   const absenceSubNavItems = [
-    {
-      id: "pending" as const,
-      label: "Pendientes",
-      icon: FiAlertCircle,
-    },
-    {
-      id: "statistics" as const,
-      label: "Estadísticas",
-      icon: FiTrendingUp,
-    },
-    {
-      id: "calendar" as const,
-      label: "Calendario",
-      icon: FiCalendar,
-    },
-    {
-      id: "workers" as const,
-      label: "Informes Por Empleado",
-      icon: FiUsers,
-    },
+    { id: "pending" as const, label: "Pendientes", icon: FiAlertCircle },
+    { id: "statistics" as const, label: "Estadísticas", icon: FiTrendingUp },
+    { id: "calendar" as const, label: "Calendario", icon: FiCalendar },
+    { id: "workers" as const, label: "Informes Por Empleado", icon: FiUsers },
+    { id: "holidays" as const, label: "Festivos", icon: FiCalendar },
+    { id: "days-off" as const, label: "Días Libres", icon: FiClock },
   ];
 
   return (
@@ -207,16 +235,14 @@ export function AdminPanel({ currentUser }: AdminPanelProps) {
       </button>
 
       <aside
-        className={`
-          fixed lg:sticky top-0 left-0 h-screen lg:h-auto lg:top-6 z-30
+        className={`fixed lg:sticky top-0 left-0 h-screen lg:h-auto lg:top-6 z-30
           w-80 lg:w-72 xl:w-80 flex-shrink-0
           transition-transform duration-300 ease-in-out
           ${
             isMobileMenuOpen
               ? "translate-x-0"
               : "-translate-x-full lg:translate-x-0"
-          }
-        `}
+          }`}
       >
         <div className="h-full lg:h-auto py-24 md:py-6 bg-white/95 lg:bg-white/10 backdrop-blur-md rounded-none lg:rounded-2xl px-6 lg:border lg:border-white/20 shadow-2xl lg:shadow-none overflow-y-auto">
           <div className="mb-8">
@@ -237,19 +263,17 @@ export function AdminPanel({ currentUser }: AdminPanelProps) {
                 <button
                   key={item.id}
                   onClick={() => handleViewChange(item.id)}
-                  className={`
-                    relative flex items-center gap-3 px-4 py-3.5 rounded-xl text-left transition-all font-medium
+                  className={`relative flex items-center gap-3 px-4 py-3.5 rounded-xl text-left transition-all font-medium
                     ${
                       isActive
                         ? "bg-teal text-white shadow-lg"
                         : "bg-transparent text-azul-profundo lg:text-white/80 hover:bg-hielo/30 lg:hover:bg-white/10"
-                    }
-                  `}
+                    }`}
                 >
                   <Icon className="w-5 h-5 flex-shrink-0" />
                   <span>{item.label}</span>
                   {item.badge && (
-                    <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs font-bold rounded-full w-5 h-5 flex items-center justify-center">
+                    <span className="bg-red-500 text-white text-xs font-bold rounded-full w-5 h-5 flex items-center justify-center">
                       {item.badge}
                     </span>
                   )}
@@ -260,9 +284,6 @@ export function AdminPanel({ currentUser }: AdminPanelProps) {
 
           {activeView === "absences" && (
             <div className="mt-4 pl-4 border-l-2 border-white/20">
-              <p className="text-xs text-azul-profundo/60 lg:text-white/60 mb-2 px-4">
-                SECCIONES
-              </p>
               <div className="flex flex-col gap-1">
                 {absenceSubNavItems.map((item) => {
                   const Icon = item.icon;
@@ -272,14 +293,12 @@ export function AdminPanel({ currentUser }: AdminPanelProps) {
                     <button
                       key={item.id}
                       onClick={() => handleAbsenceSubViewChange(item.id)}
-                      className={`
-                        flex items-center gap-3 px-4 py-2.5 rounded-lg text-left transition-all text-sm cursor-pointer
+                      className={`flex items-center gap-3 px-4 py-2.5 rounded-lg text-left transition-all text-sm cursor-pointer
                         ${
                           isActive
                             ? "bg-white/40 text-teal font-medium"
                             : "text-azul-profundo/70 lg:text-white/60 hover:bg-hielo/20 lg:hover:bg-white/10"
-                        }
-                      `}
+                        }`}
                     >
                       <Icon className="w-4 h-4 flex-shrink-0" />
                       <span>{item.label}</span>
@@ -344,6 +363,11 @@ export function AdminPanel({ currentUser }: AdminPanelProps) {
               />
             )}
           </div>
+        ) : activeView === "pending-changes" ? (
+          <PendingChangesPanel
+            currentAdmin={currentUser}
+            onChangesProcessed={handleChangesProcessed}
+          />
         ) : (
           <AdminAbsencesPanel
             currentAdmin={currentUser}

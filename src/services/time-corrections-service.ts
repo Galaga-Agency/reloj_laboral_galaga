@@ -12,6 +12,10 @@ export interface TimeCorrection {
   valorNuevo: string;
   razon: string;
   fechaCorreccion: Date;
+  estado?: "pendiente" | "aprobado" | "rechazado";
+  revisadoPor?: string;
+  revisadoPorNombre?: string;
+  fechaRevision?: Date;
   ipAddress?: string;
   userAgent?: string;
 }
@@ -20,6 +24,19 @@ export interface CorrectionRequest {
   recordId: string;
   userId: string;
   adminId: string;
+  reason: string;
+  changes: {
+    fecha?: Date;
+    tipoRegistro?: "entrada" | "salida";
+  };
+  ipAddress?: string;
+  userAgent?: string;
+}
+
+export interface UserChangeRequest {
+  recordId: string;
+  userId: string;
+  userName: string;
   reason: string;
   changes: {
     fecha?: Date;
@@ -44,6 +61,7 @@ export class TimeCorrectionsService {
       .from("time_corrections")
       .select("*")
       .in("registro_tiempo_id", recordIds)
+      .in("estado", ["aprobado", "null"])
       .order("fecha_correccion", { ascending: false });
 
     if (error) {
@@ -71,6 +89,12 @@ export class TimeCorrectionsService {
         valorNuevo: correction.valor_nuevo,
         razon: correction.razon,
         fechaCorreccion: new Date(correction.fecha_correccion),
+        estado: correction.estado,
+        revisadoPor: correction.revisado_por,
+        revisadoPorNombre: correction.revisado_por_nombre,
+        fechaRevision: correction.fecha_revision
+          ? new Date(correction.fecha_revision)
+          : undefined,
         ipAddress: correction.ip_address,
         userAgent: correction.user_agent,
       });
@@ -112,7 +136,7 @@ export class TimeCorrectionsService {
         fecha_ultima_modificacion: new Date().toISOString(),
         modificado_por_admin: request.adminId,
       };
-      const auditRecords: Omit<TimeCorrection, "id">[] = [];
+      const auditRecords: any[] = [];
 
       if (request.changes.fecha) {
         const oldValue = new Date(currentRecord.fecha).toISOString();
@@ -120,17 +144,21 @@ export class TimeCorrectionsService {
 
         updates.fecha = newValue;
         auditRecords.push({
-          registroTiempoId: request.recordId,
-          usuarioId: request.userId,
-          adminUserId: request.adminId,
-          adminUserName: adminUser.nombre,
-          campoModificado: "fecha",
-          valorAnterior: oldValue,
-          valorNuevo: newValue,
+          registro_tiempo_id: request.recordId,
+          usuario_id: request.userId,
+          admin_user_id: request.adminId,
+          admin_user_name: adminUser.nombre,
+          campo_modificado: "fecha",
+          valor_anterior: oldValue,
+          valor_nuevo: newValue,
           razon: request.reason,
-          fechaCorreccion: new Date(),
-          ipAddress: request.ipAddress,
-          userAgent: request.userAgent,
+          fecha_correccion: new Date().toISOString(),
+          ip_address: request.ipAddress,
+          user_agent: request.userAgent,
+          estado: "aprobado",
+          revisado_por: request.adminId,
+          revisado_por_nombre: adminUser.nombre,
+          fecha_revision: new Date().toISOString(),
         });
       }
 
@@ -140,17 +168,21 @@ export class TimeCorrectionsService {
 
         updates.tipo_registro = newValue;
         auditRecords.push({
-          registroTiempoId: request.recordId,
-          usuarioId: request.userId,
-          adminUserId: request.adminId,
-          adminUserName: adminUser.nombre,
-          campoModificado: "tipo_registro",
-          valorAnterior: oldValue,
-          valorNuevo: newValue,
+          registro_tiempo_id: request.recordId,
+          usuario_id: request.userId,
+          admin_user_id: request.adminId,
+          admin_user_name: adminUser.nombre,
+          campo_modificado: "tipo_registro",
+          valor_anterior: oldValue,
+          valor_nuevo: newValue,
           razon: request.reason,
-          fechaCorreccion: new Date(),
-          ipAddress: request.ipAddress,
-          userAgent: request.userAgent,
+          fecha_correccion: new Date().toISOString(),
+          ip_address: request.ipAddress,
+          user_agent: request.userAgent,
+          estado: "aprobado",
+          revisado_por: request.adminId,
+          revisado_por_nombre: adminUser.nombre,
+          fecha_revision: new Date().toISOString(),
         });
       }
 
@@ -158,55 +190,263 @@ export class TimeCorrectionsService {
         return { success: false, error: "No changes specified" };
       }
 
-      console.log("Updating record with:", updates);
       const { error: updateError } = await supabase
         .from("registros_tiempo")
         .update(updates)
         .eq("id", request.recordId);
 
       if (updateError) {
-        console.error("Update error:", updateError);
         return {
           success: false,
           error: `Failed to update record: ${updateError.message}`,
         };
       }
 
-      console.log("Record updated successfully");
-
       const { data: auditData, error: auditError } = await supabase
         .from("time_corrections")
-        .insert(
-          auditRecords.map((record) => ({
-            registro_tiempo_id: record.registroTiempoId,
-            usuario_id: record.usuarioId,
-            admin_user_id: record.adminUserId,
-            admin_user_name: record.adminUserName,
-            campo_modificado: record.campoModificado,
-            valor_anterior: record.valorAnterior,
-            valor_nuevo: record.valorNuevo,
-            razon: record.razon,
-            fecha_correccion: record.fechaCorreccion.toISOString(),
-            ip_address: record.ipAddress,
-            user_agent: record.userAgent,
-          }))
-        )
+        .insert(auditRecords)
         .select();
 
       if (auditError) {
         console.error("Failed to create audit record:", auditError);
       }
 
-      console.log(
-        `Time correction applied by ${adminUser.nombre} to record ${request.recordId}: ${request.reason}`
-      );
-
       return {
         success: true,
         correctionId: auditData?.[0]?.id,
       };
     } catch (error) {
-      console.error("Error applying time correction:", error);
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : "Unknown error",
+      };
+    }
+  }
+
+  static async createUserChangeRequest(
+    request: UserChangeRequest
+  ): Promise<{ success: boolean; changeId?: string; error?: string }> {
+    try {
+      const { data: currentRecord, error: fetchError } = await supabase
+        .from("registros_tiempo")
+        .select("*")
+        .eq("id", request.recordId)
+        .single();
+
+      if (fetchError || !currentRecord) {
+        return { success: false, error: "Record not found" };
+      }
+
+      const changeRecords: any[] = [];
+
+      if (request.changes.fecha) {
+        const oldValue = new Date(currentRecord.fecha).toISOString();
+        const newValue = request.changes.fecha.toISOString();
+
+        changeRecords.push({
+          registro_tiempo_id: request.recordId,
+          usuario_id: request.userId,
+          admin_user_id: request.userId,
+          admin_user_name: request.userName,
+          campo_modificado: "fecha",
+          valor_anterior: oldValue,
+          valor_nuevo: newValue,
+          razon: request.reason,
+          fecha_correccion: new Date().toISOString(),
+          ip_address: request.ipAddress,
+          user_agent: request.userAgent,
+          estado: "pendiente",
+        });
+      }
+
+      if (request.changes.tipoRegistro) {
+        const oldValue = currentRecord.tipo_registro;
+        const newValue = request.changes.tipoRegistro;
+
+        changeRecords.push({
+          registro_tiempo_id: request.recordId,
+          usuario_id: request.userId,
+          admin_user_id: request.userId,
+          admin_user_name: request.userName,
+          campo_modificado: "tipo_registro",
+          valor_anterior: oldValue,
+          valor_nuevo: newValue,
+          razon: request.reason,
+          fecha_correccion: new Date().toISOString(),
+          ip_address: request.ipAddress,
+          user_agent: request.userAgent,
+          estado: "pendiente",
+        });
+      }
+
+      if (changeRecords.length === 0) {
+        return { success: false, error: "No changes specified" };
+      }
+
+      const { data, error: insertError } = await supabase
+        .from("time_corrections")
+        .insert(changeRecords)
+        .select();
+
+      if (insertError) {
+        return {
+          success: false,
+          error: `Failed to create change request: ${insertError.message}`,
+        };
+      }
+
+      return {
+        success: true,
+        changeId: data?.[0]?.id,
+      };
+    } catch (error) {
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : "Unknown error",
+      };
+    }
+  }
+
+  static async getPendingChanges(): Promise<TimeCorrection[]> {
+    const { data, error } = await supabase
+      .from("time_corrections")
+      .select("*")
+      .eq("estado", "pendiente")
+      .order("fecha_correccion", { ascending: false });
+
+    if (error) {
+      throw new Error(`Error fetching pending changes: ${error.message}`);
+    }
+
+    return (data || []).map((change) => ({
+      id: change.id,
+      registroTiempoId: change.registro_tiempo_id,
+      usuarioId: change.usuario_id,
+      adminUserId: change.admin_user_id,
+      adminUserName: change.admin_user_name,
+      campoModificado: change.campo_modificado,
+      valorAnterior: change.valor_anterior,
+      valorNuevo: change.valor_nuevo,
+      razon: change.razon,
+      estado: change.estado,
+      revisadoPor: change.revisado_por,
+      revisadoPorNombre: change.revisado_por_nombre,
+      fechaRevision: change.fecha_revision
+        ? new Date(change.fecha_revision)
+        : undefined,
+      fechaCorreccion: new Date(change.fecha_correccion),
+      ipAddress: change.ip_address,
+      userAgent: change.user_agent,
+    }));
+  }
+
+  static async getPendingChangesCount(): Promise<number> {
+    const { count, error } = await supabase
+      .from("time_corrections")
+      .select("*", { count: "exact", head: true })
+      .eq("estado", "pendiente");
+
+    if (error) {
+      console.error("Error fetching pending count:", error);
+      return 0;
+    }
+
+    return count || 0;
+  }
+
+  static async approveChange(
+    changeId: string,
+    adminId: string,
+    adminName: string
+  ): Promise<{ success: boolean; error?: string }> {
+    try {
+      const { data: change, error: fetchError } = await supabase
+        .from("time_corrections")
+        .select("*")
+        .eq("id", changeId)
+        .single();
+
+      if (fetchError || !change) {
+        return { success: false, error: "Change request not found" };
+      }
+
+      const updates: any = {
+        updated_at: new Date().toISOString(),
+        fue_modificado: true,
+        fecha_ultima_modificacion: new Date().toISOString(),
+        editado_por_usuario: change.usuario_id,
+        validado_por_admin: adminId,
+      };
+
+      if (change.campo_modificado === "fecha") {
+        updates.fecha = change.valor_nuevo;
+      } else if (change.campo_modificado === "tipo_registro") {
+        updates.tipo_registro = change.valor_nuevo;
+      }
+
+      const { error: updateError } = await supabase
+        .from("registros_tiempo")
+        .update(updates)
+        .eq("id", change.registro_tiempo_id);
+
+      if (updateError) {
+        return {
+          success: false,
+          error: `Failed to update record: ${updateError.message}`,
+        };
+      }
+
+      const { error: changeUpdateError } = await supabase
+        .from("time_corrections")
+        .update({
+          estado: "aprobado",
+          revisado_por: adminId,
+          revisado_por_nombre: adminName,
+          fecha_revision: new Date().toISOString(),
+        })
+        .eq("id", changeId);
+
+      if (changeUpdateError) {
+        return {
+          success: false,
+          error: `Failed to update change status: ${changeUpdateError.message}`,
+        };
+      }
+
+      return { success: true };
+    } catch (error) {
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : "Unknown error",
+      };
+    }
+  }
+
+  static async rejectChange(
+    changeId: string,
+    adminId: string,
+    adminName: string
+  ): Promise<{ success: boolean; error?: string }> {
+    try {
+      const { error } = await supabase
+        .from("time_corrections")
+        .update({
+          estado: "rechazado",
+          revisado_por: adminId,
+          revisado_por_nombre: adminName,
+          fecha_revision: new Date().toISOString(),
+        })
+        .eq("id", changeId);
+
+      if (error) {
+        return {
+          success: false,
+          error: `Failed to reject change: ${error.message}`,
+        };
+      }
+
+      return { success: true };
+    } catch (error) {
       return {
         success: false,
         error: error instanceof Error ? error.message : "Unknown error",
@@ -238,6 +478,12 @@ export class TimeCorrectionsService {
       valorNuevo: correction.valor_nuevo,
       razon: correction.razon,
       fechaCorreccion: new Date(correction.fecha_correccion),
+      estado: correction.estado,
+      revisadoPor: correction.revisado_por,
+      revisadoPorNombre: correction.revisado_por_nombre,
+      fechaRevision: correction.fecha_revision
+        ? new Date(correction.fecha_revision)
+        : undefined,
       ipAddress: correction.ip_address,
       userAgent: correction.user_agent,
     }));
@@ -279,6 +525,12 @@ export class TimeCorrectionsService {
       valorNuevo: correction.valor_nuevo,
       razon: correction.razon,
       fechaCorreccion: new Date(correction.fecha_correccion),
+      estado: correction.estado,
+      revisadoPor: correction.revisado_por,
+      revisadoPorNombre: correction.revisado_por_nombre,
+      fechaRevision: correction.fecha_revision
+        ? new Date(correction.fecha_revision)
+        : undefined,
       ipAddress: correction.ip_address,
       userAgent: correction.user_agent,
     }));
@@ -315,6 +567,12 @@ export class TimeCorrectionsService {
       valorNuevo: correction.valor_nuevo,
       razon: correction.razon,
       fechaCorreccion: new Date(correction.fecha_correccion),
+      estado: correction.estado,
+      revisadoPor: correction.revisado_por,
+      revisadoPorNombre: correction.revisado_por_nombre,
+      fechaRevision: correction.fecha_revision
+        ? new Date(correction.fecha_revision)
+        : undefined,
       ipAddress: correction.ip_address,
       userAgent: correction.user_agent,
     }));

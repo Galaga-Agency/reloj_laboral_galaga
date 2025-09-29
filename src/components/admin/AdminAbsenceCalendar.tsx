@@ -33,19 +33,33 @@ export function AdminAbsenceCalendar({
 
   const loadAbsences = async () => {
     setIsLoading(true);
+    console.log(
+      "🗓️ AdminAbsenceCalendar: Loading absences for month",
+      currentMonth
+    );
     try {
       const monthStart = startOfMonth(currentMonth);
       const monthEnd = endOfMonth(currentMonth);
 
-      const data = await AbsenceService.getAllAbsences(monthStart, monthEnd);
+      console.log("📅 Date range:", { monthStart, monthEnd });
+
+      const data = await AbsenceService.getAllAbsences(
+        monthStart,
+        monthEnd,
+        true
+      );
+      console.log("✅ Absences loaded in calendar:", data.length);
+      console.log(
+        "🔍 Scheduled days in data:",
+        data.filter((a) => a.tipoAusencia === "dia_libre").length
+      );
       setAbsences(data);
     } catch (error) {
-      console.error("Error loading absences:", error);
+      console.error("❌ Error loading absences:", error);
     } finally {
       setIsLoading(false);
     }
   };
-
   const monthStart = startOfMonth(currentMonth);
   const monthEnd = endOfMonth(currentMonth);
   const daysInMonth = eachDayOfInterval({ start: monthStart, end: monthEnd });
@@ -110,6 +124,9 @@ export function AdminAbsenceCalendar({
   };
 
   const getAbsenceIndicatorColor = (absences: Absence[]): string => {
+    if (absences.some((a) => a.tipoAusencia === "dia_libre" || "festivo")) {
+      return "bg-green-500";
+    }
     if (absences.some((a) => a.tipoAusencia === "ausencia_completa")) {
       return "bg-red-500";
     }
@@ -126,10 +143,10 @@ export function AdminAbsenceCalendar({
 
   return (
     <div className="bg-white/10 backdrop-blur-md rounded-2xl p-6">
-      <div className="flex flex-col items-start gap-4 md:items-center justify-between mb-6">
+      <div className="flex flex-col items-start gap-4 md:flex-row md:items-center justify-between mb-6">
         <div className="flex items-center gap-3">
           <FiCalendar className="text-2xl text-white" />
-          <h3 className="text-xl font-bold text-white">
+          <h3 className="text-xl font-bold text-white text-nowrap">
             Calendario de Ausencias
           </h3>
         </div>
@@ -140,7 +157,7 @@ export function AdminAbsenceCalendar({
           >
             <FiChevronLeft className="w-5 h-5 text-white" />
           </button>
-          <h4 className="text-lg font-semibold text-white min-w-[200px] text-center">
+          <h4 className="text-lg font-semibold text-white min-w-[180px] text-center">
             {format(currentMonth, "MMMM 'de' yyyy", { locale: es })}
           </h4>
           <button
@@ -212,6 +229,10 @@ export function AdminAbsenceCalendar({
               <div className="flex items-center gap-2">
                 <div className="w-3 h-3 rounded-full bg-orange-500" />
                 <span className="text-white/80">Ausencia parcial</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <div className="w-3 h-3 rounded-full bg-green-500" />
+                <span className="text-white/80">Día libre programado</span>
               </div>
             </div>
           </div>

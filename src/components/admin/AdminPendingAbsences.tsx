@@ -1,5 +1,11 @@
 import { useState, useEffect } from "react";
-import { FiAlertCircle, FiCheck, FiX, FiDownload, FiFile } from "react-icons/fi";
+import {
+  FiAlertCircle,
+  FiCheck,
+  FiX,
+  FiDownload,
+  FiFile,
+} from "react-icons/fi";
 import { format } from "date-fns";
 import { es } from "date-fns/locale";
 import { AbsenceService } from "@/services/absence-service";
@@ -14,12 +20,18 @@ interface AdminPendingAbsencesProps {
   onUpdate: () => void;
 }
 
-export function AdminPendingAbsences({ currentAdmin, onUpdate }: AdminPendingAbsencesProps) {
+export function AdminPendingAbsences({
+  currentAdmin,
+  onUpdate,
+}: AdminPendingAbsencesProps) {
   const [pendingAbsences, setPendingAbsences] = useState<Absence[]>([]);
   const [users, setUsers] = useState<Map<string, Usuario>>(new Map());
   const [isLoading, setIsLoading] = useState(false);
   const [updatingId, setUpdatingId] = useState<string | null>(null);
-  const [message, setMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
+  const [message, setMessage] = useState<{
+    type: "success" | "error";
+    text: string;
+  } | null>(null);
 
   useEffect(() => {
     loadData();
@@ -33,11 +45,11 @@ export function AdminPendingAbsences({ currentAdmin, onUpdate }: AdminPendingAbs
         AdminService.getAllUsers(),
       ]);
 
-      const pending = absences.filter(a => a.estado === "pendiente");
+      const pending = absences.filter((a) => a.estado === "pendiente");
       pending.sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
 
       const userMap = new Map<string, Usuario>();
-      allUsers.forEach(user => userMap.set(user.id, user));
+      allUsers.forEach((user) => userMap.set(user.id, user));
 
       setPendingAbsences(pending);
       setUsers(userMap);
@@ -48,14 +60,24 @@ export function AdminPendingAbsences({ currentAdmin, onUpdate }: AdminPendingAbs
     }
   };
 
-  const handleStatusUpdate = async (absenceId: string, status: "aprobada" | "rechazada") => {
+  const handleStatusUpdate = async (
+    absenceId: string,
+    status: "aprobada" | "rechazada"
+  ) => {
     setUpdatingId(absenceId);
     setMessage(null);
     try {
-      await AbsenceService.updateAbsenceStatus(absenceId, status, currentAdmin.id);
+      await AbsenceService.updateAbsenceStatus(
+        absenceId,
+        status,
+        currentAdmin.id
+      );
       setMessage({
         type: "success",
-        text: status === "aprobada" ? "Ausencia aprobada correctamente" : "Ausencia rechazada correctamente",
+        text:
+          status === "aprobada"
+            ? "Ausencia aprobada correctamente"
+            : "Ausencia rechazada correctamente",
       });
       setTimeout(() => setMessage(null), 3000);
       await loadData();
@@ -88,8 +110,12 @@ export function AdminPendingAbsences({ currentAdmin, onUpdate }: AdminPendingAbs
         <div className="flex items-center gap-3">
           <FiAlertCircle className="text-yellow-400 text-2xl" />
           <div>
-            <h3 className="text-xl font-bold text-white">Ausencias Pendientes de Aprobación</h3>
-            <p className="text-white/60 text-sm">{pendingAbsences.length} solicitudes esperando revisión</p>
+            <h3 className="text-xl font-bold text-white">
+              Ausencias Pendientes de Aprobación
+            </h3>
+            <p className="text-white/60 text-sm">
+              {pendingAbsences.length} solicitudes esperando revisión
+            </p>
           </div>
         </div>
       </div>
@@ -109,7 +135,9 @@ export function AdminPendingAbsences({ currentAdmin, onUpdate }: AdminPendingAbs
       {pendingAbsences.length === 0 ? (
         <div className="text-center py-12">
           <FiCheck className="w-16 h-16 text-green-400 mx-auto mb-4" />
-          <p className="text-white/60">No hay ausencias pendientes de aprobación</p>
+          <p className="text-white/60">
+            No hay ausencias pendientes de aprobación
+          </p>
         </div>
       ) : (
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
@@ -127,7 +155,9 @@ export function AdminPendingAbsences({ currentAdmin, onUpdate }: AdminPendingAbs
                       {user?.nombre || "Usuario desconocido"}
                     </p>
                     <p className="text-white/60 text-sm">
-                      {AbsenceStatisticsCalculator.getTypeLabel(absence.tipoAusencia)}
+                      {AbsenceStatisticsCalculator.getReasonLabel(
+                        absence.tipoAusencia
+                      )}
                     </p>
                   </div>
                   <span className="px-3 py-1 rounded-full text-xs font-semibold bg-yellow-500/20 text-yellow-300 border border-yellow-500/30">
@@ -151,31 +181,38 @@ export function AdminPendingAbsences({ currentAdmin, onUpdate }: AdminPendingAbs
                   <div className="flex items-center justify-between text-sm">
                     <span className="text-white/60">Duración:</span>
                     <span className="text-white font-medium">
-                      {Math.floor(absence.duracionMinutos / 60)}h {absence.duracionMinutos % 60}m
+                      {Math.floor(absence.duracionMinutos / 60)}h{" "}
+                      {absence.duracionMinutos % 60}m
                     </span>
                   </div>
                   <div className="pt-2 border-t border-white/10">
                     <p className="text-white/60 text-xs mb-1">Motivo:</p>
                     <p className="text-white text-sm">
-                      {AbsenceStatisticsCalculator.getReasonLabel(absence.razon)}
+                      {AbsenceStatisticsCalculator.getReasonLabel(
+                        absence.razon
+                      )}
                     </p>
                   </div>
                   {absence.comentarios && (
                     <div className="pt-2 border-t border-white/10">
                       <p className="text-white/60 text-xs mb-1">Comentarios:</p>
-                      <p className="text-white/80 text-sm">{absence.comentarios}</p>
+                      <p className="text-white/80 text-sm">
+                        {absence.comentarios}
+                      </p>
                     </div>
                   )}
                   {absence.adjuntoUrl && (
                     <div className="pt-2 border-t border-white/10">
-                      
-                      <a  href={absence.adjuntoUrl}
+                      <a
+                        href={absence.adjuntoUrl}
                         target="_blank"
                         rel="noopener noreferrer"
                         className="flex items-center gap-2 text-teal hover:text-teal/80 text-sm transition-colors"
                       >
                         <FiFile className="w-4 h-4" />
-                        <span>{absence.adjuntoNombre || "Ver documento adjunto"}</span>
+                        <span>
+                          {absence.adjuntoNombre || "Ver documento adjunto"}
+                        </span>
                         <FiDownload className="w-4 h-4 ml-auto" />
                       </a>
                     </div>
@@ -183,7 +220,10 @@ export function AdminPendingAbsences({ currentAdmin, onUpdate }: AdminPendingAbs
                 </div>
 
                 <div className="text-white/50 text-xs mb-4">
-                  Reportado: {format(absence.createdAt, "dd/MM/yyyy HH:mm", { locale: es })}
+                  Reportado:{" "}
+                  {format(absence.createdAt, "dd/MM/yyyy HH:mm", {
+                    locale: es,
+                  })}
                 </div>
 
                 <div className="flex gap-3 pt-4 border-t border-white/10">

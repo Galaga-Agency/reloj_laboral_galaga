@@ -117,7 +117,8 @@ export function AdminAbsenceWorkerList({
       const absences = await AbsenceService.getAbsencesByUser(
         userId,
         dateRange.start,
-        dateRange.end
+        dateRange.end,
+        true
       );
       setUserAbsences(absences);
     } catch (error) {
@@ -495,7 +496,7 @@ export function AdminAbsenceWorkerList({
                                 })}
                               </p>
                               <p className="text-white/60 text-sm">
-                                {AbsenceStatisticsCalculator.getTypeLabel(
+                                {AbsenceStatisticsCalculator.getReasonLabel(
                                   absence.tipoAusencia
                                 )}
                               </p>

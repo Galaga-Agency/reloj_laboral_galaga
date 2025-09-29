@@ -1,12 +1,18 @@
 export type AbsenceType =
-  | "tardanza" // Late arrival
-  | "salida_temprana" // Early departure
-  | "ausencia_parcial" // Partial absence (middle of day)
-  | "ausencia_completa" // Full day absence
-  | "permiso_medico" // Medical leave
-  | "permiso_personal"; // Personal leave
+  | "tardanza"
+  | "salida_temprana"
+  | "ausencia_parcial"
+  | "ausencia_completa"
+  | "permiso_medico"
+  | "permiso_personal"
+  | "dia_libre";
 
-export type AbsenceStatus = "pendiente" | "aprobada" | "rechazada";
+
+export type AbsenceStatus =
+  | "pendiente"
+  | "aprobada"
+  | "rechazada"
+  | "programada";
 
 export interface Absence {
   id: string;

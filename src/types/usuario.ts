@@ -6,7 +6,7 @@ export interface Usuario {
   isAdmin: boolean;
   isActive: boolean;
   role: "employee" | "official";
-    gdprConsentGiven?: boolean;
+  gdprConsentGiven?: boolean;
   gdprConsentDate?: string;
   emailNotificationsConsent?: boolean;
   geolocationConsent?: boolean;

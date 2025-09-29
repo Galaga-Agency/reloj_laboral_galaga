@@ -5,6 +5,7 @@ import type { RegistroTiempo, Usuario } from "@/types";
 import {
   TimeCorrectionsService,
   type CorrectionRequest,
+  type UserChangeRequest,
 } from "@/services/time-corrections-service";
 import { DateFormatUtils } from "@/utils/date-format";
 import { CustomInput } from "@/components/ui/CustomInput";
@@ -17,8 +18,9 @@ interface TimeRecordCorrectionModalProps {
   onClose: () => void;
   record: RegistroTiempo | null;
   user: Usuario | null;
-  currentAdmin: Usuario;
+  currentUser: Usuario;
   onSuccess: () => void;
+  isUserRequest?: boolean;
 }
 
 export function TimeRecordCorrectionModal({
@@ -26,8 +28,9 @@ export function TimeRecordCorrectionModal({
   onClose,
   record,
   user,
-  currentAdmin,
+  currentUser,
   onSuccess,
+  isUserRequest = false,
 }: TimeRecordCorrectionModalProps) {
   const [fecha, setFecha] = useState("");
   const [hora, setHora] = useState("");
@@ -36,6 +39,9 @@ export function TimeRecordCorrectionModal({
   const [error, setError] = useState<string | null>(null);
   const [showCalendar, setShowCalendar] = useState(false);
   const calendarTriggerRef = useRef<HTMLButtonElement>(null);
+
+  const isAdmin = currentUser.isAdmin;
+  const isOwnRecord = record?.usuarioId === currentUser.id;
 
   useEffect(() => {
     if (record && isOpen) {
@@ -74,19 +80,37 @@ export function TimeRecordCorrectionModal({
         return;
       }
 
-      const correctionRequest: CorrectionRequest = {
-        recordId: record.id,
-        userId: user.id,
-        adminId: currentAdmin.id,
-        reason: razon.trim(),
-        changes,
-        ipAddress: "127.0.0.1",
-        userAgent: navigator.userAgent,
-      };
+      let result;
 
-      const result = await TimeCorrectionsService.applyCorrection(
-        correctionRequest
-      );
+      if (isAdmin && !isUserRequest) {
+        const correctionRequest: CorrectionRequest = {
+          recordId: record.id,
+          userId: user.id,
+          adminId: currentUser.id,
+          reason: razon.trim(),
+          changes,
+          ipAddress: "127.0.0.1",
+          userAgent: navigator.userAgent,
+        };
+
+        result = await TimeCorrectionsService.applyCorrection(
+          correctionRequest
+        );
+      } else {
+        const userChangeRequest: UserChangeRequest = {
+          recordId: record.id,
+          userId: currentUser.id,
+          userName: currentUser.nombre,
+          reason: razon.trim(),
+          changes,
+          ipAddress: "127.0.0.1",
+          userAgent: navigator.userAgent,
+        };
+
+        result = await TimeCorrectionsService.createUserChangeRequest(
+          userChangeRequest
+        );
+      }
 
       if (result.success) {
         onSuccess();
@@ -115,6 +139,23 @@ export function TimeRecordCorrectionModal({
   const recordTypeText =
     record.tipoRegistro === "entrada" ? "Entrada" : "Salida";
 
+  const modalTitle =
+    isAdmin && !isUserRequest ? "Corregir" : "Solicitar Cambio";
+  const submitButtonText =
+    isAdmin && !isUserRequest ? "Aplicar Corrección" : "Enviar Solicitud";
+  const reasonLabel =
+    isAdmin && !isUserRequest
+      ? "Razón de la Corrección *"
+      : "Razón del Cambio *";
+  const reasonPlaceholder =
+    isAdmin && !isUserRequest
+      ? `Ej: El empleado olvidó marcar la ${record.tipoRegistro} debido a una reunión urgente`
+      : `Ej: Olvidé marcar la ${record.tipoRegistro} debido a una reunión urgente`;
+  const reasonHelpText =
+    isAdmin && !isUserRequest
+      ? "Esta razón quedará registrada permanentemente en el sistema de auditoría"
+      : "Esta solicitud será revisada por un administrador antes de ser aplicada";
+
   return (
     <>
       <div className="fixed inset-0 bg-azul-profundo/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
@@ -127,7 +168,7 @@ export function TimeRecordCorrectionModal({
                 </div>
                 <div>
                   <h2 className="text-xl font-bold text-azul-profundo">
-                    Corregir {recordTypeText}
+                    {modalTitle} {recordTypeText}
                   </h2>
                   <p className="text-azul-profundo/70 text-sm">{user.nombre}</p>
                 </div>
@@ -200,19 +241,18 @@ export function TimeRecordCorrectionModal({
 
               <div>
                 <label className="block text-sm font-medium text-azul-profundo pb-2">
-                  Razón de la Corrección *
+                  {reasonLabel}
                 </label>
                 <textarea
                   value={razon}
                   onChange={(e) => setRazon(e.target.value)}
-                  placeholder={`Ej: El empleado olvidó marcar la ${record.tipoRegistro} debido a una reunión urgente`}
+                  placeholder={reasonPlaceholder}
                   className="w-full px-4 py-3 border border-hielo/50 rounded-xl bg-blanco/90 text-azul-profundo transition-all duration-200 focus:ring-2 focus:ring-teal focus:border-teal focus:outline-none resize-none"
                   rows={3}
                   required
                 />
                 <p className="text-azul-profundo/60 text-xs mt-1">
-                  Esta razón quedará registrada permanentemente en el sistema de
-                  auditoría
+                  {reasonHelpText}
                 </p>
               </div>
 
@@ -221,7 +261,7 @@ export function TimeRecordCorrectionModal({
                   Cancelar
                 </SecondaryButton>
                 <PrimaryButton type="submit" disabled={isSubmitting} size="sm">
-                  {isSubmitting ? "Aplicando..." : "Aplicar Corrección"}
+                  {isSubmitting ? "Procesando..." : submitButtonText}
                 </PrimaryButton>
               </div>
             </form>

@@ -382,7 +382,7 @@ export class PDFReportGenerator {
     y: number,
     correctionsMap: Map<string, TimeCorrection[]>
   ): number {
-    const estimatedHeight = correctionsMap.size * 25 + 40;
+    const estimatedHeight = correctionsMap.size * 30 + 40;
     if (y + estimatedHeight > this.PAGE_HEIGHT - this.MARGIN) {
       doc.addPage();
       y = this.MARGIN;
@@ -410,7 +410,7 @@ export class PDFReportGenerator {
     let correctionNumber = 1;
     for (const [recordId, corrections] of correctionsMap.entries()) {
       for (const correction of corrections) {
-        if (y + 25 > this.PAGE_HEIGHT - this.MARGIN) {
+        if (y + 30 > this.PAGE_HEIGHT - this.MARGIN) {
           doc.addPage();
           y = this.MARGIN;
         }
@@ -428,13 +428,40 @@ export class PDFReportGenerator {
         y += 5;
 
         doc.setFont("helvetica", "normal");
-        doc.text(
-          `Administrador: ${correction.adminUserName}`,
-          this.MARGIN + 5,
-          y
-        );
+
+        // Show who edited
+        const editorText =
+          correction.usuarioId === correction.adminUserId
+            ? `Editado por: ${correction.adminUserName} (Usuario)`
+            : `Editado por: ${correction.adminUserName} (Administrador)`;
+
+        doc.text(editorText, this.MARGIN + 5, y);
         y += 4;
 
+        // Show validation info if available
+        if (correction.revisadoPor && correction.revisadoPorNombre) {
+          doc.text(
+            `Validado por: ${correction.revisadoPorNombre} (Administrador)`,
+            this.MARGIN + 5,
+            y
+          );
+          y += 4;
+
+          if (correction.fechaRevision) {
+            doc.text(
+              `Fecha de validación: ${format(
+                correction.fechaRevision,
+                "dd/MM/yyyy HH:mm",
+                { locale: es }
+              )}`,
+              this.MARGIN + 5,
+              y
+            );
+            y += 4;
+          }
+        }
+
+        // Show what was changed
         doc.text(
           `Campo modificado: ${this.getFieldDisplayName(
             correction.campoModificado
@@ -461,8 +488,24 @@ export class PDFReportGenerator {
         y += 4;
 
         doc.text(`Motivo: ${correction.razon}`, this.MARGIN + 5, y);
-        y += 8;
+        y += 4;
 
+        // Show status
+        if (correction.estado) {
+          const estadoText =
+            correction.estado === "aprobado"
+              ? "Estado: Aprobado"
+              : correction.estado === "rechazado"
+              ? "Estado: Rechazado"
+              : "Estado: Pendiente de aprobación";
+
+          doc.setFont("helvetica", "italic");
+          doc.text(estadoText, this.MARGIN + 5, y);
+          doc.setFont("helvetica", "normal");
+          y += 4;
+        }
+
+        y += 4;
         correctionNumber++;
       }
     }

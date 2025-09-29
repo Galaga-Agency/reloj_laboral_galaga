@@ -33,12 +33,12 @@ export function GDPRConsentPage({ usuario }: GDPRConsentPageProps) {
   const canProceed = consent.dataProcessingConsent && consent.privacyPolicyRead;
 
   const handleConsentChange = (key: keyof ConsentState, value: boolean) => {
-    setConsent(prev => ({ ...prev, [key]: value }));
+    setConsent((prev) => ({ ...prev, [key]: value }));
   };
 
   const handleSubmit = async () => {
     if (!canProceed) return;
-    
+
     setIsLoading(true);
     setError(null);
 
@@ -48,9 +48,9 @@ export function GDPRConsentPage({ usuario }: GDPRConsentPageProps) {
         emailNotificationsConsent: false, // Not implemented
         geolocationConsent: false, // Not implemented
         privacyPolicyAcceptedAt: new Date().toISOString(),
-        consentVersion: "1.0"
+        consentVersion: "1.0",
       });
-      
+
       // Navigate based on user role
       if (usuario.role === "official") {
         navigate("/portal-oficial");
@@ -81,14 +81,15 @@ export function GDPRConsentPage({ usuario }: GDPRConsentPageProps) {
         </div>
 
         {/* Card */}
-        <div className="bg-blanco/95 backdrop-blur-sm rounded-2xl shadow-2xl p-8 fade-up opacity-0">
+        <div className="bg-blanco/5 backdrop-blur-sm rounded-2xl shadow-2xl p-8 fade-up opacity-0">
           <div className="mb-6">
-            <h2 className="text-2xl font-bold text-azul-profundo mb-3">
+            <h2 className="text-2xl font-bold text-white mb-3">
               Consentimiento RGPD
             </h2>
-            <p className="text-azul-profundo/80 text-sm leading-relaxed">
-              Como usuario de <strong>Reloj Laboral</strong>, necesitamos tu consentimiento expreso 
-              para procesar tus datos conforme al Reglamento General de Protección de Datos (RGPD).
+            <p className="text-white/80 text-sm leading-relaxed">
+              Como usuario de <strong>Reloj Laboral</strong>, necesitamos tu
+              consentimiento expreso para procesar tus datos conforme al
+              Reglamento General de Protección de Datos (RGPD).
             </p>
           </div>
 
@@ -101,16 +102,18 @@ export function GDPRConsentPage({ usuario }: GDPRConsentPageProps) {
           <div className="space-y-6">
             {/* Required Consents */}
             <div className="space-y-4">
-              <h3 className="font-semibold text-azul-profundo mb-3 flex items-center gap-2">
+              <h3 className="font-semibold text-white mb-3 flex items-center gap-2">
                 <FiCheck className="text-teal" />
                 Consentimientos Obligatorios
               </h3>
 
               {/* Data Processing Consent */}
-              <div className="p-4 border border-azul-profundo/20 rounded-lg">
+              <div className="p-4 border border-white/20 rounded-lg bg-blanco/5">
                 <Checkbox
                   checked={consent.dataProcessingConsent}
-                  onChange={(checked) => handleConsentChange('dataProcessingConsent', checked)}
+                  onChange={(checked) =>
+                    handleConsentChange("dataProcessingConsent", checked)
+                  }
                   label="Procesamiento de datos laborales"
                   description="Acepto que GALAGA AGENCY procese mis datos personales (nombre, email, registros horarios) para cumplir con las obligaciones legales del control horario según el Art. 34.9 del Estatuto de los Trabajadores."
                   disabled={isLoading}
@@ -118,29 +121,31 @@ export function GDPRConsentPage({ usuario }: GDPRConsentPageProps) {
               </div>
 
               {/* Privacy Policy */}
-              <div className="p-4 border border-azul-profundo/20 rounded-lg">
+              <div className="p-4 border border-white/20 rounded-lg bg-blanco/5">
                 <Checkbox
                   checked={consent.privacyPolicyRead}
-                  onChange={(checked) => handleConsentChange('privacyPolicyRead', checked)}
+                  onChange={(checked) =>
+                    handleConsentChange("privacyPolicyRead", checked)
+                  }
                   label="Política de Privacidad y Aviso Legal"
                   disabled={isLoading}
                 />
                 <div className="mt-2 ml-8">
-                  <p className="text-sm text-azul-profundo/70">
+                  <p className="text-sm text-white/70">
                     He leído y acepto la{" "}
-                    <a 
-                      href="/politica-privacidad" 
-                      target="_blank" 
-                      className="text-teal underline inline-flex items-center gap-1"
+                    <a
+                      href="/politica-privacidad"
+                      target="_blank"
+                      className="text-white underline inline-flex items-center gap-1"
                     >
                       Política de Privacidad
                       <FiExternalLink className="w-3 h-3" />
-                    </a>
-                    {" "}y el{" "}
-                    <a 
-                      href="/aviso-legal" 
+                    </a>{" "}
+                    y el{" "}
+                    <a
+                      href="/aviso-legal"
                       target="_blank"
-                      className="text-teal underline inline-flex items-center gap-1"
+                      className="text-white underline inline-flex items-center gap-1"
                     >
                       Aviso Legal
                       <FiExternalLink className="w-3 h-3" />
@@ -152,36 +157,41 @@ export function GDPRConsentPage({ usuario }: GDPRConsentPageProps) {
             </div>
 
             {/* Rights Information */}
-            <div className="p-4 bg-teal/5 border border-teal/20 rounded-lg">
-              <h4 className="font-semibold text-azul-profundo mb-2">
+            <div className="p-4 bg-white/5 border border-white/20 rounded-lg">
+              <h4 className="font-semibold text-white mb-2">
                 Tus derechos RGPD
               </h4>
-              <p className="text-sm text-azul-profundo/80 leading-relaxed">
-                Puedes ejercer tus derechos de acceso, rectificación, supresión, limitación, 
-                oposición y portabilidad de tus datos en cualquier momento contactando con nosotros en{" "}
-                <a href="mailto:soporte@galagaagency.com" className="text-teal underline">
+              <p className="text-sm text-white/80 leading-relaxed">
+                Puedes ejercer tus derechos de acceso, rectificación, supresión,
+                limitación, oposición y portabilidad de tus datos en cualquier
+                momento contactando con nosotros en{" "}
+                <a
+                  href="mailto:soporte@galagaagency.com"
+                  className="text-white underline"
+                >
                   soporte@galagaagency.com
                 </a>
               </p>
             </div>
 
             {/* Data Processing Info */}
-            <div className="p-4 bg-azul-profundo/5 border border-azul-profundo/20 rounded-lg">
-              <h4 className="font-semibold text-azul-profundo mb-2">
+            <div className="p-4 bg-white/5 border border-white/20 rounded-lg">
+              <h4 className="font-semibold text-white mb-2">
                 Qué datos procesamos
               </h4>
-              <ul className="text-sm text-azul-profundo/80 space-y-1">
+              <ul className="text-sm text-white/80 space-y-1">
                 <li>• Datos de identificación: nombre, email</li>
                 <li>• Registros horarios: entradas, salidas, pausas</li>
                 <li>• Datos técnicos: IP de acceso, tipo de dispositivo</li>
                 <li>• Informes mensuales de jornada laboral</li>
               </ul>
-              <p className="text-xs text-azul-profundo/60 mt-2">
-                Todos los datos se almacenan de forma segura y se conservan durante 4 años según la normativa laboral.
+              <p className="text-xs text-white/60 mt-2">
+                Todos los datos se almacenan de forma segura y se conservan
+                durante 4 años según la normativa laboral.
               </p>
             </div>
 
-            <PrimaryButton 
+            <PrimaryButton
               onClick={handleSubmit}
               disabled={isLoading || !canProceed}
               className="w-full"
@@ -191,8 +201,9 @@ export function GDPRConsentPage({ usuario }: GDPRConsentPageProps) {
           </div>
 
           <div className="pt-6 text-center">
-            <p className="text-xs text-azul-profundo/60">
-              Este consentimiento se registra con fecha y hora para cumplir con el RGPD.
+            <p className="text-xs text-white/60">
+              Este consentimiento se registra con fecha y hora para cumplir con
+              el RGPD.
             </p>
           </div>
         </div>

@@ -1,18 +1,25 @@
 import { useState, useEffect, useMemo, useRef } from "react";
-import { FiAlertCircle, FiUsers, FiClock, FiTrendingUp } from "react-icons/fi";
-import { AdminAbsenceCalendar } from "@/components/admin/AdminAbsenceCalendar";
-import { AdminAbsenceDetails } from "@/components/admin/AdminAbsenceDetails";
-import { AdminAbsenceWorkerList } from "@/components/admin/AdminAbsenceWorkerList";
-import { AdminAbsenceStatistics } from "@/components/admin/AdminAbsenceStatistics";
-import { useAbsenceStatistics } from "@/hooks/useAbsenceStatistics";
-import { AdminService } from "@/services/admin-service";
 import type { Absence, Usuario } from "@/types";
 import { startOfMonth, endOfMonth } from "date-fns";
+import { AdminService } from "@/services/admin-service";
+import { useAbsenceStatistics } from "@/hooks/useAbsenceStatistics";
 import { AdminPendingAbsences } from "./AdminPendingAbsences";
+import { AdminAbsenceStatistics } from "./AdminAbsenceStatistics";
+import { AdminAbsenceCalendar } from "./AdminAbsenceCalendar";
+import { AdminAbsenceDetails } from "./AdminAbsenceDetails";
+import { AdminAbsenceWorkerList } from "./AdminAbsenceWorkerList";
+import { AdminBankHolidaysManager } from "./AdminBankHolidaysManager";
+import { AdminDaysOffManager } from "./AdminDaysOffManager";
 
 interface AdminAbsencesPanelProps {
   currentAdmin: Usuario;
-  activeSubView: "pending" | "statistics" | "calendar" | "workers";
+  activeSubView:
+    | "pending"
+    | "statistics"
+    | "calendar"
+    | "workers"
+    | "holidays"
+    | "days-off";
 }
 
 export function AdminAbsencesPanel({
@@ -28,6 +35,8 @@ export function AdminAbsencesPanel({
   const statisticsRef = useRef<HTMLDivElement>(null);
   const calendarRef = useRef<HTMLDivElement>(null);
   const workersRef = useRef<HTMLDivElement>(null);
+  const holidaysRef = useRef<HTMLDivElement>(null);
+  const daysOffRef = useRef<HTMLDivElement>(null);
 
   const dateRange = useMemo(() => {
     const now = new Date();
@@ -37,10 +46,7 @@ export function AdminAbsencesPanel({
     };
   }, []);
 
-  const { stats, isLoading: isLoadingStats } = useAbsenceStatistics(
-    dateRange.start,
-    dateRange.end
-  );
+  const { stats } = useAbsenceStatistics(dateRange.start, dateRange.end);
 
   useEffect(() => {
     loadUsers();
@@ -52,6 +58,8 @@ export function AdminAbsencesPanel({
       statistics: statisticsRef,
       calendar: calendarRef,
       workers: workersRef,
+      holidays: holidaysRef,
+      "days-off": daysOffRef,
     };
 
     const targetRef = refs[activeSubView];
@@ -98,7 +106,6 @@ export function AdminAbsencesPanel({
 
       <div ref={calendarRef} className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <AdminAbsenceCalendar onDateSelect={handleDateSelect} />
-
         <AdminAbsenceDetails
           selectedDate={selectedDate}
           absences={selectedAbsences}
@@ -109,6 +116,14 @@ export function AdminAbsencesPanel({
 
       <div ref={workersRef}>
         <AdminAbsenceWorkerList users={users} isLoading={isLoadingUsers} />
+      </div>
+
+      <div ref={holidaysRef}>
+        <AdminBankHolidaysManager currentAdmin={currentAdmin} />
+      </div>
+
+      <div ref={daysOffRef}>
+        <AdminDaysOffManager currentAdmin={currentAdmin} />
       </div>
     </div>
   );

@@ -86,10 +86,26 @@ export function AdminAbsenceDetails({
   };
 
   const getAbsenceTypeLabel = (tipo: string): string => {
-    return AbsenceStatisticsCalculator.getTypeLabel(tipo);
+    return AbsenceStatisticsCalculator.getReasonLabel(tipo);
   };
 
-  const getStatusBadge = (estado: string) => {
+  const isSystemGenerated = (absence: Absence): boolean => {
+    // Check if it's a system-generated absence (holiday or day off)
+    // Adjust these string values to match your actual AbsenceType enum
+    return absence.tipoAusencia === "dia_libre";
+  };
+
+  const getStatusBadge = (absence: Absence) => {
+    const isSystem = isSystemGenerated(absence);
+
+    if (isSystem) {
+      return (
+        <span className="px-3 py-1 rounded-full text-xs font-semibold border bg-green-500/20 text-green-300 border-green-500/30">
+          Aprobada
+        </span>
+      );
+    }
+
     const styles: Record<string, string> = {
       pendiente: "bg-yellow-500/20 text-yellow-300 border-yellow-500/30",
       aprobada: "bg-green-500/20 text-green-300 border-green-500/30",
@@ -104,9 +120,11 @@ export function AdminAbsenceDetails({
 
     return (
       <span
-        className={`px-3 py-1 rounded-full text-xs font-semibold border ${styles[estado]}`}
+        className={`px-3 py-1 rounded-full text-xs font-semibold border ${
+          styles[absence.estado]
+        }`}
       >
-        {labels[estado]}
+        {labels[absence.estado]}
       </span>
     );
   };
@@ -153,12 +171,13 @@ export function AdminAbsenceDetails({
         </div>
       )}
 
-      <div className="flex flex-col gap-4">
+      <div className="flex flex-col gap-4 max-h-[600px] overflow-y-auto">
         {absences.map((absence) => {
           const user = users.get(absence.usuarioId);
           const approverUser = absence.aprobadoPor
             ? users.get(absence.aprobadoPor)
             : null;
+          const isSystem = isSystemGenerated(absence);
 
           return (
             <div
@@ -177,7 +196,7 @@ export function AdminAbsenceDetails({
                     </p>
                   </div>
                 </div>
-                {getStatusBadge(absence.estado)}
+                {getStatusBadge(absence)}
               </div>
 
               <div className="grid grid-cols-2 gap-4 mb-4">
@@ -238,11 +257,18 @@ export function AdminAbsenceDetails({
               )}
 
               <div className="text-white/50 text-xs mb-4">
-                Reportado:{" "}
-                {format(absence.createdAt, "dd/MM/yyyy HH:mm", { locale: es })}
+                {isSystem
+                  ? "Generado automáticamente por el sistema"
+                  : `Reportado: ${format(
+                      absence.createdAt,
+                      "dd/MM/yyyy HH:mm",
+                      {
+                        locale: es,
+                      }
+                    )}`}
               </div>
 
-              {absence.estado === "pendiente" && (
+              {absence.estado === "pendiente" && !isSystem && (
                 <div className="flex gap-3 pt-4 border-t border-white/10">
                   <PrimaryButton
                     onClick={() => handleStatusUpdate(absence.id, "aprobada")}
@@ -266,22 +292,24 @@ export function AdminAbsenceDetails({
                 </div>
               )}
 
-              {absence.estado !== "pendiente" && absence.aprobadoPor && (
-                <div className="pt-4 border-t border-white/10">
-                  <p className="text-white/50 text-xs">
-                    {absence.estado === "aprobada" ? "Aprobada" : "Rechazada"}{" "}
-                    por {approverUser?.nombre || "administrador"}
-                    {absence.fechaAprobacion &&
-                      ` el ${format(
-                        absence.fechaAprobacion,
-                        "dd/MM/yyyy HH:mm",
-                        {
-                          locale: es,
-                        }
-                      )}`}
-                  </p>
-                </div>
-              )}
+              {absence.estado !== "pendiente" &&
+                absence.aprobadoPor &&
+                !isSystem && (
+                  <div className="pt-4 border-t border-white/10">
+                    <p className="text-white/50 text-xs">
+                      {absence.estado === "aprobada" ? "Aprobada" : "Rechazada"}{" "}
+                      por {approverUser?.nombre || "administrador"}
+                      {absence.fechaAprobacion &&
+                        ` el ${format(
+                          absence.fechaAprobacion,
+                          "dd/MM/yyyy HH:mm",
+                          {
+                            locale: es,
+                          }
+                        )}`}
+                    </p>
+                  </div>
+                )}
             </div>
           );
         })}

@@ -130,16 +130,8 @@ export function WorkSettings({ usuario, registros = [] }: WorkSettingsProps) {
     );
   };
 
-  if (isLoading) {
-    return (
-      <div className="flex items-center justify-center py-12">
-        <div className="text-lg text-white">Cargando configuración...</div>
-      </div>
-    );
-  }
-
   return (
-    <div className="flex flex-col gap-6">
+    <div className="flex flex-col gap-6 max-w-[1400px] mx-auto">
       <GenerateInformes
         registros={registros.filter((r) => r.usuarioId === usuario.id)}
         usuario={usuario}
@@ -168,7 +160,12 @@ export function WorkSettings({ usuario, registros = [] }: WorkSettingsProps) {
       )}
 
       <div className="flex justify-end items-center gap-3">
-        <SecondaryButton onClick={saveSettings} disabled={isSaving} darkBg>
+        <SecondaryButton
+          onClick={saveSettings}
+          disabled={isSaving || isLoading}
+          darkBg
+          borderColor="white"
+        >
           {getButtonContent()}
         </SecondaryButton>
       </div>

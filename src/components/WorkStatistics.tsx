@@ -31,12 +31,12 @@ export function WorkStatistics({ registros }: WorkStatisticsProps) {
 
   return (
     <div className="grid grid-cols-1 md:grid-cols-3 gap-4 pb-6">
-      <div className="bg-white/95 backdrop-blur-sm p-4 rounded-xl border border-teal/20 shadow-sm">
-        <div className="flex items-center gap-2 text-sm text-teal font-medium pb-2">
+      <div className="bg-white/10 backdrop-blur-sm p-4 rounded-xl border border-teal/20 shadow-sm">
+        <div className="flex items-center gap-2 text-sm text-white font-medium pb-2">
           <FiClock className="w-4 h-4" />
           Tiempo Total
         </div>
-        <div className="text-2xl font-bold text-azul-profundo">
+        <div className="text-2xl font-bold text-white">
           {estadisticas.tiempoTotal}
         </div>
         {overtimeInfo.difference !== 0 && (
@@ -54,28 +54,28 @@ export function WorkStatistics({ registros }: WorkStatisticsProps) {
         )}
       </div>
 
-      <div className="bg-white/95 backdrop-blur-sm p-4 rounded-xl border border-teal/20 shadow-sm">
-        <div className="flex items-center gap-2 text-sm text-teal font-medium pb-2">
+      <div className="bg-white/10 backdrop-blur-sm p-4 rounded-xl border border-teal/20 shadow-sm">
+        <div className="flex items-center gap-2 text-sm text-white font-medium pb-2">
           <FiCalendar className="w-4 h-4" />
           Días Trabajados
         </div>
-        <div className="text-2xl font-bold text-azul-profundo">
+        <div className="text-2xl font-bold text-white">
           {estadisticas.diasTrabajados}
         </div>
-        <div className="text-sm text-azul-profundo/60 mt-1">
+        <div className="text-sm text-white/60 mt-1">
           {overtimeInfo.totalTargetHours.toFixed(0)}h esperadas
         </div>
       </div>
 
-      <div className="bg-white/95 backdrop-blur-sm p-4 rounded-xl border border-teal/20 shadow-sm">
-        <div className="flex items-center gap-2 text-sm text-teal font-medium pb-2">
+      <div className="bg-white/10 backdrop-blur-sm p-4 rounded-xl border border-teal/20 shadow-sm">
+        <div className="flex items-center gap-2 text-sm text-white font-medium pb-2">
           <FiTrendingUp className="w-4 h-4" />
           Promedio Diario
         </div>
-        <div className="text-2xl font-bold text-azul-profundo">
+        <div className="text-2xl font-bold text-white">
           {estadisticas.promedioDiario}
         </div>
-        <div className="text-sm text-azul-profundo/60 mt-1">vs 8h estándar</div>
+        <div className="text-sm text-white/60 mt-1">vs 8h estándar</div>
       </div>
     </div>
   );

@@ -2,11 +2,12 @@ import { useState, useEffect } from "react";
 import type { Usuario, EstadoTrabajo } from "@/types";
 import { format } from "date-fns";
 import { es } from "date-fns/locale";
-import { FiPlay, FiSquare } from "react-icons/fi";
+import { FiPlay, FiSquare, FiAlertCircle } from "react-icons/fi";
 import { useTimeRecords } from "@/hooks/useTimeRecords";
 import PrimaryButton from "@/components/ui/PrimaryButton";
 import SecondaryButton from "@/components/ui/SecondaryButton";
 import { ConfirmModal } from "@/components/modals/ConfirmModal";
+import { AbsenceForm } from "@/components/forms/AbsenceForm";
 import { Link } from "react-router-dom";
 
 interface Props {
@@ -24,6 +25,7 @@ export function RelojPrincipal({
 }: Props) {
   const [horaActual, setHoraActual] = useState(new Date());
   const [showConfirmModal, setShowConfirmModal] = useState(false);
+  const [showAbsenceForm, setShowAbsenceForm] = useState(false);
   const [optimisticState, setOptimisticState] = useState<EstadoTrabajo | null>(
     null
   );
@@ -46,7 +48,7 @@ export function RelojPrincipal({
     if (optimisticState !== null) {
       const timeout = setTimeout(() => {
         setOptimisticState(null);
-      }, 1000); // Clear after 1 second
+      }, 1000);
       return () => clearTimeout(timeout);
     }
   }, [optimisticState]);
@@ -57,14 +59,12 @@ export function RelojPrincipal({
       return;
     }
 
-    // IMMEDIATE visual feedback
     setOptimisticState(action === "entrada" ? "trabajando" : "parado");
 
     try {
       await performAction(action);
       onStatusChange?.();
     } catch (err) {
-      // Revert optimistic state on error
       setOptimisticState(null);
       console.error("Error performing action:", err);
     }
@@ -72,18 +72,19 @@ export function RelojPrincipal({
 
   const handleConfirmStop = async () => {
     setShowConfirmModal(false);
-
-    // IMMEDIATE visual feedback
     setOptimisticState("parado");
 
     try {
       await performAction("salida");
       onStatusChange?.();
     } catch (err) {
-      // Revert optimistic state on error
       setOptimisticState(null);
       console.error("Error performing action:", err);
     }
+  };
+
+  const handleAbsenceSuccess = () => {
+    onStatusChange?.();
   };
 
   const getStatusDisplay = () => {
@@ -110,7 +111,7 @@ export function RelojPrincipal({
   const status = getStatusDisplay();
 
   return (
-    <>
+    <div className="max-w-[1400px] mx-auto">
       <div className="flex flex-col gap-8">
         {error && (
           <div className="bg-red-50 border border-red-200 rounded-lg p-4">
@@ -118,12 +119,12 @@ export function RelojPrincipal({
           </div>
         )}
 
-        <div className="clock-container bg-white/95 backdrop-blur rounded-3xl shadow-2xl p-12 text-center">
-          <div className="text-5xl md:text-7xl font-mono font-bold text-azul-profundo pb-4">
+        <div className="clock-container bg-white/10 backdrop-blur rounded-3xl shadow-2xl p-12 text-center">
+          <div className="text-5xl md:text-7xl font-mono font-bold text-white pb-4">
             {format(horaActual, "HH:mm:ss")}
           </div>
 
-          <div className="text-lg text-azul-profundo/70 pb-8">
+          <div className="text-lg text-white/70 pb-8">
             {format(horaActual, "EEEE, d 'de' MMMM", { locale: es })}
           </div>
 
@@ -145,10 +146,10 @@ export function RelojPrincipal({
           </div>
 
           <div className="flex items-end gap-4 justify-center pt-8">
-            <div className="text-2xl md:text-4xl font-bold text-azul-profundo ">
+            <div className="text-2xl md:text-4xl font-bold text-white ">
               {tiempoTrabajado}
             </div>
-            <div className="text-azul-profundo/60 pb-1 text-nowrap">
+            <div className="text-white/60 pb-1 text-nowrap">
               Tiempo trabajado hoy
             </div>
           </div>
@@ -184,6 +185,18 @@ export function RelojPrincipal({
           })}
         </div>
 
+        <div className="flex justify-center">
+          <button
+            onClick={() => setShowAbsenceForm(true)}
+            className="flex items-center gap-2 text-white/80 hover:text-white transition-colors text-sm group cursor-pointer"
+          >
+            <FiAlertCircle className="w-4 h-4 group-hover:scale-110 transition-transform" />
+            <span className="underline underline-offset-4">
+              ¿Necesitas reportar una ausencia o tardanza?
+            </span>
+          </button>
+        </div>
+
         <div className="flex justify-center gap-6 md:hidden text-white pt-12">
           <Link to="/politica-privacidad" className="hover:underline">
             Política de Privacidad
@@ -203,6 +216,14 @@ export function RelojPrincipal({
         confirmText="Sí, parar"
         cancelText="Cancelar"
       />
-    </>
+
+      {showAbsenceForm && (
+        <AbsenceForm
+          usuario={usuario}
+          onClose={() => setShowAbsenceForm(false)}
+          onSuccess={handleAbsenceSuccess}
+        />
+      )}
+    </div>
   );
 }

@@ -97,20 +97,18 @@ export function GenerateInformes({
   ];
 
   return (
-    <div className="bg-blanco/95 backdrop-blur-sm rounded-2xl shadow-lg p-6">
+    <div className="bg-white/5 backdrop-blur-sm rounded-2xl shadow-lg p-6 border border-white/10">
       <div className="flex items-center gap-3 pb-6">
         <FiFileText className="text-2xl text-teal" />
-        <h2 className="text-2xl font-bold text-azul-profundo">
-          Generar Informes
-        </h2>
+        <h2 className="text-2xl font-bold text-white">Generar Informes</h2>
       </div>
 
       {message && (
         <div
           className={`p-4 rounded-lg pb-6 ${
             message.type === "success"
-              ? "bg-green-50 border border-green-200 text-green-800"
-              : "bg-red-50 border border-red-200 text-red-800"
+              ? "bg-teal/20 border border-teal/40 text-teal"
+              : "bg-red-500/20 border border-red-500/40 text-red-400"
           }`}
         >
           {message.text}
@@ -118,9 +116,8 @@ export function GenerateInformes({
       )}
 
       <div className="flex flex-col gap-6">
-        {/* Period Selection */}
         <div className="flex flex-col gap-4">
-          <h3 className="text-lg font-semibold text-azul-profundo">
+          <h3 className="text-lg font-semibold text-white">
             Seleccionar Período
           </h3>
 
@@ -128,10 +125,10 @@ export function GenerateInformes({
             {periodOptions.map((option) => (
               <label
                 key={option.value}
-                className={`flex flex-col gap-2 p-4 border-2 rounded-lg cursor-pointer transition-all ${
+                className={`flex flex-col gap-2 p-4 rounded-lg cursor-pointer transition-all border ${
                   selectedPeriod === option.value
-                    ? "border-teal bg-teal/5"
-                    : "border-hielo hover:border-teal/50 hover:bg-hielo/20"
+                    ? "border-teal bg-teal/15"
+                    : "border-white/10 bg-white/5 hover:border-teal/50 hover:bg-white/10"
                 }`}
               >
                 <div className="flex items-center gap-2">
@@ -143,13 +140,11 @@ export function GenerateInformes({
                     onChange={(e) =>
                       setSelectedPeriod(e.target.value as ReportPeriod)
                     }
-                    className="w-4 h-4 text-teal border-hielo focus:ring-teal"
+                    className="w-4 h-4 text-teal border-white/20 focus:ring-teal"
                   />
-                  <span className="font-medium text-azul-profundo">
-                    {option.label}
-                  </span>
+                  <span className="font-medium text-white">{option.label}</span>
                 </div>
-                <span className="text-sm text-azul-profundo/70 pl-6">
+                <span className="text-sm text-white/60 pl-6">
                   {option.description}
                 </span>
               </label>
@@ -157,18 +152,15 @@ export function GenerateInformes({
           </div>
         </div>
 
-        {/* Custom Date Range */}
         {selectedPeriod === "custom" && (
-          <div className="flex flex-col gap-4 p-4 bg-hielo/20 rounded-lg border border-hielo">
-            <h4 className="text-md font-medium text-azul-profundo">
-              Rango de Fechas
-            </h4>
+          <div className="flex flex-col gap-4 p-4 bg-white/5 rounded-lg border border-white/10">
+            <h4 className="text-md font-medium text-white">Rango de Fechas</h4>
 
             <div className="flex flex-col gap-3">
               <button
                 ref={calendarTriggerRef}
                 onClick={() => setShowCalendar(true)}
-                className="flex cursor-pointer items-center gap-3 px-4 py-3 border-2 border-hielo rounded-lg text-azul-profundo hover:border-teal/50 hover:bg-hielo/30 transition-colors"
+                className="flex cursor-pointer items-center gap-3 px-4 py-3 border border-white/20 rounded-lg text-white bg-white/5 hover:border-teal/50 hover:bg-white/10 transition-colors"
               >
                 <FiCalendar className="w-5 h-5 text-teal" />
                 <span className="text-sm">
@@ -185,7 +177,7 @@ export function GenerateInformes({
               </button>
 
               {customDateRange.start && customDateRange.end && (
-                <div className="text-sm text-azul-profundo/70">
+                <div className="text-sm text-white/60">
                   {getSelectedDatesArray().length} día
                   {getSelectedDatesArray().length !== 1 ? "s" : ""} seleccionado
                   {getSelectedDatesArray().length !== 1 ? "s" : ""}
@@ -196,61 +188,55 @@ export function GenerateInformes({
             {!isCustomRangeValid &&
               customDateRange.start &&
               customDateRange.end && (
-                <p className="text-sm text-red-600">
+                <p className="text-sm text-red-400">
                   La fecha de inicio debe ser anterior o igual a la fecha de fin
                 </p>
               )}
           </div>
         )}
 
-        {/* Preview Statistics */}
         {dateRange && (
-          <div className="flex flex-col gap-4 p-4 bg-gradient-to-br from-turquesa/10 to-turquesa/5 rounded-lg border border-turquesa/20">
+          <div className="flex flex-col gap-4 p-4 bg-teal/10 rounded-lg border border-teal/30">
             <div className="flex items-center gap-2">
-              <FiActivity className="text-turquesa" />
-              <h4 className="text-md font-medium text-azul-profundo">
+              <FiActivity className="text-teal" />
+              <h4 className="text-md font-medium text-white">
                 Vista Previa del Informe
               </h4>
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
               <div className="text-center">
-                <div className="text-2xl font-bold text-azul-profundo">
+                <div className="text-2xl font-bold text-white">
                   {recordCount}
                 </div>
-                <div className="text-sm text-azul-profundo/70">Registros</div>
+                <div className="text-sm text-white/60">Registros</div>
               </div>
 
               <div className="text-center">
-                <div className="text-2xl font-bold text-azul-profundo">
+                <div className="text-2xl font-bold text-white">
                   {statistics.diasTrabajados}
                 </div>
-                <div className="text-sm text-azul-profundo/70">
-                  Días Trabajados
-                </div>
+                <div className="text-sm text-white/60">Días Trabajados</div>
               </div>
 
               <div className="text-center">
-                <div className="text-2xl font-bold text-azul-profundo">
+                <div className="text-2xl font-bold text-white">
                   {statistics.tiempoTotal}
                 </div>
-                <div className="text-sm text-azul-profundo/70">
-                  Tiempo Total
-                </div>
+                <div className="text-sm text-white/60">Tiempo Total</div>
               </div>
             </div>
 
-            <div className="text-sm text-azul-profundo/70 text-center">
+            <div className="text-sm text-white/60 text-center">
               Período: {format(dateRange.start, "dd/MM/yyyy", { locale: es })} -{" "}
               {format(dateRange.end, "dd/MM/yyyy", { locale: es })}
             </div>
           </div>
         )}
 
-        {/* Generate Button */}
         <div className="flex flex-col gap-3">
           {!hasData && dateRange && (
-            <div className="p-3 bg-yellow-50 border border-yellow-200 rounded-lg text-yellow-800 text-sm">
+            <div className="p-3 bg-yellow-500/20 border border-yellow-500/40 rounded-lg text-yellow-300 text-sm">
               No hay registros para el período seleccionado
             </div>
           )}
@@ -266,14 +252,13 @@ export function GenerateInformes({
             {isGenerating ? "Generando PDF..." : "Generar Informe PDF"}
           </PrimaryButton>
 
-          <p className="text-xs text-azul-profundo/60">
+          <p className="text-xs text-white/50">
             El informe incluirá un resumen estadístico y el detalle completo de
             todos los registros del período seleccionado.
           </p>
         </div>
       </div>
 
-      {/* Custom Calendar */}
       {showCalendar && (
         <CustomCalendar
           selectedDates={getSelectedDatesArray()}

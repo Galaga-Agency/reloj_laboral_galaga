@@ -41,7 +41,6 @@ export function AuthProvider({ children }: AuthProviderProps) {
   const [isLoading, setIsLoading] = useState(true);
   const [isLoggingOut, setIsLoggingOut] = useState(false);
 
-  // Monthly reports check for authenticated users
   const {
     reportStatus,
     isLoading: isLoadingReport,
@@ -50,25 +49,38 @@ export function AuthProvider({ children }: AuthProviderProps) {
     handleCloseModal,
   } = useMonthlyReports(usuario || ({ id: "" } as Usuario));
 
+  console.log(
+    "🔍 AuthProvider render - isLoading:",
+    isLoading,
+    "isLoadingReport:",
+    isLoadingReport
+  );
+
   useEffect(() => {
     let mounted = true;
 
     const initializeAuth = async () => {
+      console.log("🔍 Starting auth initialization");
       try {
         const {
           data: { session },
         } = await supabase.auth.getSession();
 
+        console.log("📦 Session:", session ? "exists" : "null");
+
         if (session?.user && mounted) {
+          console.log("👤 Getting current user");
           const currentUser = await AuthService.getCurrentUser();
+          console.log("✅ Current user:", currentUser);
           if (currentUser && mounted) {
             setUsuario(currentUser);
           }
         }
       } catch (error) {
-        console.error("Error initializing auth:", error);
+        console.error("❌ Error initializing auth:", error);
       } finally {
         if (mounted) {
+          console.log("🏁 Setting isLoading to false");
           setIsLoading(false);
         }
       }
@@ -81,9 +93,10 @@ export function AuthProvider({ children }: AuthProviderProps) {
     } = supabase.auth.onAuthStateChange(async (event, session) => {
       if (!mounted) return;
 
-      console.log("Auth state change:", event);
+      console.log("🔄 Auth state change:", event);
 
       switch (event) {
+        case "INITIAL_SESSION":
         case "SIGNED_IN":
           if (session?.user) {
             try {
@@ -138,14 +151,10 @@ export function AuthProvider({ children }: AuthProviderProps) {
     setIsLoggingOut(true);
 
     try {
-      // Set user to null immediately for instant UI feedback
       setUsuario(null);
-
-      // Do the actual logout in the background
       await AuthService.signOut();
     } catch (error) {
       console.error("Error during logout:", error);
-      // Even if logout fails, keep user logged out in UI
     } finally {
       setIsLoggingOut(false);
     }

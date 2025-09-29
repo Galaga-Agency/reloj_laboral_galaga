@@ -15,22 +15,30 @@ interface UseMonthlyReportsReturn {
   refetch: () => Promise<void>;
 }
 
-export function useMonthlyReports(usuario: Usuario): UseMonthlyReportsReturn {
+export function useMonthlyReports(
+  usuario: Usuario | null
+): UseMonthlyReportsReturn {
   const [reportStatus, setReportStatus] = useState<MonthlyReportStatus | null>(
     null
+
+    
   );
-  const [isLoading, setIsLoading] = useState(true);
+  const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [showModal, setShowModal] = useState(false);
 
   const fetchReportStatus = async () => {
+    if (!usuario?.id || usuario.role === "official") {
+      setIsLoading(false);
+      return;
+    }
+
     try {
+      setIsLoading(true);
       setError(null);
 
-      // First, try to generate any missing reports
       await MonthlyReportsService.generateMissingReportsForUser(usuario);
 
-      // Then fetch the current status
       const status = await MonthlyReportsService.getCurrentMonthReportStatus(
         usuario.id
       );
@@ -65,15 +73,16 @@ export function useMonthlyReports(usuario: Usuario): UseMonthlyReportsReturn {
   };
 
   const handleCloseModal = () => {
-    // Modal cannot be closed until report is handled
     console.warn("Monthly report must be reviewed before closing");
   };
 
   useEffect(() => {
-    if (usuario?.id) {
+    if (usuario?.id && usuario.role !== "official") {
       fetchReportStatus();
+    } else {
+      setIsLoading(false);
     }
-  }, [usuario?.id]);
+  }, [usuario?.id, usuario?.role]);
 
   return {
     reportStatus,

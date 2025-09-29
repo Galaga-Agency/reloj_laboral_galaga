@@ -230,7 +230,6 @@ export function HistorialTrabajo({
     return DailyHoursCalculator.calculateDailyHours(registros);
   }, [registros]);
 
-  // Group records by date for display
   const recordsByDate = useMemo(() => {
     const groups = new Map<string, RegistroTiempo[]>();
 
@@ -250,14 +249,14 @@ export function HistorialTrabajo({
   }, [registrosOrdenados, dailyHoursMap]);
 
   return (
-    <div className="flex flex-col gap-6">
-      <div className="bg-blanco/95 backdrop-blur-sm rounded-2xl shadow-lg p-6 relative">
+    <div className="flex flex-col gap-6 max-w-[1400px] mx-auto">
+      <div className="bg-white/5 backdrop-blur-sm rounded-2xl shadow-lg p-6 border border-white/10">
         <div className="flex items-start md:items-center justify-between pb-6">
           <div>
-            <h2 className="text-2xl font-bold text-azul-profundo">
+            <h2 className="text-2xl font-bold text-white">
               Historial de Trabajo
             </h2>
-            <p className="text-sm text-azul-profundo/60 mt-1">
+            <p className="text-sm text-white/60 mt-1">
               {format(currentRange.start, "PPP", { locale: es })} -{" "}
               {format(currentRange.end, "PPP", { locale: es })}
             </p>
@@ -290,13 +289,14 @@ export function HistorialTrabajo({
               handleFilterChange(value as DateRangeFilter)
             }
             placeholder="Seleccionar período"
+            variant="darkBg"
           />
 
           {showCustomPicker && (
-            <div className="mt-4 p-4 bg-hielo/10 rounded-xl border border-hielo/30">
+            <div className="mt-4 p-4 bg-white/5 rounded-xl border border-white/10">
               <div className="flex flex-col sm:flex-row gap-4">
                 <div className="flex-1">
-                  <label className="block text-sm font-medium text-azul-profundo pb-2">
+                  <label className="block text-sm font-medium text-white pb-2">
                     Fecha Inicio
                   </label>
                   <input
@@ -309,11 +309,11 @@ export function HistorialTrabajo({
                         start: startOfDay(newStart),
                       }));
                     }}
-                    className="w-full px-4 py-2 border border-hielo/50 rounded-lg focus:ring-2 focus:ring-teal focus:border-teal bg-blanco/90 text-azul-profundo"
+                    className="w-full px-4 py-2 border border-white/20 rounded-lg focus:ring-1 focus:ring-teal/50 focus:border-teal/50 bg-white/5 text-white"
                   />
                 </div>
                 <div className="flex-1">
-                  <label className="block text-sm font-medium text-azul-profundo pb-2">
+                  <label className="block text-sm font-medium text-white pb-2">
                     Fecha Fin
                   </label>
                   <input
@@ -326,7 +326,7 @@ export function HistorialTrabajo({
                         end: endOfDay(newEnd),
                       }));
                     }}
-                    className="w-full px-4 py-2 border border-hielo/50 rounded-lg focus:ring-2 focus:ring-teal focus:border-teal bg-blanco/90 text-azul-profundo"
+                    className="w-full px-4 py-2 border border-white/20 rounded-lg focus:ring-1 focus:ring-teal/50 focus:border-teal/50 bg-white/5 text-white"
                   />
                 </div>
                 <div className="flex items-end">
@@ -347,17 +347,15 @@ export function HistorialTrabajo({
 
         {isBusy && (
           <div className="text-center py-8 flex flex-col items-center">
-            <FiRefreshCw className="w-8 h-8 mx-auto animate-spin text-azul-profundo/50" />
-            <p className="text-sm text-azul-profundo/60 pt-2">
-              Cargando registros...
-            </p>
+            <FiRefreshCw className="w-8 h-8 mx-auto animate-spin text-white/50" />
+            <p className="text-sm text-white/60 pt-2">Cargando registros...</p>
           </div>
         )}
 
         {!isBusy && (
           <div className="flex flex-col gap-4 max-h-96 overflow-y-auto">
             {recordsByDate.length === 0 ? (
-              <div className="text-center py-8 text-azul-profundo/60 flex flex-col items-center">
+              <div className="text-center py-8 text-white/60 flex flex-col items-center">
                 <FiClock className="w-12 h-12 mx-auto opacity-30 pb-2" />
                 <p className="text-sm">
                   No hay registros para el período seleccionado
@@ -366,9 +364,8 @@ export function HistorialTrabajo({
             ) : (
               recordsByDate.map(({ date, records, totalHours }) => (
                 <div key={date} className="mb-4">
-                  {/* Daily Header */}
                   <div className="flex items-center justify-between mb-2 px-2">
-                    <h3 className="font-medium text-azul-profundo">
+                    <h3 className="font-medium text-white">
                       {format(new Date(date + "T00:00:00"), "PPP", {
                         locale: es,
                       })}
@@ -379,7 +376,6 @@ export function HistorialTrabajo({
                     />
                   </div>
 
-                  {/* Records for this day */}
                   <div className="space-y-2">
                     {records.map((registro) => {
                       const { isModified, modifiedBy } =
@@ -392,18 +388,17 @@ export function HistorialTrabajo({
                       return (
                         <div
                           key={registro.id}
-                          className={`relative p-4 rounded-lg border transition-colors duration-200 flex flex-col gap-3 md:flex-row md:items-center md:justify-between bg-hielo/20 border-hielo/50 hover:bg-hielo/30`}
+                          className="relative p-4 rounded-lg border transition-colors duration-200 flex flex-col gap-3 md:flex-row md:items-center md:justify-between bg-white/5 border-white/10 hover:bg-white/10"
                         >
-                          {/* Left side: icon + labels */}
                           <div className="w-full md:flex-1 flex items-start gap-4 md:items-center">
-                            <div className="flex items-center justify-center w-8 h-8 rounded-full bg-blanco/80 flex-shrink-0">
+                            <div className="flex items-center justify-center w-8 h-8 rounded-full bg-white/10 flex-shrink-0">
                               {TimeRecordsUtils.getTypeIcon(
                                 registro.tipoRegistro
                               )}
                             </div>
                             <div className="flex flex-col gap-1">
                               <div className="flex items-center gap-2">
-                                <span className="font-medium text-azul-profundo">
+                                <span className="font-medium text-white">
                                   {TimeRecordsUtils.getTypeText(
                                     registro.tipoRegistro
                                   )}
@@ -412,25 +407,24 @@ export function HistorialTrabajo({
                             </div>
                           </div>
 
-                          {/* Right side: time + original */}
                           <div className="w-full md:w-auto text-center md:text-right">
                             {isModified ? (
                               <div className="flex flex-col items-center md:items-end gap-1">
-                                <div className="font-mono font-bold text-azul-profundo">
+                                <div className="font-mono font-bold text-white">
                                   {displayTime}
                                 </div>
                                 {getOriginalTime(registro) && (
-                                  <div className="text-[12px] text-yellow-700/80">
+                                  <div className="text-[12px] text-yellow-400/80">
                                     Original: {getOriginalTime(registro)}
                                   </div>
                                 )}
-                                <div className="inline-flex items-center gap-1 text-xs text-yellow-700/80">
+                                <div className="inline-flex items-center gap-1 text-xs text-yellow-400/80">
                                   <FiAlertCircle className="w-3 h-3 flex-shrink-0" />
                                   Modificado por {modifiedBy}
                                 </div>
                               </div>
                             ) : (
-                              <div className="font-mono font-bold text-azul-profundo">
+                              <div className="font-mono font-bold text-white">
                                 {displayTime}
                               </div>
                             )}

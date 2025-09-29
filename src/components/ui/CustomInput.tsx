@@ -6,6 +6,7 @@ interface CustomInputProps extends React.InputHTMLAttributes<HTMLInputElement> {
   error?: string;
   helperText?: string;
   containerClassName?: string;
+  variant?: "lightBg" | "darkBg";
 }
 
 export const CustomInput = forwardRef<HTMLInputElement, CustomInputProps>(
@@ -17,6 +18,7 @@ export const CustomInput = forwardRef<HTMLInputElement, CustomInputProps>(
       containerClassName = "",
       className = "",
       type,
+      variant = "darkBg",
       ...props
     },
     ref
@@ -32,7 +34,11 @@ export const CustomInput = forwardRef<HTMLInputElement, CustomInputProps>(
     return (
       <div className={`flex flex-col gap-2 ${containerClassName}`}>
         {label && (
-          <label className="text-sm font-medium text-azul-profundo">
+          <label
+            className={`text-sm font-medium ${
+              variant === "darkBg" ? "text-white" : "text-azul-profundo"
+            }`}
+          >
             {label}
           </label>
         )}
@@ -44,15 +50,21 @@ export const CustomInput = forwardRef<HTMLInputElement, CustomInputProps>(
             className={`
               w-full px-4 py-3 
               border rounded-xl
-              bg-blanco/90 text-azul-profundo
               transition-all duration-200
-              focus:ring-2 focus:ring-teal focus:border-teal focus:outline-none
+              focus:ring-1 focus:outline-none
               disabled:opacity-50 disabled:cursor-not-allowed
               ${isPasswordType ? "pr-12" : ""}
               ${
+                variant === "darkBg"
+                  ? "bg-white/5 text-white placeholder:text-white/40 border-white/20 hover:border-white/30 focus:ring-teal/50 focus:border-teal/50"
+                  : "bg-hielo/20 text-azul-profundo placeholder:text-azul-profundo/40 border-hielo/50 hover:border-hielo/70 focus:ring-teal focus:border-teal"
+              }
+              ${
                 error
-                  ? "border-red-300 bg-red-50 focus:ring-red-200 focus:border-red-400"
-                  : "border-hielo/50 hover:border-hielo focus:border-teal"
+                  ? variant === "darkBg"
+                    ? "border-red-500/50 bg-red-500/10 focus:ring-red-500/50 focus:border-red-500/50"
+                    : "border-red-500 bg-red-50 focus:ring-red-500 focus:border-red-500"
+                  : ""
               }
               ${className}
             `}
@@ -63,7 +75,11 @@ export const CustomInput = forwardRef<HTMLInputElement, CustomInputProps>(
             <button
               type="button"
               onClick={togglePasswordVisibility}
-              className="absolute right-3 top-1/2 -translate-y-1/2 text-azul-profundo/60 hover:text-azul-profundo transition-colors"
+              className={`absolute right-3 top-1/2 -translate-y-1/2 transition-colors ${
+                variant === "darkBg"
+                  ? "text-white/60 hover:text-white"
+                  : "text-azul-profundo/60 hover:text-azul-profundo"
+              }`}
             >
               {showPassword ? (
                 <FiEyeOff className="w-5 h-5" />
@@ -74,10 +90,24 @@ export const CustomInput = forwardRef<HTMLInputElement, CustomInputProps>(
           )}
         </div>
 
-        {error && <p className="text-sm text-red-600">{error}</p>}
+        {error && (
+          <p
+            className={`text-sm ${
+              variant === "darkBg" ? "text-red-400" : "text-red-600"
+            }`}
+          >
+            {error}
+          </p>
+        )}
 
         {helperText && !error && (
-          <p className="text-sm text-azul-profundo/60">{helperText}</p>
+          <p
+            className={`text-sm ${
+              variant === "darkBg" ? "text-white/60" : "text-azul-profundo/60"
+            }`}
+          >
+            {helperText}
+          </p>
         )}
       </div>
     );

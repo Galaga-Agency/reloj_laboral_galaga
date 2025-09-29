@@ -127,7 +127,7 @@ export function UserRecordsList({
                 options={timeRangeOptions}
                 value={timeRange as unknown as string}
                 onChange={onTimeRangeChange}
-                variant="dark"
+                variant="darkBg"
                 className="text-sm"
               />
             </div>

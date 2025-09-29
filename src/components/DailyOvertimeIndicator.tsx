@@ -25,7 +25,7 @@ export function DailyOvertimeIndicator({
 
   if (isOvertime) {
     return (
-      <div className="flex items-center gap-1 text-xs text-red-600 px-2 py-1">
+      <div className="flex items-center gap-1 text-xs bg-red-500/80 rounded-full text-white px-2 py-1">
         <FiTrendingUp className="w-3 h-3" />
         <span>
           {formatHoursHM(totalHours)}h (+{formatHoursHM(Math.max(0, diff))}h)
@@ -35,7 +35,7 @@ export function DailyOvertimeIndicator({
   }
 
   return (
-    <div className="flex items-center gap-1 text-xs text-green-600 px-2 py-1">
+    <div className="flex items-center gap-1 text-xs bg-green-600/80 rounded-full text-white px-2 py-1">
       <FiCheckCircle className="w-3 h-3" />
       <span>
         {formatHoursHM(totalHours)}h

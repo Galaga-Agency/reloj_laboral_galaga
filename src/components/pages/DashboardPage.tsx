@@ -3,7 +3,7 @@ import type { Usuario, VistaNavegacion } from "@/types";
 import { RelojPrincipal } from "@/components/RelojPrincipal";
 import { HistorialTrabajo } from "@/components/HistorialTrabajo";
 import { WorkSettings } from "@/components/WorkSettings";
-import { AdminPanel } from "@/components/AdminPanel";
+import { AdminPanel } from "@/components/admin/AdminPanel";
 import { DashboardTabs } from "@/components/DashboardTabs";
 import { DashboardHeader } from "@/components/DashboardHeader";
 import { useTimeRecords } from "@/hooks/useTimeRecords";
@@ -103,9 +103,7 @@ export function DashboardPage({ usuario, onLogout }: DashboardPageProps) {
 
       <main className="flex-1 w-full px-4 py-8">
         <div className="flex justify-center">
-          <div className="w-full" style={{ maxWidth: "80rem" }}>
-            {renderTabContent()}
-          </div>
+          <div className="w-full">{renderTabContent()}</div>
         </div>
       </main>
     </div>

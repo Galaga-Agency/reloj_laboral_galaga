@@ -8,17 +8,11 @@ interface SecondaryButtonProps {
   className?: string;
   size?: Size;
   disabled?: boolean;
-  /** If provided, renders an <a>; otherwise a <button> */
   href?: string;
-  /** open href in new tab */
   external?: boolean;
-  /** for dark background contexts */
   darkBg?: boolean;
-  /** border color style */
   borderColor?: BorderColor;
-  /** optional click handler (works for both <a> and <button>) */
   onClick?: (e: React.MouseEvent<HTMLElement>) => void;
-  /** inline styles */
   style?: React.CSSProperties;
 }
 
@@ -43,28 +37,19 @@ export default function SecondaryButton({
   const colorStyles =
     borderColor === "white"
       ? `
-      text-blanco
-      border-blanco
-      hover:border-blanco
-      hover:text-blanco
-      hover:bg-blanco/10
-      focus:ring-blanco/30
-    `
-      : darkBg
-      ? `
-      text-blanco
-      border-blanco/30
-      hover:border-blanco
-      hover:text-blanco
-      hover:bg-blanco/10
-      focus:ring-blanco/30
+      text-white
+      border-white
+      hover:border-white
+      hover:text-white
+      hover:bg-white/10
+      focus:ring-white/30
     `
       : `
-      text-grafito
-      border-hielo
+      text-teal
+      border-teal/30
       hover:border-teal
       hover:text-teal
-      hover:bg-teal/5
+      hover:bg-teal/10
       focus:ring-teal/30
     `;
 
@@ -99,8 +84,8 @@ export default function SecondaryButton({
 
   if (href) {
     return (
-      <a
-        href={href}
+      
+       <a href={href}
         className={classes}
         onClick={onClick}
         target={external ? "_blank" : undefined}

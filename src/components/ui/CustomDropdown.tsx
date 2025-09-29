@@ -13,7 +13,7 @@ interface CustomDropdownProps {
   placeholder?: string;
   disabled?: boolean;
   className?: string;
-  variant?: "light" | "dark";
+  variant?: "lightBg" | "darkBg";
 }
 
 export function CustomDropdown({
@@ -23,7 +23,7 @@ export function CustomDropdown({
   placeholder = "Seleccionar...",
   disabled = false,
   className = "",
-  variant = "light",
+  variant = "lightBg",
 }: CustomDropdownProps) {
   const [isOpen, setIsOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
@@ -91,84 +91,6 @@ export function CustomDropdown({
     }
   };
 
-  // Dynamic styling based on variant
-  const getButtonStyles = () => {
-    const baseStyles = `
-      w-full flex items-center justify-between px-4 py-3 
-      border rounded-xl font-medium transition-all duration-200
-    `;
-
-    if (variant === "dark") {
-      return `${baseStyles} 
-        bg-white/10 border-white/20 text-white
-        ${
-          disabled
-            ? "opacity-50 cursor-not-allowed"
-            : "hover:bg-white/20 focus:ring-2 focus:ring-white/50 focus:border-white/50 cursor-pointer"
-        }
-        ${isOpen ? "ring-2 ring-white/50 border-white/50" : ""}
-      `;
-    }
-
-    // Default light variant
-    return `${baseStyles}
-      bg-hielo/20 border-hielo/50 text-azul-profundo
-      ${
-        disabled
-          ? "opacity-50 cursor-not-allowed"
-          : "hover:bg-hielo/30 focus:ring-2 focus:ring-teal focus:border-teal cursor-pointer"
-      }
-      ${isOpen ? "ring-2 ring-teal border-teal" : ""}
-    `;
-  };
-
-  const getTextColor = () => {
-    if (variant === "dark") {
-      return selectedOption ? "text-white" : "text-white/60";
-    }
-    return selectedOption ? "text-azul-profundo" : "text-azul-profundo/60";
-  };
-
-  const getChevronColor = () => {
-    return variant === "dark" ? "text-white/50" : "text-azul-profundo/50";
-  };
-
-  const getDropdownMenuStyles = () => {
-    if (variant === "dark") {
-      return "bg-blanco/95 backdrop-blur-sm border border-hielo/30 rounded-xl shadow-2xl overflow-hidden";
-    }
-    return "bg-blanco backdrop-blur-sm border border-hielo/30 rounded-xl shadow-2xl overflow-hidden";
-  };
-
-  const getOptionStyles = (option: DropdownOption) => {
-    const baseStyles = `
-      w-full px-4 py-3 text-left flex items-center justify-between
-      transition-colors duration-150 cursor-pointer
-    `;
-
-    if (variant === "dark") {
-      return `${baseStyles}
-        ${
-          option.value === value
-            ? "bg-teal/20 text-teal font-medium"
-            : "text-teal/90 hover:bg-teal/10"
-        }
-      `;
-    }
-
-    return `${baseStyles}
-      ${
-        option.value === value
-          ? "bg-teal/10 text-teal font-medium"
-          : "text-azul-profundo hover:bg-hielo/20"
-      }
-    `;
-  };
-
-  const getCheckColor = () => {
-    return variant === "dark" ? "text-teal" : "text-teal";
-  };
-
   return (
     <div className={`relative ${className}`} ref={dropdownRef}>
       <button
@@ -176,33 +98,72 @@ export function CustomDropdown({
         onClick={() => !disabled && setIsOpen(!isOpen)}
         onKeyDown={handleKeyDown}
         disabled={disabled}
-        className={getButtonStyles()}
+        className={`
+          w-full flex items-center justify-between px-4 py-3 
+          border rounded-xl font-medium transition-all duration-200
+          ${
+            variant === "darkBg"
+              ? "bg-white/10 border-white/20 text-white"
+              : "bg-hielo/20 border-hielo/50 text-azul-profundo"
+          }
+          ${
+            disabled
+              ? "opacity-50 cursor-not-allowed"
+              : variant === "darkBg"
+              ? "hover:bg-white/20 focus:ring-2 focus:ring-white/50 focus:border-white/50 cursor-pointer"
+              : "hover:bg-hielo/30 focus:ring-2 focus:ring-teal focus:border-teal cursor-pointer"
+          }
+          ${
+            isOpen
+              ? variant === "darkBg"
+                ? "ring-2 ring-white/50 border-white/50"
+                : "ring-2 ring-teal border-teal"
+              : ""
+          }
+        `}
         aria-haspopup="listbox"
         aria-expanded={isOpen}
         aria-label="Filtro de fecha"
       >
-        <span className={getTextColor()}>
+        <span
+          className={`
+          ${
+            variant === "darkBg"
+              ? selectedOption
+                ? "text-white"
+                : "text-white/60"
+              : selectedOption
+              ? "text-azul-profundo"
+              : "text-azul-profundo/60"
+          }
+        `}
+        >
           {selectedOption?.label || placeholder}
         </span>
 
         <FiChevronDown
-          className={`w-5 h-5 ${getChevronColor()} transition-transform duration-200 ${
-            isOpen ? "rotate-180" : "rotate-0"
-          }`}
+          className={`
+            w-5 h-5 transition-transform duration-200
+            ${variant === "darkBg" ? "text-white/50" : "text-azul-profundo/50"}
+            ${isOpen ? "rotate-180" : "rotate-0"}
+          `}
         />
       </button>
 
       {isOpen && (
         <>
-          {/* Backdrop overlay */}
           <div
             className="fixed inset-0 z-10"
             onClick={() => setIsOpen(false)}
           />
 
-          {/* Dropdown menu */}
           <div className="absolute top-full left-0 right-0 mt-2 z-[999]">
-            <div className={getDropdownMenuStyles()}>
+            <div
+              className={`
+              backdrop-blur-sm border border-hielo/30 rounded-xl shadow-2xl overflow-hidden
+              ${variant === "darkBg" ? "bg-blanco/95" : "bg-blanco"}
+            `}
+            >
               <ul
                 className="py-2 max-h-60 overflow-y-auto z-[999]"
                 role="listbox"
@@ -216,11 +177,23 @@ export function CustomDropdown({
                     <button
                       type="button"
                       onClick={() => handleSelect(option.value)}
-                      className={getOptionStyles(option)}
+                      className={`
+                        w-full px-4 py-3 text-left flex items-center justify-between
+                        transition-colors duration-150 cursor-pointer
+                        ${
+                          option.value === value
+                            ? variant === "darkBg"
+                              ? "bg-teal/20 text-teal font-medium"
+                              : "bg-teal/10 text-teal font-medium"
+                            : variant === "darkBg"
+                            ? "text-teal/90 hover:bg-teal/10"
+                            : "text-azul-profundo hover:bg-hielo/20"
+                        }
+                      `}
                     >
                       <span>{option.label}</span>
                       {option.value === value && (
-                        <FiCheck className={`w-4 h-4 ${getCheckColor()}`} />
+                        <FiCheck className="w-4 h-4 text-teal" />
                       )}
                     </button>
                   </li>

@@ -15,6 +15,7 @@ import PrimaryButton from "@/components/ui/PrimaryButton";
 import SecondaryButton from "@/components/ui/SecondaryButton";
 import { AbsenceService } from "@/services/absence-service";
 import type { Usuario, AbsenceType } from "@/types";
+import { CustomInput } from "../ui/CustomInput";
 
 interface AbsenceFormProps {
   usuario: Usuario;
@@ -193,8 +194,9 @@ export function AbsenceForm({ usuario, onClose, onSuccess }: AbsenceFormProps) {
               </label>
               <div className="relative">
                 <FiClock className="absolute left-3 top-1/2 -translate-y-1/2 text-azul-profundo/60" />
-                <input
+                <CustomInput
                   type="time"
+                  variant="lightBg"
                   value={horaInicio}
                   onChange={(e) => setHoraInicio(e.target.value)}
                   className="w-full pl-10 pr-4 py-3 border rounded-xl bg-hielo/20 border-hielo/50 text-azul-profundo focus:ring-2 focus:ring-teal focus:border-teal focus:outline-none transition-all"
@@ -208,8 +210,9 @@ export function AbsenceForm({ usuario, onClose, onSuccess }: AbsenceFormProps) {
               </label>
               <div className="relative">
                 <FiClock className="absolute left-3 top-1/2 -translate-y-1/2 text-azul-profundo/60" />
-                <input
+                <CustomInput
                   type="time"
+                  variant="lightBg"
                   value={horaFin}
                   onChange={(e) => setHoraFin(e.target.value)}
                   className="w-full pl-10 pr-4 py-3 border rounded-xl bg-hielo/20 border-hielo/50 text-azul-profundo focus:ring-2 focus:ring-teal focus:border-teal focus:outline-none transition-all"

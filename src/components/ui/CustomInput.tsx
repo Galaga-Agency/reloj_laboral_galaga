@@ -206,7 +206,7 @@ export const CustomInput = forwardRef<HTMLInputElement, CustomInputProps>(
           {isTimeType && showTimePicker && (
             <div
               className="
-      absolute bottom-full mb-2 left-0 w-92 rounded-lg shadow-xl z-20 p-4
+      absolute top-full mb-2 left-0 w-92 rounded-lg shadow-xl z-20 p-4
       bg-white border border-gray-200 text-gray-900
     "
             >

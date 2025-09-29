@@ -118,7 +118,7 @@ export function TimeRecordCorrectionModal({
   return (
     <>
       <div className="fixed inset-0 bg-azul-profundo/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-        <div className="bg-blanco rounded-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto shadow-2xl">
+        <div className="bg-blanco rounded-2xl w-full max-w-lg max-h-[90vh] overflow-visible shadow-2xl">
           <div className="p-6">
             <div className="flex items-center justify-between pb-6 border-b border-hielo/30">
               <div className="flex items-center gap-3">
@@ -195,6 +195,7 @@ export function TimeRecordCorrectionModal({
                 value={hora}
                 onChange={(e) => setHora(e.target.value)}
                 required
+                variant="lightBg"
               />
 
               <div>

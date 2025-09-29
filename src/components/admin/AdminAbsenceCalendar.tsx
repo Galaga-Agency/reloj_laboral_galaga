@@ -181,12 +181,12 @@ export function AdminAbsenceCalendar({
                 >
                   <span>{format(date, "d")}</span>
                   {hasAbsences && (
-                    <div className="absolute bottom-1 left-1/2 -translate-x-1/2 flex gap-0.5">
+                    <div className="absolute bottom-2 left-1/2 -translate-x-1/2 flex gap-0.5">
                       {Array.from({ length: Math.min(absenceCount, 3) }).map(
                         (_, i) => (
                           <div
                             key={i}
-                            className={`w-1.5 h-1.5 rounded-full ${getAbsenceIndicatorColor(
+                            className={`w-3 h-3 rounded-full ${getAbsenceIndicatorColor(
                               dayAbsences
                             )}`}
                           />

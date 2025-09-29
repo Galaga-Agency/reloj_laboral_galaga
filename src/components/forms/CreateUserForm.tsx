@@ -12,7 +12,7 @@ interface CreateUserFormProps {
     nombre: string;
     email: string;
     isAdmin: boolean;
-    role: string
+    role: string;
   } | null;
 }
 
@@ -35,7 +35,7 @@ export function CreateUserForm({
     email: editingUser?.email || "",
     password: "",
     isAdmin: editingUser?.isAdmin || false,
-    role: editingUser?.role || ""
+    role: editingUser?.role || "",
   });
   const [errors, setErrors] = useState<Partial<UserFormData>>({});
 
@@ -96,6 +96,7 @@ export function CreateUserForm({
         placeholder="Ingresa el nombre completo"
         disabled={isLoading}
         required
+        variant="lightBg"
       />
 
       <CustomInput
@@ -107,6 +108,7 @@ export function CreateUserForm({
         placeholder="ejemplo@correo.com"
         disabled={isLoading}
         required
+        variant="lightBg"
       />
 
       <CustomInput
@@ -127,6 +129,7 @@ export function CreateUserForm({
         }
         disabled={isLoading}
         required={!editingUser}
+        variant="lightBg"
       />
 
       <div className="flex items-center gap-3">
@@ -136,7 +139,7 @@ export function CreateUserForm({
           checked={formData.isAdmin}
           onChange={handleInputChange("isAdmin")}
           disabled={isLoading}
-          className="w-4 h-4 text-teal bg-blanco border-hielo/50 rounded focus:ring-teal focus:ring-2"
+          className="w-4 h-4 text-teal cursor-pointer rounded-xl bg-blanco border-hielo/50  focus:ring-teal focus:ring-2"
         />
         <label
           htmlFor="isAdmin"

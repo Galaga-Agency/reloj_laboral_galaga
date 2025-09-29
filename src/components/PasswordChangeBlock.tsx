@@ -58,7 +58,7 @@ export function PasswordChangeBlock({ onMessage }: PasswordChangeBlockProps) {
       setLocalMessage(successMessage);
       onMessage(successMessage);
       setPasswordData({ current: "", new: "", confirm: "" });
-      
+
       setTimeout(() => setLocalMessage(null), 3000);
     } catch (error) {
       console.error("Error changing password:", error);
@@ -77,13 +77,15 @@ export function PasswordChangeBlock({ onMessage }: PasswordChangeBlockProps) {
         <FiKey className="text-2xl text-teal" />
         <h2 className="text-2xl font-bold text-white">Cambiar Contraseña</h2>
       </div>
-      
+
       {localMessage && (
-        <div className={`mb-4 p-3 rounded-lg ${
-          localMessage.type === "success" 
-            ? "bg-green-100 text-green-800 border border-green-200" 
-            : "bg-red-100 text-red-800 border border-red-200"
-        }`}>
+        <div
+          className={`mb-4 p-3 rounded-lg ${
+            localMessage.type === "success"
+              ? "bg-green-100 text-green-800 border border-green-200"
+              : "bg-red-100 text-red-800 border border-red-200"
+          }`}
+        >
           {localMessage.text}
         </div>
       )}
@@ -97,9 +99,7 @@ export function PasswordChangeBlock({ onMessage }: PasswordChangeBlockProps) {
             setPasswordData((prev) => ({ ...prev, new: e.target.value }))
           }
           placeholder="Mínimo 6 caracteres"
-          error={
-            passwordError && passwordData.new ? passwordError : undefined
-          }
+          error={passwordError && passwordData.new ? passwordError : undefined}
         />
 
         <CustomInput
@@ -133,6 +133,7 @@ export function PasswordChangeBlock({ onMessage }: PasswordChangeBlockProps) {
               setLocalMessage(null);
             }}
             className="px-4 py-2 flex-1"
+            borderColor="white"
           >
             Cancelar
           </SecondaryButton>

@@ -76,7 +76,7 @@ export function DashboardPage({ usuario, onLogout }: DashboardPageProps) {
 
       <main className="flex-1 w-full px-4 py-8">
         <div className="flex justify-center">
-          <div className="w-full" style={{ maxWidth: "80rem" }}>
+          <div className="w-full">
             {vistaActual === "reloj" && (
               <RelojPrincipal
                 usuario={usuario}

@@ -316,7 +316,7 @@ export function AdminPanel({ currentUser }: AdminPanelProps) {
                 onUserSelect={handleUserSelect}
                 onUsersUpdated={handleUsersUpdated}
                 onError={handleError}
-                isLoading
+                isLoading={false}
               />
 
               <UserRecordsList

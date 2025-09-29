@@ -117,7 +117,23 @@ body {
   scrollbar-color: #176161 #ffffff;
 }
 
-
 button {
   cursor: pointer;
+}
+
+/* For Chrome, Safari, Edge */
+.custom-picker-darkBg::-webkit-calendar-picker-indicator {
+  filter: invert(1); /* makes it white */
+}
+
+.custom-picker-lightBg::-webkit-calendar-picker-indicator {
+  filter: invert(43%) sepia(100%) saturate(300%) hue-rotate(120deg); /* teal */
+}
+
+/* For Firefox */
+.custom-picker-darkBg {
+  color-scheme: dark;
+}
+.custom-picker-lightBg {
+  color-scheme: light;
 }

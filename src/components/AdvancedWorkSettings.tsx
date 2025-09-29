@@ -34,20 +34,18 @@ export function AdvancedWorkSettings({
   };
 
   return (
-    <div className="bg-red-100 backdrop-blur-sm rounded-2xl shadow-lg p-6 border-2 border-red-400">
+    <div className="bg-white/5 backdrop-blur-sm rounded-2xl shadow-lg p-6 border-2 border-red-400">
       <div className="flex items-center justify-between pb-6">
         <div className="flex items-center gap-3">
           <FiClock className="text-2xl text-teal" />
-          <h2 className="text-2xl font-bold text-azul-profundo">
-            Horario de Trabajo
-          </h2>
+          <h2 className="text-2xl font-bold text-white">Horario de Trabajo</h2>
           <span className="bg-red-200 text-red-800 text-xs px-2 py-1 rounded-full">
             Configuración Avanzada
           </span>
         </div>
         <button
           onClick={onLock}
-          className="text-sm text-gray-500 hover:text-gray-700 flex items-center gap-1"
+          className="text-sm text-white hover:text-gray-700 flex items-center gap-1"
         >
           <FiEyeOff className="w-4 h-4" />
           Ocultar
@@ -100,6 +98,7 @@ export function AdvancedWorkSettings({
           <CustomInput
             label="Hora salida (máxima)"
             type="time"
+            variant="darkBg"
             value={settings.horaSalidaMax}
             onChange={(e) => updateSetting("horaSalidaMax", e.target.value)}
           />

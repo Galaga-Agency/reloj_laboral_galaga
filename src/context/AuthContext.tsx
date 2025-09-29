@@ -11,6 +11,14 @@ import { useMonthlyReports } from "@/hooks/useMonthlyReports";
 import { MonthlyReportModal } from "@/components/modals/MonthlyReportModal";
 import type { Usuario } from "@/types";
 
+interface GDPRConsentData {
+  dataProcessingConsent: boolean;
+  emailNotificationsConsent: boolean;
+  geolocationConsent: boolean;
+  privacyPolicyAcceptedAt: string;
+  consentVersion: string;
+}
+
 interface AuthContextType {
   usuario: Usuario | null;
   isLoading: boolean;
@@ -20,6 +28,7 @@ interface AuthContextType {
   logout: () => Promise<void>;
   updatePassword: (newPassword: string) => Promise<void>;
   markPasswordUpdated: () => void;
+  updateUserGDPRConsent: (userId: string, consentData: GDPRConsentData) => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -47,7 +56,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
     showModal: showMonthlyModal,
     handleAcceptReport,
     handleCloseModal,
-  } = useMonthlyReports(usuario || ({ id: "" } as Usuario));
+  } = useMonthlyReports(usuario);
 
   console.log(
     "🔍 AuthProvider render - isLoading:",
@@ -173,6 +182,35 @@ export function AuthProvider({ children }: AuthProviderProps) {
     }
   };
 
+  const updateUserGDPRConsent = async (userId: string, consentData: GDPRConsentData): Promise<void> => {
+    const { error } = await supabase
+      .from('usuarios')
+      .update({
+        gdpr_consent_given: consentData.dataProcessingConsent,
+        gdpr_consent_date: consentData.privacyPolicyAcceptedAt,
+        email_notifications_consent: consentData.emailNotificationsConsent,
+        geolocation_consent: consentData.geolocationConsent,
+        consent_version: consentData.consentVersion
+      })
+      .eq('id', userId);
+
+    if (error) {
+      throw new Error(`Error updating GDPR consent: ${error.message}`);
+    }
+
+    // Update local user state
+    if (usuario && usuario.id === userId) {
+      setUsuario({
+        ...usuario,
+        gdprConsentGiven: consentData.dataProcessingConsent,
+        gdprConsentDate: consentData.privacyPolicyAcceptedAt,
+        emailNotificationsConsent: consentData.emailNotificationsConsent,
+        geolocationConsent: consentData.geolocationConsent,
+        consentVersion: consentData.consentVersion
+      });
+    }
+  };
+
   const value: AuthContextType = {
     usuario,
     isLoading: isLoading || isLoadingReport,
@@ -182,6 +220,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
     logout,
     updatePassword,
     markPasswordUpdated,
+    updateUserGDPRConsent,
   };
 
   return (

@@ -97,7 +97,6 @@ export function PortalOficialPage({
 
       OfficialPortalService.downloadCSV(csvContent, filename);
 
-      // ✅ log export
       await OfficialPortalService.logAccess(usuario.id, "export", {
         action: "export_csv",
         format: "csv",
@@ -213,7 +212,7 @@ export function PortalOficialPage({
                 value={dateRange}
                 onChange={setDateRange}
                 placeholder="Seleccionar período..."
-                variant="light"
+                variant="lightBg"
               />
             </div>
           </div>

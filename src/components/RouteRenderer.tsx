@@ -4,6 +4,7 @@ import { PasswordUpdatePage } from "@/components/pages/PasswordUpdatePage";
 import { PasswordResetPage } from "@/components/pages/PasswordResetPage";
 import { DashboardPage } from "@/components/pages/DashboardPage";
 import { PortalOficialPage } from "@/components/pages/PortalOficialPage";
+import { GDPRConsentPage } from "@/components/pages/GDPRConsentPage";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
 import { LoadingScreen } from "@/components/ui/LoadingScreen";
 import { useAuth } from "@/context/AuthContext";
@@ -24,9 +25,8 @@ export function RouteRenderer() {
   }
 
   const needsPasswordUpdate = usuario?.firstLogin;
-  const userRole = usuario?.role; // Get role directly from your auth context
-
-  console.log("RouteRenderer - User role:", userRole, "User:", usuario); // DEBUG
+  const needsGDPRConsent = usuario && !usuario.gdprConsentGiven;
+  const userRole = usuario?.role;
 
   return (
     <Routes>
@@ -75,6 +75,30 @@ export function RouteRenderer() {
       />
 
       <Route
+        path={ROUTES.GDPR_CONSENT}
+        element={
+          <ProtectedRoute
+            isAuthenticated={isAuthenticated}
+            redirectTo={ROUTES.LOGIN}
+          >
+            {needsPasswordUpdate ? (
+              <Navigate to={ROUTES.PASSWORD_UPDATE} replace />
+            ) : needsGDPRConsent ? (
+              <GDPRConsentPage usuario={usuario!} />
+            ) : (
+              <Navigate
+                to={
+                  getRedirectPath(ROUTES.GDPR_CONSENT, usuario, userRole) ||
+                  ROUTES.DASHBOARD
+                }
+                replace
+              />
+            )}
+          </ProtectedRoute>
+        }
+      />
+
+      <Route
         path={ROUTES.DASHBOARD}
         element={
           <ProtectedRoute
@@ -83,6 +107,8 @@ export function RouteRenderer() {
           >
             {needsPasswordUpdate ? (
               <Navigate to={ROUTES.PASSWORD_UPDATE} replace />
+            ) : needsGDPRConsent ? (
+              <Navigate to={ROUTES.GDPR_CONSENT} replace />
             ) : userRole === "official" ? (
               <Navigate to={ROUTES.PORTAL_OFICIAL} replace />
             ) : (
@@ -101,6 +127,8 @@ export function RouteRenderer() {
           >
             {needsPasswordUpdate ? (
               <Navigate to={ROUTES.PASSWORD_UPDATE} replace />
+            ) : needsGDPRConsent ? (
+              <Navigate to={ROUTES.GDPR_CONSENT} replace />
             ) : userRole === "employee" ? (
               <Navigate to={ROUTES.DASHBOARD} replace />
             ) : (

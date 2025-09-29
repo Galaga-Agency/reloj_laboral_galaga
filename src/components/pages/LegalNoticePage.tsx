@@ -23,15 +23,15 @@ export function LegalNoticePage() {
         </div>
       )}
 
-      <main className="flex-1 w-full px-4 py-8">
+      <main className="relative flex-1 w-full px-4 py-8">
         <div className="w-full">
-          <div className="pb-6 fade-left opacity-0">
+          <div className="absolute top-6 md:top-12 left-4 md:left-12 pb-6 fade-left opacity-0">
             <BackButton />
           </div>
 
-          <article className="p-8 text-white flex flex-col gap-6 fade-up opacity-0 section">
+          <article className="p-8 text-white flex flex-col gap-6 fade-up opacity-0 section mt-6 md:md-0">
             <header className="fade-zoom opacity-0">
-              <h1 className="text-3xl font-bold">Aviso Legal</h1>
+              <h1 className="text-3xl font-bold">Política de Privacidad</h1>
               <p className="pt-2 opacity-80 text-sm">
                 Última actualización: 16/09/2025
               </p>

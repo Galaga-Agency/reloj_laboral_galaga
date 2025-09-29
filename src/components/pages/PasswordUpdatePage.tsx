@@ -11,6 +11,7 @@ import { FiLock } from "react-icons/fi";
 
 interface PasswordUpdatePageProps {
   usuario: Usuario;
+  onComplete?: () => void;
 }
 
 interface PasswordFormData {

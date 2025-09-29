@@ -162,58 +162,104 @@ export function UserRecordsList({
                   return (
                     <div
                       key={record.id}
-                      className={`relative group p-4 rounded-lg border transition-all hover:bg-white/10 bg-white/5 border-white/10 flex flex-col gap-3 md:flex-row md:items-center md:justify-between pr-10 md:pr-4`}
+                      className="relative group p-4 rounded-lg border transition-all hover:bg-white/10 bg-white/5 border-white/10"
                     >
-                      <div className="w-full md:flex-1 flex items-start gap-4 md:items-center">
-                        <div className="flex items-center justify-center w-8 h-8 rounded-full bg-white/20 flex-shrink-0">
-                          {TimeRecordsUtils.getTypeIcon(record.tipoRegistro)}
+                      {/* Mobile: Stacked layout */}
+                      <div className="md:hidden">
+                        <div className="flex items-center justify-between mb-3">
+                          <div className="flex items-center gap-3">
+                            <div className="flex items-center justify-center w-10 h-10 rounded-full bg-white/20 flex-shrink-0">
+                              {TimeRecordsUtils.getTypeIcon(
+                                record.tipoRegistro
+                              )}
+                            </div>
+                            <div>
+                              <span className="font-medium text-white">
+                                {TimeRecordsUtils.getTypeText(
+                                  record.tipoRegistro
+                                )}
+                              </span>
+                            </div>
+                          </div>
+                          <button
+                            onClick={() => handleEditRecord(record)}
+                            className="p-2 text-white/50 hover:text-white hover:bg-blue-500/20 rounded transition-colors flex-shrink-0"
+                            title="Editar registro"
+                          >
+                            <FiEdit3 className="w-4 h-4" />
+                          </button>
                         </div>
 
-                        <div className="flex flex-col gap-1">
-                          <div className="flex items-center gap-2">
+                        <div className="flex items-center justify-between">
+                          <div className="text-sm text-white/70">
+                            {DateFormatUtils.formatDate(record.fecha)}
+                          </div>
+                          <div className="font-mono font-bold text-white text-lg">
+                            {displayTime}
+                          </div>
+                        </div>
+
+                        {isModified && (
+                          <div className="mt-3 pt-3 border-t border-white/10">
+                            <div className="flex items-center gap-1 text-xs text-yellow-300/70">
+                              <FiAlertCircle className="w-3 h-3 flex-shrink-0 text-yellow-400" />
+                              <span>Modificado por {modifiedBy}</span>
+                            </div>
+                            {getOriginalTime(record) && (
+                              <div className="text-xs text-yellow-300/70 mt-1">
+                                Original: {getOriginalTime(record)}
+                              </div>
+                            )}
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Desktop: Single row layout */}
+                      <div className="hidden md:flex items-center justify-between">
+                        <div className="flex items-center gap-3 flex-1">
+                          <div className="flex items-center justify-center w-10 h-10 rounded-full bg-white/20 flex-shrink-0">
+                            {TimeRecordsUtils.getTypeIcon(record.tipoRegistro)}
+                          </div>
+                          <div className="flex flex-col">
                             <span className="font-medium text-white">
                               {TimeRecordsUtils.getTypeText(
                                 record.tipoRegistro
                               )}
                             </span>
-                          </div>
-                          <div className="text-sm text-white/70">
-                            {DateFormatUtils.formatDate(record.fecha)}
+                            <div className="text-sm text-white/70">
+                              {DateFormatUtils.formatDate(record.fecha)}
+                            </div>
                           </div>
                         </div>
-                      </div>
 
-                      <div className="w-full md:w-auto flex flex-col gap-2 md:flex-row md:items-center md:gap-3 md:justify-end">
-                        <div className="text-left md:text-right">
-                          {isModified ? (
-                            <div className="flex flex-col items-start md:items-end">
-                              <div className="font-mono font-bold text-white">
-                                {displayTime}
-                              </div>
-                              <div className="text-xs text-yellow-300/70 flex items-center gap-2">
-                                <FiAlertCircle className="w-3 h-3 flex-shrink-0 text-yellow-400" />
-                                Modificado por {modifiedBy}
-                              </div>
-                              {getOriginalTime(record) && (
-                                <div className="text-[12px] text-yellow-300/70">
-                                  Original: {getOriginalTime(record)}
-                                </div>
-                              )}
-                            </div>
-                          ) : (
-                            <div className="font-mono font-bold text-white">
+                        <div className="flex items-center gap-3">
+                          <div className="text-right">
+                            <div className="font-mono font-bold text-white text-lg">
                               {displayTime}
                             </div>
-                          )}
-                        </div>
+                            {isModified && (
+                              <div className="mt-1 space-y-1">
+                                <div className="flex items-center justify-end gap-1 text-xs text-yellow-300/70">
+                                  <FiAlertCircle className="w-3 h-3 flex-shrink-0 text-yellow-400" />
+                                  <span>Modificado por {modifiedBy}</span>
+                                </div>
+                                {getOriginalTime(record) && (
+                                  <div className="text-xs text-yellow-300/70">
+                                    Original: {getOriginalTime(record)}
+                                  </div>
+                                )}
+                              </div>
+                            )}
+                          </div>
 
-                        <button
-                          onClick={() => handleEditRecord(record)}
-                          className="absolute top-2 right-2 md:static p-1 text-white/50 hover:text-white hover:bg-blue-500/20 rounded transition-colors opacity-100 md:opacity-0 md:group-hover:opacity-100"
-                          title="Editar registro"
-                        >
-                          <FiEdit3 className="w-4 h-4" />
-                        </button>
+                          <button
+                            onClick={() => handleEditRecord(record)}
+                            className="p-2 text-white/50 hover:text-white hover:bg-blue-500/20 rounded transition-colors opacity-0 group-hover:opacity-100 flex-shrink-0"
+                            title="Editar registro"
+                          >
+                            <FiEdit3 className="w-4 h-4" />
+                          </button>
+                        </div>
                       </div>
                     </div>
                   );

@@ -115,29 +115,6 @@ src/
 - updated_at (timestamptz)
 ```
 
-#### `user_work_settings`
-```sql
-- id (uuid, primary key)
-- usuario_id (uuid, foreign key)
-- horas_diarias (numeric)
-- horas_viernes (numeric)
-- hora_entrada_min (text)
-- hora_entrada_max (text)
-- hora_salida_min (text)
-- hora_salida_max (text)
-- hora_salida_viernes_min (text)
-- hora_salida_viernes_max (text)
-- hora_inicio_descanso (text)
-- hora_fin_descanso (text)
-- duracion_descanso_min (integer)
-- duracion_descanso_max (integer)
-- dias_libres (text[])
-- auto_entry_enabled (boolean)
-- include_lunch_break (boolean)
-- created_at (timestamptz)
-- updated_at (timestamptz)
-```
-
 #### `monthly_reports`
 ```sql
 - id (uuid, primary key)

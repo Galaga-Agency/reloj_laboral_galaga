@@ -18,17 +18,27 @@ export interface Absence {
   id: string;
   usuarioId: string;
   fecha: Date;
-  tipoAusencia: AbsenceType;
+  tipoAusencia: string;
   horaInicio: string;
   horaFin: string;
   duracionMinutos: number;
   razon: string;
   comentarios?: string;
-  estado: AbsenceStatus;
+  estado: string;
   aprobadoPor?: string;
   fechaAprobacion?: Date;
   adjuntoUrl?: string;
   adjuntoNombre?: string;
   createdAt: Date;
   updatedAt: Date;
+  createdBy: string;
+  editedBy?: string;
+  editedAt?: Date;
+  editedFecha?: Date;
+  editedHoraInicio?: string;
+  editedHoraFin?: string;
+  editedRazon?: string;
+  editedComentarios?: string;
 }
+
+

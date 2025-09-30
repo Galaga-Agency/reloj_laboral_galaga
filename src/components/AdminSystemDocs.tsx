@@ -242,7 +242,6 @@ export function AdminSystemDocumentation({
                     <div className="flex flex-col gap-1 text-white font-mono text-xs">
                       <p>• usuarios - Datos de usuarios del sistema</p>
                       <p>• registros_tiempo - Registros de entrada/salida</p>
-                      <p>• user_work_settings - Configuraciones automáticas</p>
                     </div>
                   </div>
                   <div className="bg-white/5 rounded-lg p-3">

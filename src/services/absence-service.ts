@@ -24,6 +24,7 @@ export class AbsenceService {
     razon: string;
     comentarios?: string;
     file?: File;
+    createdBy: string;
   }): Promise<Absence> {
     const startTime = parse(data.horaInicio, "HH:mm", data.fecha);
     const endTime = parse(data.horaFin, "HH:mm", data.fecha);
@@ -68,6 +69,7 @@ export class AbsenceService {
         estado: "pendiente",
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
+        created_by: data.createdBy,
       })
       .select()
       .single();
@@ -105,53 +107,7 @@ export class AbsenceService {
       throw new Error(`Error fetching absences: ${error.message}`);
     }
 
-    const realAbsences = (data || []).map(this.mapToAbsence);
-
-    if (!includeScheduledDaysOff) {
-      return realAbsences;
-    }
-
-    const { data: workSettings } = await supabase
-      .from("user_work_settings")
-      .select("dias_libres")
-      .eq("usuario_id", userId)
-      .single();
-
-    if (
-      !workSettings ||
-      !workSettings.dias_libres ||
-      workSettings.dias_libres.length === 0
-    ) {
-      return realAbsences;
-    }
-
-    const scheduledDaysOff = workSettings.dias_libres
-      .map((dateStr: string) => new Date(dateStr))
-      .filter((date: Date) => {
-        if (startDate && date < startDate) return false;
-        if (endDate && date > endDate) return false;
-        return true;
-      })
-      .map(
-        (date: Date) =>
-          ({
-            id: `scheduled-${userId}-${date.toISOString().split("T")[0]}`,
-            usuarioId: userId,
-            fecha: date,
-            tipoAusencia: "dia_libre" as const,
-            horaInicio: "00:00",
-            horaFin: "23:59",
-            duracionMinutos: 1439,
-            razon: "dia_libre",
-            estado: "programada" as const,
-            createdAt: date,
-            updatedAt: date,
-          } as Absence)
-      );
-
-    return [...realAbsences, ...scheduledDaysOff].sort(
-      (a, b) => b.fecha.getTime() - a.fecha.getTime()
-    );
+    return (data || []).map(this.mapToAbsence);
   }
 
   static async getAllAbsences(
@@ -159,12 +115,6 @@ export class AbsenceService {
     endDate?: Date,
     includeScheduledDaysOff: boolean = false
   ): Promise<Absence[]> {
-    console.log("🔍 getAllAbsences called with:", {
-      startDate,
-      endDate,
-      includeScheduledDaysOff,
-    });
-
     let query = supabase
       .from("ausencias")
       .select("*")
@@ -184,104 +134,7 @@ export class AbsenceService {
       throw new Error(`Error fetching all absences: ${error.message}`);
     }
 
-    const realAbsences = (data || []).map(this.mapToAbsence);
-    console.log("✅ Real absences fetched:", realAbsences.length);
-
-    if (!includeScheduledDaysOff) {
-      console.log(
-        "⚠️ includeScheduledDaysOff is FALSE, returning only real absences"
-      );
-      return realAbsences;
-    }
-
-    console.log("📅 Fetching work settings for scheduled days off...");
-
-    const {
-      data: allWorkSettings,
-      error: settingsError,
-      count,
-    } = await supabase
-      .from("user_work_settings")
-      .select("usuario_id, dias_libres", { count: "exact" });
-
-    console.log("📊 Work settings query details:", {
-      data: allWorkSettings,
-      error: settingsError,
-      count: count,
-      actualLength: allWorkSettings?.length,
-      userIds: allWorkSettings?.map((s) => ({
-        userId: s.usuario_id,
-        diasLibresCount: s.dias_libres?.length || 0,
-      })),
-    });
-
-    if (!allWorkSettings || allWorkSettings.length === 0) {
-      console.log("⚠️ No work settings found");
-      return realAbsences;
-    }
-
-    const allScheduledDaysOff: Absence[] = [];
-
-    allWorkSettings.forEach((settings: any) => {
-      console.log(`👤 Processing user ${settings.usuario_id}:`, {
-        dias_libres: settings.dias_libres,
-        count: settings.dias_libres?.length || 0,
-      });
-
-      if (!settings.dias_libres || settings.dias_libres.length === 0) {
-        console.log(`  ⏭️ No dias_libres for user ${settings.usuario_id}`);
-        return;
-      }
-
-      const userScheduledDays = settings.dias_libres
-        .map((dateStr: string) => new Date(dateStr))
-        .filter((date: Date) => {
-          const inRange =
-            (!startDate || date >= startDate) && (!endDate || date <= endDate);
-          console.log(
-            `  📆 Date ${date.toISOString().split("T")[0]} in range?`,
-            inRange
-          );
-          return inRange;
-        })
-        .map(
-          (date: Date) =>
-            ({
-              id: `scheduled-${settings.usuario_id}-${
-                date.toISOString().split("T")[0]
-              }`,
-              usuarioId: settings.usuario_id,
-              fecha: date,
-              tipoAusencia: "dia_libre" as const,
-              horaInicio: "00:00",
-              horaFin: "23:59",
-              duracionMinutos: 1439,
-              razon: "dia_libre",
-              estado: "programada" as const,
-              createdAt: date,
-              updatedAt: date,
-            } as Absence)
-        );
-
-      console.log(
-        `  ✅ Created ${userScheduledDays.length} scheduled days for user ${settings.usuario_id}`
-      );
-      allScheduledDaysOff.push(...userScheduledDays);
-    });
-
-    console.log(
-      "🎯 Total scheduled days off created:",
-      allScheduledDaysOff.length
-    );
-    console.log("📦 Final result:", {
-      realAbsences: realAbsences.length,
-      scheduledDaysOff: allScheduledDaysOff.length,
-      total: realAbsences.length + allScheduledDaysOff.length,
-    });
-
-    return [...realAbsences, ...allScheduledDaysOff].sort(
-      (a, b) => b.fecha.getTime() - a.fecha.getTime()
-    );
+    return (data || []).map(this.mapToAbsence);
   }
 
   static async updateAbsenceStatus(
@@ -345,6 +198,14 @@ export class AbsenceService {
       adjuntoNombre: row.adjunto_nombre,
       createdAt: new Date(row.created_at),
       updatedAt: new Date(row.updated_at),
+      createdBy: row.created_by,
+      editedBy: row.edited_by,
+      editedAt: row.edited_at ? new Date(row.edited_at) : undefined,
+      editedFecha: row.edited_fecha ? new Date(row.edited_fecha) : undefined,
+      editedHoraInicio: row.edited_hora_inicio,
+      editedHoraFin: row.edited_hora_fin,
+      editedRazon: row.edited_razon,
+      editedComentarios: row.edited_comentarios,
     };
   }
 
@@ -1034,7 +895,7 @@ export class AbsenceService {
       const absences = users.map((user) => ({
         usuario_id: user.id,
         fecha: format(date, "yyyy-MM-dd"),
-        tipo_ausencia: "festivo",
+        tipo_ausencia: "dia_libre",
         hora_inicio: "00:00",
         hora_fin: "23:59",
         duracion_minutos: 1440,
@@ -1043,6 +904,7 @@ export class AbsenceService {
         estado: "aprobada",
         aprobado_por: adminId,
         fecha_aprobacion: new Date().toISOString(),
+        created_by: adminId,
       }));
 
       const { error: insertError } = await supabase
@@ -1073,7 +935,7 @@ export class AbsenceService {
         .from("ausencias")
         .delete()
         .eq("fecha", dateStr)
-        .eq("tipo_ausencia", "festivo");
+        .eq("tipo_ausencia", "dia_libre");
 
       if (error) {
         return { success: false, error: error.message };
@@ -1124,30 +986,52 @@ export class AbsenceService {
 
   static async updateAbsence(
     absenceId: string,
-    updates: { fecha?: Date; razon?: string }
+    updates: {
+      fecha?: Date;
+      razon?: string;
+      horaInicio?: string;
+      horaFin?: string;
+      tipoAusencia?: string;
+      comentarios?: string;
+    },
+    editor: { id: string; isAdmin: boolean }
   ): Promise<void> {
     const patch: any = {
       updated_at: new Date().toISOString(),
-      estado: "pendiente",
-      aprobado_por: null,
-      fecha_aprobacion: null,
     };
 
-    if (updates.fecha) {
-      patch.fecha = updates.fecha.toISOString().split("T")[0];
+    if (editor.isAdmin) {
+      patch.estado = "aprobada";
+      patch.aprobado_por = editor.id;
+      patch.fecha_aprobacion = new Date().toISOString();
+      patch.edited_by = editor.id;
+      patch.edited_at = new Date().toISOString();
+
+      if (updates.fecha)
+        patch.edited_fecha = updates.fecha.toISOString().split("T")[0];
+      if (updates.horaInicio) patch.edited_hora_inicio = updates.horaInicio;
+      if (updates.horaFin) patch.edited_hora_fin = updates.horaFin;
+      if (updates.razon) patch.edited_razon = updates.razon;
+      if (updates.comentarios) patch.edited_comentarios = updates.comentarios;
+    } else {
+      patch.estado = "pendiente";
+      patch.aprobado_por = null;
+      patch.fecha_aprobacion = null;
     }
-    if (updates.razon) {
-      patch.razon = updates.razon;
-    }
+
+    if (updates.fecha) patch.fecha = updates.fecha.toISOString().split("T")[0];
+    if (updates.razon) patch.razon = updates.razon;
+    if (updates.horaInicio) patch.hora_inicio = updates.horaInicio;
+    if (updates.horaFin) patch.hora_fin = updates.horaFin;
+    if (updates.tipoAusencia) patch.tipo_ausencia = updates.tipoAusencia;
+    if (updates.comentarios) patch.comentarios = updates.comentarios;
 
     const { error } = await supabase
       .from("ausencias")
       .update(patch)
       .eq("id", absenceId);
 
-    if (error) {
-      throw new Error(`Error updating absence: ${error.message}`);
-    }
+    if (error) throw new Error(`Error updating absence: ${error.message}`);
   }
 
   static async deleteAbsence(absenceId: string): Promise<void> {

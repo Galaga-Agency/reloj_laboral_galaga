@@ -1,15 +1,5 @@
 import { forwardRef, useState } from "react";
-import { FiEye, FiEyeOff, FiCalendar } from "react-icons/fi";
-import {
-  startOfMonth,
-  endOfMonth,
-  startOfWeek,
-  addDays,
-  isSameMonth,
-  isSameDay,
-  format,
-} from "date-fns";
-import { es } from "date-fns/locale";
+import { FiClock } from "react-icons/fi";
 
 interface CustomInputProps extends React.InputHTMLAttributes<HTMLInputElement> {
   label?: string;
@@ -29,43 +19,46 @@ export const CustomInput = forwardRef<HTMLInputElement, CustomInputProps>(
       className = "",
       type = "text",
       variant = "darkBg",
+      onChange,
+      value,
       ...props
     },
     ref
   ) => {
-    const [showPassword, setShowPassword] = useState(false);
-    const [showDatePicker, setShowDatePicker] = useState(false);
-    const [dateValue, setDateValue] = useState<Date | null>(null);
+    const [showTimePicker, setShowTimePicker] = useState(false);
+    const [internalValue, setInternalValue] = useState((value as string) || "");
+    const [selectedHour, setSelectedHour] = useState<number | null>(null);
 
-    const isPasswordType = type === "password";
-    const isDateType = type === "date";
-    const inputType = isPasswordType && showPassword ? "text" : type;
-
-    const togglePasswordVisibility = () => {
-      setShowPassword(!showPassword);
-    };
+    const isTimeType = type === "time";
 
     const iconColor =
       variant === "darkBg"
         ? "text-white hover:text-white"
         : "text-teal hover:text-teal-800";
 
-    const buildCalendar = (currentMonth: Date) => {
-      const start = startOfWeek(startOfMonth(currentMonth), {
-        weekStartsOn: 1,
-      });
-      const end = endOfMonth(currentMonth);
-      const days: Date[] = [];
-      let day = start;
-
-      while (day <= end) {
-        days.push(day);
-        day = addDays(day, 1);
-      }
-      return days;
+    const handleHourClick = (h: number) => {
+      setSelectedHour(h);
     };
 
-    const calendarDays = buildCalendar(dateValue || new Date());
+    const handleMinuteClick = (m: number) => {
+      const hour =
+        selectedHour ??
+        parseInt((internalValue || "00:00").split(":")[0] || "0", 10);
+
+      const formatted = `${String(hour).padStart(2, "0")}:${String(m).padStart(
+        2,
+        "0"
+      )}`;
+
+      setInternalValue(formatted);
+
+      if (onChange) {
+        onChange({ target: { value: formatted } } as any);
+      }
+
+      setShowTimePicker(false);
+      setSelectedHour(null);
+    };
 
     return (
       <div className={`flex flex-col gap-2 ${containerClassName}`}>
@@ -82,22 +75,23 @@ export const CustomInput = forwardRef<HTMLInputElement, CustomInputProps>(
         <div className="relative">
           <input
             ref={ref}
-            type={isDateType ? "text" : inputType}
-            readOnly={isDateType}
-            value={
-              isDateType
-                ? dateValue
-                  ? format(dateValue, "yyyy-MM-dd")
-                  : ""
-                : props.value
-            }
+            type={isTimeType ? "text" : type} // force text only when it's our custom time picker
+            readOnly={isTimeType}
+            value={isTimeType ? internalValue : (value as string) || ""}
+            onChange={(e) => {
+              if (isTimeType) {
+                // ignore manual typing for time type
+                return;
+              }
+              onChange?.(e); // allow typing in text/other inputs
+            }}
+            onClick={() => isTimeType && setShowTimePicker((p) => !p)}
             className={`
               w-full px-4 py-3 
               border rounded-xl
+              ${isTimeType ? "cursor-pointer pr-10" : ""}
               transition-all duration-200
               focus:ring-1 focus:outline-none
-              disabled:opacity-50 disabled:cursor-not-allowed
-              ${isPasswordType || isDateType ? "pr-12" : ""}
               ${
                 variant === "darkBg"
                   ? "bg-white/5 text-white placeholder:text-white/40 border-white/20 hover:border-white/30 focus:ring-teal/50 focus:border-teal/50"
@@ -112,65 +106,56 @@ export const CustomInput = forwardRef<HTMLInputElement, CustomInputProps>(
               }
               ${className}
             `}
-            placeholder={isDateType ? "Seleccionar fecha" : props.placeholder}
-            onClick={() => {
-              if (isDateType) setShowDatePicker(!showDatePicker);
-            }}
             {...props}
           />
 
-          {isPasswordType && (
+          {isTimeType && (
             <button
               type="button"
-              onClick={togglePasswordVisibility}
+              onClick={() => setShowTimePicker((p) => !p)}
               className={`absolute right-3 top-1/2 -translate-y-1/2 ${iconColor}`}
             >
-              {showPassword ? (
-                <FiEyeOff className="w-5 h-5" />
-              ) : (
-                <FiEye className="w-5 h-5" />
-              )}
+              <FiClock className="w-5 h-5" />
             </button>
           )}
 
-          {isDateType && (
-            <FiCalendar
-              className={`absolute right-3 top-1/2 -translate-y-1/2 w-5 h-5 cursor-pointer ${iconColor}`}
-              onClick={() => setShowDatePicker(!showDatePicker)}
-            />
-          )}
-
-          {isDateType && showDatePicker && (
+          {isTimeType && showTimePicker && (
             <div
-              className={`absolute mt-2 p-4 rounded-xl shadow-xl z-20 ${
-                variant === "darkBg"
-                  ? "bg-gray-900 text-white"
-                  : "bg-white text-black"
-              }`}
+              className="
+                absolute top-full left-0 mt-2 z-20
+                flex gap-4 p-3
+                bg-white dark:bg-gray-900
+                border rounded-xl shadow-lg
+              "
             >
-              <div className="grid grid-cols-7 gap-2 text-sm">
-                {["Lu", "Ma", "Mi", "Ju", "Vi", "Sa", "Do"].map((d) => (
-                  <div key={d} className="font-medium text-center">
-                    {d}
-                  </div>
-                ))}
-                {calendarDays.map((day, idx) => (
+              {/* Hours */}
+              <div className="h-32 overflow-y-auto">
+                {[...Array(24)].map((_, h) => (
                   <button
-                    key={idx}
+                    key={h}
                     type="button"
-                    onClick={() => {
-                      setDateValue(day);
-                      setShowDatePicker(false);
-                    }}
-                    className={`p-2 rounded text-center ${
-                      isSameDay(day, dateValue || new Date())
-                        ? "bg-teal text-white"
-                        : isSameMonth(day, dateValue || new Date())
-                        ? "hover:bg-teal-100"
-                        : "opacity-40"
+                    className={`block w-12 py-1 rounded ${
+                      selectedHour === h
+                        ? "bg-teal-500 text-white"
+                        : "hover:bg-teal-500 hover:text-white"
                     }`}
+                    onClick={() => handleHourClick(h)}
                   >
-                    {format(day, "d", { locale: es })}
+                    {String(h).padStart(2, "0")}
+                  </button>
+                ))}
+              </div>
+
+              {/* Minutes */}
+              <div className="h-32 overflow-y-auto">
+                {[0, 5, 10, 15, 20, 25, 30, 35, 40, 45, 50, 55].map((m) => (
+                  <button
+                    key={m}
+                    type="button"
+                    className="block w-12 py-1 rounded hover:bg-teal-500 hover:text-white"
+                    onClick={() => handleMinuteClick(m)}
+                  >
+                    {String(m).padStart(2, "0")}
                   </button>
                 ))}
               </div>

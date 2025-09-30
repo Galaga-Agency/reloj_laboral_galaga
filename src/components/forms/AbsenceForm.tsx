@@ -84,17 +84,20 @@ export function AbsenceForm({ usuario, onClose, onSuccess }: AbsenceFormProps) {
   const validateForm = (): string | null => {
     if (!selectedDate) return "Debes seleccionar una fecha";
     if (!tipoAusencia) return "Debes seleccionar el tipo de ausencia";
-    if (!horaInicio) return "Debes indicar la hora de inicio";
-    if (!horaFin) return "Debes indicar la hora de fin";
     if (!razon) return "Debes seleccionar un motivo";
 
-    const inicio = horaInicio.split(":").map(Number);
-    const fin = horaFin.split(":").map(Number);
-    const inicioMinutes = inicio[0] * 60 + inicio[1];
-    const finMinutes = fin[0] * 60 + fin[1];
+    if (tipoAusencia !== "ausencia_completa") {
+      if (!horaInicio) return "Debes indicar la hora de inicio";
+      if (!horaFin) return "Debes indicar la hora de fin";
 
-    if (finMinutes <= inicioMinutes) {
-      return "La hora de fin debe ser posterior a la hora de inicio";
+      const inicio = horaInicio.split(":").map(Number);
+      const fin = horaFin.split(":").map(Number);
+      const inicioMinutes = inicio[0] * 60 + inicio[1];
+      const finMinutes = fin[0] * 60 + fin[1];
+
+      if (finMinutes <= inicioMinutes) {
+        return "La hora de fin debe ser posterior a la hora de inicio";
+      }
     }
 
     return null;
@@ -115,11 +118,12 @@ export function AbsenceForm({ usuario, onClose, onSuccess }: AbsenceFormProps) {
         usuarioId: usuario.id,
         fecha: new Date(selectedDate),
         tipoAusencia: tipoAusencia as AbsenceType,
-        horaInicio,
-        horaFin,
+        horaInicio: tipoAusencia === "ausencia_completa" ? "00:00" : horaInicio,
+        horaFin: tipoAusencia === "ausencia_completa" ? "23:59" : horaFin,
         razon,
         comentarios: comentarios || undefined,
         file: selectedFile || undefined,
+        createdBy: usuario.id,
       });
 
       onSuccess();
@@ -187,39 +191,41 @@ export function AbsenceForm({ usuario, onClose, onSuccess }: AbsenceFormProps) {
             className="w-full"
           />
 
-          <div className="grid grid-cols-2 gap-4">
-            <div className="flex flex-col gap-2">
-              <label className="text-sm font-medium text-azul-profundo">
-                Hora de Inicio
-              </label>
-              <div className="relative">
-                <FiClock className="absolute left-3 top-1/2 -translate-y-1/2 text-azul-profundo/60" />
-                <CustomInput
-                  type="time"
-                  variant="lightBg"
-                  value={horaInicio}
-                  onChange={(e) => setHoraInicio(e.target.value)}
-                  className="w-full pl-10 pr-4 py-3 border rounded-xl bg-hielo/20 border-hielo/50 text-azul-profundo focus:ring-2 focus:ring-teal focus:border-teal focus:outline-none transition-all"
-                />
+          {tipoAusencia !== "ausencia_completa" && (
+            <div className="grid grid-cols-2 gap-4">
+              <div className="flex flex-col gap-2">
+                <label className="text-sm font-medium text-azul-profundo">
+                  Hora de Inicio
+                </label>
+                <div className="relative">
+                  <FiClock className="absolute left-3 top-1/2 -translate-y-1/2 text-azul-profundo/60" />
+                  <CustomInput
+                    type="time"
+                    variant="lightBg"
+                    value={horaInicio}
+                    onChange={(e) => setHoraInicio(e.target.value)}
+                    className="w-full pl-10 pr-4 py-3 border rounded-xl bg-hielo/20 border-hielo/50 text-azul-profundo focus:ring-2 focus:ring-teal focus:border-teal focus:outline-none transition-all"
+                  />
+                </div>
               </div>
-            </div>
 
-            <div className="flex flex-col gap-2">
-              <label className="text-sm font-medium text-azul-profundo">
-                Hora de Fin
-              </label>
-              <div className="relative">
-                <FiClock className="absolute left-3 top-1/2 -translate-y-1/2 text-azul-profundo/60" />
-                <CustomInput
-                  type="time"
-                  variant="lightBg"
-                  value={horaFin}
-                  onChange={(e) => setHoraFin(e.target.value)}
-                  className="w-full pl-10 pr-4 py-3 border rounded-xl bg-hielo/20 border-hielo/50 text-azul-profundo focus:ring-2 focus:ring-teal focus:border-teal focus:outline-none transition-all"
-                />
+              <div className="flex flex-col gap-2">
+                <label className="text-sm font-medium text-azul-profundo">
+                  Hora de Fin
+                </label>
+                <div className="relative">
+                  <FiClock className="absolute left-3 top-1/2 -translate-y-1/2 text-azul-profundo/60" />
+                  <CustomInput
+                    type="time"
+                    variant="lightBg"
+                    value={horaFin}
+                    onChange={(e) => setHoraFin(e.target.value)}
+                    className="w-full pl-10 pr-4 py-3 border rounded-xl bg-hielo/20 border-hielo/50 text-azul-profundo focus:ring-2 focus:ring-teal focus:border-teal focus:outline-none transition-all"
+                  />
+                </div>
               </div>
             </div>
-          </div>
+          )}
 
           <CustomDropdown
             options={absenceReasons}

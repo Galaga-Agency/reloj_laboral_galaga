@@ -4,6 +4,7 @@ import {
   FiCheck,
   FiX,
   FiDownload,
+  FiEdit,
   FiFile,
 } from "react-icons/fi";
 import { format } from "date-fns";
@@ -14,6 +15,7 @@ import { AbsenceStatisticsCalculator } from "@/utils/absence-statistics";
 import type { Absence, Usuario } from "@/types";
 import PrimaryButton from "@/components/ui/PrimaryButton";
 import SecondaryButton from "@/components/ui/SecondaryButton";
+import { AbsenceEditModal } from "../modals/AbsenceEditModal";
 
 interface AdminPendingAbsencesProps {
   currentAdmin: Usuario;
@@ -28,6 +30,11 @@ export function AdminPendingAbsences({
   const [users, setUsers] = useState<Map<string, Usuario>>(new Map());
   const [isLoading, setIsLoading] = useState(false);
   const [updatingId, setUpdatingId] = useState<string | null>(null);
+  const [isUpdating, setIsUpdating] = useState(false);
+  const [absenceBeingEdited, setAbsenceBeingEdited] = useState<Absence | null>(
+    null
+  );
+
   const [message, setMessage] = useState<{
     type: "success" | "error";
     text: string;
@@ -45,11 +52,15 @@ export function AdminPendingAbsences({
         AdminService.getAllUsers(),
       ]);
 
-      const pending = absences.filter((a) => a.estado === "pendiente");
-      pending.sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
-
       const userMap = new Map<string, Usuario>();
       allUsers.forEach((user) => userMap.set(user.id, user));
+
+      const pending = absences.filter((a) => {
+        const creator = userMap.get(a.createdBy || "");
+        return a.estado === "pendiente" && (!creator || !creator.isAdmin);
+      });
+
+      pending.sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
 
       setPendingAbsences(pending);
       setUsers(userMap);
@@ -226,6 +237,39 @@ export function AdminPendingAbsences({
                   })}
                 </div>
 
+                {absence.editedBy && (
+                  <div className="pt-2 border-t border-white/10 text-xs text-yellow-400">
+                    Editado por admin el{" "}
+                    {absence.editedAt
+                      ? format(absence.editedAt, "dd/MM/yyyy HH:mm", {
+                          locale: es,
+                        })
+                      : "N/D"}
+                    <div className="mt-1 text-white/80">
+                      {absence.editedFecha && (
+                        <div>
+                          Nueva fecha:{" "}
+                          {format(absence.editedFecha, "dd/MM/yyyy", {
+                            locale: es,
+                          })}
+                        </div>
+                      )}
+                      {absence.editedHoraInicio && absence.editedHoraFin && (
+                        <div>
+                          Nuevo horario: {absence.editedHoraInicio} -{" "}
+                          {absence.editedHoraFin}
+                        </div>
+                      )}
+                      {absence.editedRazon && (
+                        <div>Nuevo motivo: {absence.editedRazon}</div>
+                      )}
+                      {absence.editedComentarios && (
+                        <div>Comentarios: {absence.editedComentarios}</div>
+                      )}
+                    </div>
+                  </div>
+                )}
+
                 <div className="flex gap-3 pt-4 border-t border-white/10">
                   <PrimaryButton
                     onClick={() => handleStatusUpdate(absence.id, "aprobada")}
@@ -236,12 +280,21 @@ export function AdminPendingAbsences({
                     <FiCheck className="w-4 h-4" />
                     {updatingId === absence.id ? "Procesando..." : "Aprobar"}
                   </PrimaryButton>
+
+                  <SecondaryButton
+                    onClick={() => setAbsenceBeingEdited(absence)}
+                    size="sm"
+                    className="flex-1 bg-white/10 text-white/80 hover:text-white border-white/80 hover:border-white"
+                  >
+                    <FiEdit /> Editar
+                  </SecondaryButton>
+
                   <SecondaryButton
                     onClick={() => handleStatusUpdate(absence.id, "rechazada")}
                     disabled={updatingId === absence.id}
                     size="sm"
                     darkBg
-                    className="flex-1"
+                    className="flex-1  !bg-red-500/10 !text-red-500 !border-red-500/80 !hover:border-red"
                   >
                     <FiX className="w-4 h-4" />
                     Rechazar
@@ -251,6 +304,41 @@ export function AdminPendingAbsences({
             );
           })}
         </div>
+      )}
+
+      {/* Modal for editing */}
+      {absenceBeingEdited && (
+        <AbsenceEditModal
+          isOpen={!!absenceBeingEdited}
+          onClose={() => setAbsenceBeingEdited(null)}
+          isLoading={isUpdating}
+          editingAbsence={absenceBeingEdited}
+          currentAdmin={currentAdmin}
+          onSubmit={async (updates) => {
+            setIsUpdating(true);
+            try {
+              await AbsenceService.updateAbsence(
+                absenceBeingEdited!.id,
+                updates,
+                { id: currentAdmin.id, isAdmin: currentAdmin.isAdmin }
+              );
+              setMessage({
+                type: "success",
+                text: "Ausencia actualizada correctamente",
+              });
+              setAbsenceBeingEdited(null);
+              await loadData();
+              onUpdate();
+            } catch (err) {
+              setMessage({
+                type: "error",
+                text: "Error al actualizar ausencia",
+              });
+            } finally {
+              setIsUpdating(false);
+            }
+          }}
+        />
       )}
     </div>
   );

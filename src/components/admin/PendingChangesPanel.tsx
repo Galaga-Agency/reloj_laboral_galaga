@@ -43,7 +43,7 @@ export function PendingChangesPanel({
   const [showEditModal, setShowEditModal] = useState(false);
   const [editingRecord, setEditingRecord] = useState<{
     record: RegistroTiempo;
-    user: Usuario;
+    user: { id: string; nombre: string };
   } | null>(null);
 
   useEffect(() => {
@@ -122,11 +122,6 @@ export function PendingChangesPanel({
       user: {
         id: change.usuarioId,
         nombre: change.adminUserName,
-        email: "",
-        firstLogin: false,
-        isAdmin: false,
-        isActive: true,
-        role: "employee",
       },
     });
     setSelectedChange(change);

@@ -17,7 +17,7 @@ interface TimeRecordCorrectionModalProps {
   isOpen: boolean;
   onClose: () => void;
   record: RegistroTiempo | null;
-  user: Usuario | null;
+  user: { id: string; nombre: string } | null;
   currentUser: Usuario;
   onSuccess: () => void;
   isUserRequest?: boolean;

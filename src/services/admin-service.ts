@@ -53,6 +53,11 @@ export class AdminService {
       isAdmin: user.is_admin,
       isActive: user.is_active ?? true,
       role: user.role,
+      dias_libres: user.dias_libres ?? [],
+      horas_diarias: user.horas_diarias ?? 8,
+      horas_viernes: user.horas_viernes ?? 6,
+      auto_entry_enabled: user.auto_entry_enabled ?? false,
+      include_lunch_break: user.include_lunch_break ?? false,
     }));
 
     console.log("Mapped users:", mappedUsers);

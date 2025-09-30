@@ -96,7 +96,7 @@ export function AdminAbsencesPanel({
       <div ref={pendingRef}>
         <AdminPendingAbsences
           currentAdmin={currentAdmin}
-          onUpdate={() => window.location.reload()}
+          onUpdate={handleStatusUpdate}
         />
       </div>
 

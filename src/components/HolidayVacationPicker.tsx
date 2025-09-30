@@ -1,49 +1,80 @@
 import { useState, useRef } from "react";
 import { format, parseISO } from "date-fns";
 import { es } from "date-fns/locale";
-import { FiCalendar, FiPlus, FiTrash2 } from "react-icons/fi";
+import { FiCalendar, FiPlus, FiTrash2, FiRefreshCw } from "react-icons/fi";
 import { DateManager, type DateRange } from "@/utils/date-management";
 import { CustomCalendar } from "@/components/ui/CustomCalendar";
+import type { Absence } from "@/types";
+import { AbsenceService } from "@/services/absence-service";
 
 interface HolidayVacationPickerProps {
-  selectedDates: string[];
-  onDatesChange: (dates: string[]) => void;
+  daysOff: Absence[];
+  onRefresh?: () => void;
+  onDelete: (absenceId: string) => void;
+  currentUserId: string;
 }
 
 export function HolidayVacationPicker({
-  selectedDates,
-  onDatesChange,
+  daysOff,
+  onRefresh,
+  onDelete,
+  currentUserId,
 }: HolidayVacationPickerProps) {
   const [showCalendar, setShowCalendar] = useState(false);
   const buttonRef = useRef<HTMLButtonElement>(null);
 
-  const handleBulkSelect = (dates: string[]) => {
-    let newDates = [...selectedDates];
+  const selectedDates = daysOff.map((d) => format(d.fecha, "yyyy-MM-dd"));
+  const dateRanges = DateManager.groupIntoRanges(selectedDates);
 
-    dates.forEach((date) => {
-      if (!newDates.includes(date)) {
-        newDates.push(date);
+  const getReasonForDate = (dateStr: string): string => {
+    const absence = daysOff.find(
+      (d) => format(d.fecha, "yyyy-MM-dd") === dateStr
+    );
+    return absence?.razon || "Vacaciones";
+  };
+
+  const handleBulkSelect = async (dates: string[]) => {
+    try {
+      for (const dateStr of dates) {
+        const dayOffDate = new Date(dateStr + "T00:00:00");
+
+        await AbsenceService.createAbsence({
+          usuarioId: currentUserId,
+          fecha: dayOffDate,
+          tipoAusencia: "dia_libre",
+          horaInicio: "00:00",
+          horaFin: "23:59",
+          razon: "Vacaciones",
+          comentarios: "Día libre agregado por el usuario",
+          createdBy: currentUserId,
+        });
       }
-    });
 
-    onDatesChange(newDates.sort());
+      if (onRefresh) {
+        await onRefresh();
+      }
+      setShowCalendar(false);
+    } catch (error) {
+      console.error("Error creating days off:", error);
+    }
   };
 
   const handleRemoveDate = (date: string) => {
-    const newDates = DateManager.removeSingleDate(selectedDates, date);
-    onDatesChange(newDates);
+    const absence = daysOff.find((d) => format(d.fecha, "yyyy-MM-dd") === date);
+    if (absence) onDelete(absence.id);
   };
 
   const handleRemoveRange = (range: DateRange) => {
-    const newDates = DateManager.removeDateRange(selectedDates, range);
-    onDatesChange(newDates);
+    const absencesToDelete = daysOff.filter((d) => {
+      const dateStr = format(d.fecha, "yyyy-MM-dd");
+      return dateStr >= range.start && dateStr <= range.end;
+    });
+    absencesToDelete.forEach((a) => onDelete(a.id));
   };
 
   const handleClearAll = () => {
-    onDatesChange([]);
+    daysOff.forEach((a) => onDelete(a.id));
   };
-
-  const dateRanges = DateManager.groupIntoRanges(selectedDates);
 
   return (
     <div className="bg-white/5 backdrop-blur-sm rounded-2xl shadow-lg p-6 border border-white/10 relative">
@@ -52,14 +83,25 @@ export function HolidayVacationPicker({
           <FiCalendar className="text-teal flex-shrink-0" />
           Días Libres y Vacaciones
         </h2>
-        <button
-          ref={buttonRef}
-          onClick={() => setShowCalendar(!showCalendar)}
-          className="absolute top-6 right-6 p-2 md:px-4 md:py-2 bg-teal/90 text-white rounded-lg hover:bg-teal flex items-center gap-2 transition-colors cursor-pointer"
-        >
-          <FiPlus className="w-4 h-4" />
-          <span className="hidden md:block">Agregar</span>
-        </button>
+        <div className="absolute top-6 right-6 flex items-center gap-2">
+          {onRefresh && (
+            <button
+              onClick={onRefresh}
+              className="p-2 bg-white/10 text-white rounded-lg hover:bg-white/20 transition-colors"
+              title="Refrescar"
+            >
+              <FiRefreshCw className="w-4 h-4" />
+            </button>
+          )}
+          <button
+            ref={buttonRef}
+            onClick={() => setShowCalendar(!showCalendar)}
+            className="p-2 md:px-4 md:py-2 bg-teal/90 text-white rounded-lg hover:bg-teal flex items-center gap-2 transition-colors"
+          >
+            <FiPlus className="w-4 h-4" />
+            <span className="hidden md:block">Agregar</span>
+          </button>
+        </div>
       </div>
 
       {showCalendar && (
@@ -94,11 +136,20 @@ export function HolidayVacationPicker({
               >
                 <div className="flex flex-col gap-1">
                   {range.count === 1 ? (
-                    <span className="text-sm font-medium text-white">
-                      {format(parseISO(range.start), "d 'de' MMMM 'de' yyyy", {
-                        locale: es,
-                      })}
-                    </span>
+                    <>
+                      <span className="text-sm font-medium text-white">
+                        {format(
+                          parseISO(range.start),
+                          "d 'de' MMMM 'de' yyyy",
+                          {
+                            locale: es,
+                          }
+                        )}
+                      </span>
+                      <span className="text-xs text-white/60 italic">
+                        {getReasonForDate(range.start)}
+                      </span>
+                    </>
                   ) : (
                     <div className="flex flex-col gap-1">
                       <span className="text-sm font-medium text-white">
@@ -112,6 +163,9 @@ export function HolidayVacationPicker({
                       </span>
                       <span className="text-xs text-white/60">
                         {range.count} días consecutivos
+                      </span>
+                      <span className="text-xs text-white/60 italic">
+                        {getReasonForDate(range.start)}
                       </span>
                     </div>
                   )}

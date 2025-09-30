@@ -1,5 +1,4 @@
 import { useState, useEffect } from "react";
-import { AutoEntryService } from "@/services/auto-entry-service";
 import { useSecretSequence } from "@/hooks/useSecretSequence";
 import { HolidayVacationPicker } from "@/components/HolidayVacationPicker";
 import { GenerateInformes } from "@/components/GenerateInformes";
@@ -7,34 +6,18 @@ import { AdvancedWorkSettings } from "@/components/AdvancedWorkSettings";
 import { PasswordChangeBlock } from "./PasswordChangeBlock";
 import SecondaryButton from "./ui/SecondaryButton";
 import { FiSave, FiCheck, FiX } from "react-icons/fi";
-import { RegistroTiempo, Usuario } from "@/types";
+import { RegistroTiempo, Usuario, Absence } from "@/types";
+import { supabase } from "@/lib/supabase";
+import { AbsenceService } from "@/services/absence-service";
 
 interface WorkSettingsProps {
   usuario: Usuario;
   registros?: RegistroTiempo[];
 }
 
-interface WorkSettings {
-  horasDiarias: number;
-  horaEntradaMin: string;
-  horaEntradaMax: string;
-  horaSalidaMin: string;
-  horaSalidaMax: string;
-  diasLibres: string[];
-  autoEntryEnabled: boolean;
-}
-
 export function WorkSettings({ usuario, registros = [] }: WorkSettingsProps) {
-  const [settings, setSettings] = useState<WorkSettings>({
-    horasDiarias: 8,
-    horaEntradaMin: "08:45",
-    horaEntradaMax: "09:00",
-    horaSalidaMin: "17:00",
-    horaSalidaMax: "17:30",
-    diasLibres: [],
-    autoEntryEnabled: true,
-  });
-
+  const [settings, setSettings] = useState<Usuario>(usuario);
+  const [daysOff, setDaysOff] = useState<Absence[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [saveStatus, setSaveStatus] = useState<"idle" | "success" | "error">(
@@ -45,7 +28,7 @@ export function WorkSettings({ usuario, registros = [] }: WorkSettingsProps) {
     text: string;
   } | null>(null);
 
-  const { isUnlocked, progress, totalSteps, lock } = useSecretSequence({
+  const { isUnlocked, lock } = useSecretSequence({
     sequence: ["s", "e", "c", "r", "e", "t"],
     resetTimeout: 5000,
     onSequenceComplete: () => {
@@ -57,32 +40,57 @@ export function WorkSettings({ usuario, registros = [] }: WorkSettingsProps) {
     },
   });
 
-  useEffect(() => {
-    loadSettings();
-  }, [usuario.id]);
-
-  const loadSettings = async () => {
-    setIsLoading(true);
+  const loadDiasLibres = async () => {
     try {
-      const userSettings = await AutoEntryService.getUserWorkSettings(
-        usuario.id
+      const absences = await AbsenceService.getAbsencesByUser(usuario.id);
+      const dayOffAbsences = absences.filter(
+        (a) => a.tipoAusencia === "dia_libre"
       );
-      if (userSettings) {
-        setSettings(userSettings);
-      }
+      setDaysOff(dayOffAbsences);
     } catch (error) {
-      console.error("Error loading settings:", error);
-      setMessage({ type: "error", text: "Error cargando configuración" });
-    } finally {
-      setIsLoading(false);
+      console.error("Error loading dias libres:", error);
     }
   };
+
+  const handleDeleteDayOff = async (absenceId: string) => {
+    try {
+      await AbsenceService.deleteAbsence(absenceId);
+      await loadDiasLibres();
+    } catch (error) {
+      console.error("Error deleting day off:", error);
+    }
+  };
+
+  useEffect(() => {
+    setSettings(usuario);
+    loadDiasLibres();
+  }, [usuario]);
 
   const saveSettings = async () => {
     setIsSaving(true);
     setSaveStatus("idle");
     try {
-      await AutoEntryService.updateWorkSettings(usuario.id, settings);
+      const { error } = await supabase
+        .from("usuarios")
+        .update({
+          horas_diarias: settings.horas_diarias,
+          horas_viernes: settings.horas_viernes,
+          hora_entrada_min: settings.hora_entrada_min,
+          hora_entrada_max: settings.hora_entrada_max,
+          hora_salida_min: settings.hora_salida_min,
+          hora_salida_max: settings.hora_salida_max,
+          hora_salida_viernes_min: settings.hora_salida_viernes_min,
+          hora_salida_viernes_max: settings.hora_salida_viernes_max,
+          hora_inicio_descanso: settings.hora_inicio_descanso,
+          hora_fin_descanso: settings.hora_fin_descanso,
+          duracion_descanso_min: settings.duracion_descanso_min,
+          duracion_descanso_max: settings.duracion_descanso_max,
+          include_lunch_break: settings.include_lunch_break,
+          auto_entry_enabled: settings.auto_entry_enabled,
+        })
+        .eq("id", usuario.id);
+
+      if (error) throw error;
       setSaveStatus("success");
       setTimeout(() => setSaveStatus("idle"), 3000);
     } catch (error) {
@@ -138,10 +146,10 @@ export function WorkSettings({ usuario, registros = [] }: WorkSettingsProps) {
       />
 
       <HolidayVacationPicker
-        selectedDates={settings.diasLibres}
-        onDatesChange={(dates) =>
-          setSettings((prev) => ({ ...prev, diasLibres: dates }))
-        }
+        daysOff={daysOff}
+        onRefresh={loadDiasLibres}
+        onDelete={handleDeleteDayOff}
+        currentUserId={usuario.id}
       />
 
       <PasswordChangeBlock

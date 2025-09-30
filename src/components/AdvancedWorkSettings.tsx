@@ -1,20 +1,11 @@
 import { FiClock, FiEyeOff } from "react-icons/fi";
 import { CustomInput } from "@/components/ui/CustomInput";
 import { Checkbox } from "@/components/ui/Checkbox";
-
-interface WorkSettings {
-  horasDiarias: number;
-  horaEntradaMin: string;
-  horaEntradaMax: string;
-  horaSalidaMin: string;
-  horaSalidaMax: string;
-  diasLibres: string[];
-  autoEntryEnabled: boolean;
-}
+import { Usuario } from "@/types";
 
 interface AdvancedWorkSettingsProps {
-  settings: WorkSettings;
-  onSettingsChange: (settings: WorkSettings) => void;
+  settings: Usuario;
+  onSettingsChange: (settings: Usuario) => void;
   onLock: () => void;
 }
 
@@ -23,9 +14,9 @@ export function AdvancedWorkSettings({
   onSettingsChange,
   onLock,
 }: AdvancedWorkSettingsProps) {
-  const updateSetting = <K extends keyof WorkSettings>(
+  const updateSetting = <K extends keyof Usuario>(
     key: K,
-    value: WorkSettings[K]
+    value: Usuario[K]
   ) => {
     onSettingsChange({
       ...settings,
@@ -55,54 +46,163 @@ export function AdvancedWorkSettings({
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         <div className="flex flex-col gap-4">
           <CustomInput
-            label="Horas diarias de trabajo"
+            label="Horas diarias"
             type="number"
             min="1"
             max="12"
-            value={settings.horasDiarias}
+            value={settings.horas_diarias ?? ""}
             onChange={(e) =>
-              updateSetting("horasDiarias", Number(e.target.value))
+              updateSetting("horas_diarias", Number(e.target.value))
+            }
+          />
+
+          <CustomInput
+            label="Horas viernes"
+            type="number"
+            min="1"
+            max="12"
+            value={settings.horas_viernes ?? ""}
+            onChange={(e) =>
+              updateSetting("horas_viernes", Number(e.target.value))
             }
           />
 
           <CustomInput
             label="Hora entrada (mínima)"
             type="time"
-            value={settings.horaEntradaMin}
-            onChange={(e) => updateSetting("horaEntradaMin", e.target.value)}
+            value={settings.hora_entrada_min || ""}
+            onChange={(e) => updateSetting("hora_entrada_min", e.target.value)}
           />
 
           <CustomInput
             label="Hora entrada (máxima)"
             type="time"
-            value={settings.horaEntradaMax}
-            onChange={(e) => updateSetting("horaEntradaMax", e.target.value)}
+            value={settings.hora_entrada_max || ""}
+            onChange={(e) => updateSetting("hora_entrada_max", e.target.value)}
           />
         </div>
 
         <div className="flex flex-col gap-4">
           <Checkbox
-            checked={settings.autoEntryEnabled}
-            onChange={(checked) => updateSetting("autoEntryEnabled", checked)}
-            label="Activar entradas automáticas"
-            description="Genera entradas automáticamente cuando no fiches"
+            checked={settings.auto_entry_enabled ?? false}
+            onChange={(checked) => updateSetting("auto_entry_enabled", checked)}
+            label="Entradas automáticas"
+            description="Genera entradas cuando no fiches"
+          />
+
+          <Checkbox
+            checked={settings.include_lunch_break ?? false}
+            onChange={(checked) =>
+              updateSetting("include_lunch_break", checked)
+            }
+            label="Incluir descanso de comida"
+            description="Cuenta el descanso en la jornada laboral"
           />
 
           <CustomInput
             label="Hora salida (mínima)"
             type="time"
-            value={settings.horaSalidaMin}
-            onChange={(e) => updateSetting("horaSalidaMin", e.target.value)}
+            value={settings.hora_salida_min || ""}
+            onChange={(e) =>
+              updateSetting(
+                "hora_salida_min",
+                e.target.value || settings.hora_salida_min
+              )
+            }
           />
 
           <CustomInput
             label="Hora salida (máxima)"
             type="time"
-            variant="darkBg"
-            value={settings.horaSalidaMax}
-            onChange={(e) => updateSetting("horaSalidaMax", e.target.value)}
+            value={settings.hora_salida_max || ""}
+            onChange={(e) =>
+              updateSetting(
+                "hora_salida_max",
+                e.target.value || settings.hora_salida_max
+              )
+            }
           />
         </div>
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-6">
+        <CustomInput
+          label="Hora salida viernes (mínima)"
+          type="time"
+          value={settings.hora_salida_viernes_min || ""}
+          onChange={(e) =>
+            updateSetting(
+              "hora_salida_viernes_min",
+              e.target.value || settings.hora_salida_viernes_min
+            )
+          }
+        />
+
+        <CustomInput
+          label="Hora salida viernes (máxima)"
+          type="time"
+          value={settings.hora_salida_viernes_max || ""}
+          onChange={(e) =>
+            updateSetting(
+              "hora_salida_viernes_max",
+              e.target.value || settings.hora_salida_viernes_max
+            )
+          }
+        />
+
+        <CustomInput
+          label="Inicio descanso"
+          type="time"
+          value={settings.hora_inicio_descanso || ""}
+          onChange={(e) =>
+            updateSetting(
+              "hora_inicio_descanso",
+              e.target.value || settings.hora_inicio_descanso
+            )
+          }
+        />
+
+        <CustomInput
+          label="Fin descanso"
+          type="time"
+          value={settings.hora_fin_descanso || ""}
+          onChange={(e) =>
+            updateSetting(
+              "hora_fin_descanso",
+              e.target.value || settings.hora_fin_descanso
+            )
+          }
+        />
+
+        <CustomInput
+          label="Duración descanso (mínimo, min)"
+          type="number"
+          min="0"
+          value={settings.duracion_descanso_min ?? ""}
+          onChange={(e) =>
+            updateSetting(
+              "duracion_descanso_min",
+              e.target.value
+                ? Number(e.target.value)
+                : settings.duracion_descanso_min
+            )
+          }
+        />
+
+        <CustomInput
+          label="Duración descanso (máximo, min)"
+          type="number"
+          min="0"
+          value={settings.duracion_descanso_max ?? ""}
+          onChange={(e) =>
+            updateSetting(
+              "duracion_descanso_max",
+              e.target.value
+                ? Number(e.target.value)
+                : settings.duracion_descanso_max
+            )
+          }
+        />
       </div>
     </div>
   );

@@ -20,7 +20,6 @@ interface DashboardPageProps {
 
 export function DashboardPage({ usuario, onLogout }: DashboardPageProps) {
   const [vistaActual, setVistaActual] = useState<VistaNavegacion>("reloj");
-
   const { registros, estadoActual, refetch } = useTimeRecords(usuario.id);
 
   useGSAPAnimations({ animations: [initEntranceAnimation], delay: 100 });
@@ -85,7 +84,11 @@ export function DashboardPage({ usuario, onLogout }: DashboardPageProps) {
               />
             )}
             {vistaActual === "historial" && (
-              <HistorialTrabajo usuarioId={usuario.id} onRefresh={refetch}  currentUser={usuario}/>
+              <HistorialTrabajo
+                usuarioId={usuario.id}
+                onRefresh={refetch}
+                currentUser={usuario}
+              />
             )}
             {vistaActual === "configuracion" && (
               <WorkSettings usuario={usuario} registros={registros} />

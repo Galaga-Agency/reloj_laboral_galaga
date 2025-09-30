@@ -17,18 +17,11 @@ export function LoginPage() {
   const handleLogin = (usuario: Usuario) => {
     setCurrentUser(usuario);
     
-    // Debug: log the user data to see what we're receiving
-    console.log('User data on login:', {
-      firstLogin: usuario.firstLogin,
-      gdprConsentGiven: usuario.gdprConsentGiven
-    });
-    
     if (usuario.firstLogin) {
       setCurrentStep('password-update');
     } else if (!usuario.gdprConsentGiven) {
       setCurrentStep('gdpr-consent');
     } else {
-      // Navigate to main panel
       window.location.href = '/panel';
     }
   };

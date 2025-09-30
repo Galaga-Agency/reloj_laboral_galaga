@@ -4,8 +4,6 @@ import {
   differenceInMinutes,
   parse,
   format,
-  startOfMonth,
-  endOfMonth,
 } from "date-fns";
 import jsPDF from "jspdf";
 import { es } from "date-fns/locale";
@@ -17,7 +15,7 @@ import {
 export class AbsenceService {
   static async createAbsence(data: {
     usuarioId: string;
-    fecha: Date;
+    fechas: Date[];
     tipoAusencia: AbsenceType;
     horaInicio: string;
     horaFin: string;
@@ -25,47 +23,56 @@ export class AbsenceService {
     comentarios?: string;
     file?: File;
     createdBy: string;
+    isAdmin: boolean;
   }): Promise<Absence> {
-    const startTime = parse(data.horaInicio, "HH:mm", data.fecha);
-    const endTime = parse(data.horaFin, "HH:mm", data.fecha);
+    const startTime = parse(data.horaInicio, "HH:mm", data.fechas[0]);
+    const endTime = parse(data.horaFin, "HH:mm", data.fechas[0]);
     const duracionMinutos = differenceInMinutes(endTime, startTime);
-
-    let adjuntoUrl: string | null = null;
-    let adjuntoNombre: string | null = null;
-
-    if (data.file) {
-      const fileExt = data.file.name.split(".").pop();
-      const fileName = `${data.usuarioId}/${Date.now()}.${fileExt}`;
-
-      const { data: uploadData, error: uploadError } = await supabase.storage
-        .from("absence-documents")
-        .upload(fileName, data.file);
-
-      if (uploadError) {
-        throw new Error(`Error subiendo archivo: ${uploadError.message}`);
-      }
-
-      const { data: urlData } = supabase.storage
-        .from("absence-documents")
-        .getPublicUrl(fileName);
-
-      adjuntoUrl = urlData.publicUrl;
-      adjuntoNombre = data.file.name;
-    }
 
     const { data: result, error } = await supabase
       .from("ausencias")
       .insert({
         usuario_id: data.usuarioId,
-        fecha: data.fecha.toISOString().split("T")[0],
+        fechas: data.fechas.map((d) => d.toISOString().split("T")[0]),
         tipo_ausencia: data.tipoAusencia,
         hora_inicio: data.horaInicio,
         hora_fin: data.horaFin,
         duracion_minutos: duracionMinutos,
         razon: data.razon,
         comentarios: data.comentarios || null,
-        adjunto_url: adjuntoUrl,
-        adjunto_nombre: adjuntoNombre,
+        estado: data.isAdmin ? "aprobada": "pendiente",
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+        created_by: data.createdBy,
+      })
+      .select()
+      .single();
+
+    if (error) throw new Error(`Error creating absence: ${error.message}`);
+
+    return this.mapToAbsence(result);
+  }
+
+  static async createAbsenceBlock(data: {
+    usuarioId: string;
+    fechas: Date[]; // <-- multiple dates
+    tipoAusencia: AbsenceType;
+    horaInicio: string;
+    horaFin: string;
+    razon: string;
+    comentarios?: string;
+    createdBy: string;
+  }): Promise<Absence> {
+    const { data: result, error } = await supabase
+      .from("ausencias")
+      .insert({
+        usuario_id: data.usuarioId,
+        fechas: data.fechas.map((d) => d.toISOString().split("T")[0]), // <-- array of dates
+        tipo_ausencia: data.tipoAusencia,
+        hora_inicio: data.horaInicio,
+        hora_fin: data.horaFin,
+        razon: data.razon,
+        comentarios: data.comentarios || null,
         estado: "pendiente",
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
@@ -74,9 +81,8 @@ export class AbsenceService {
       .select()
       .single();
 
-    if (error) {
-      throw new Error(`Error creating absence: ${error.message}`);
-    }
+    if (error)
+      throw new Error(`Error creating absence block: ${error.message}`);
 
     return this.mapToAbsence(result);
   }
@@ -91,14 +97,10 @@ export class AbsenceService {
       .from("ausencias")
       .select("*")
       .eq("usuario_id", userId)
-      .order("fecha", { ascending: false });
+      .order("fechas", { ascending: false });
 
-    if (startDate) {
-      query = query.gte("fecha", startDate.toISOString().split("T")[0]);
-    }
-
-    if (endDate) {
-      query = query.lte("fecha", endDate.toISOString().split("T")[0]);
+    if (!includeScheduledDaysOff) {
+      query = query.neq("tipo_ausencia", "dia_libre");
     }
 
     const { data, error } = await query;
@@ -107,7 +109,15 @@ export class AbsenceService {
       throw new Error(`Error fetching absences: ${error.message}`);
     }
 
-    return (data || []).map(this.mapToAbsence);
+    const allAbsences = (data || []).map(this.mapToAbsence);
+
+    return allAbsences.filter((a) =>
+      a.fechas.some((f) => {
+        if (startDate && f < startDate) return false;
+        if (endDate && f > endDate) return false;
+        return true;
+      })
+    );
   }
 
   static async getAllAbsences(
@@ -118,14 +128,10 @@ export class AbsenceService {
     let query = supabase
       .from("ausencias")
       .select("*")
-      .order("fecha", { ascending: false });
+      .order("fechas", { ascending: false });
 
-    if (startDate) {
-      query = query.gte("fecha", startDate.toISOString().split("T")[0]);
-    }
-
-    if (endDate) {
-      query = query.lte("fecha", endDate.toISOString().split("T")[0]);
+    if (!includeScheduledDaysOff) {
+      query = query.neq("tipo_ausencia", "dia_libre");
     }
 
     const { data, error } = await query;
@@ -134,7 +140,15 @@ export class AbsenceService {
       throw new Error(`Error fetching all absences: ${error.message}`);
     }
 
-    return (data || []).map(this.mapToAbsence);
+    const allAbsences = (data || []).map(this.mapToAbsence);
+
+    return allAbsences.filter((a) =>
+      a.fechas.some((f) => {
+        if (startDate && f < startDate) return false;
+        if (endDate && f > endDate) return false;
+        return true;
+      })
+    );
   }
 
   static async updateAbsenceStatus(
@@ -167,7 +181,7 @@ export class AbsenceService {
       .from("ausencias")
       .select("*")
       .eq("usuario_id", userId)
-      .eq("fecha", dateStr)
+      .contains("fechas", [dateStr])
       .single();
 
     if (error) {
@@ -182,7 +196,7 @@ export class AbsenceService {
     return {
       id: row.id,
       usuarioId: row.usuario_id,
-      fecha: new Date(row.fecha),
+      fechas: (row.fechas || []).map((f: string) => new Date(f)),
       tipoAusencia: row.tipo_ausencia,
       horaInicio: row.hora_inicio,
       horaFin: row.hora_fin,
@@ -368,9 +382,8 @@ export class AbsenceService {
 
     y += 12;
 
-    const sortedDays = scheduledDaysOff.sort(
-      (a, b) => a.fecha.getTime() - b.fecha.getTime()
-    );
+    const allDates = scheduledDaysOff.flatMap((a) => a.fechas);
+    const sortedDays = allDates.sort((a, b) => a.getTime() - b.getTime());
 
     sortedDays.forEach((day, index) => {
       if (y + 8 > 282) {
@@ -386,7 +399,7 @@ export class AbsenceService {
       doc.setFont("helvetica", "normal");
       doc.setFontSize(9);
       doc.text(
-        format(day.fecha, "EEEE, dd 'de' MMMM yyyy", { locale: es }),
+        format(day, "EEEE, dd 'de' MMMM yyyy", { locale: es }),
         17,
         y + 4
       );
@@ -428,9 +441,9 @@ export class AbsenceService {
     doc.setTextColor(0, 0, 0);
     y += 12;
 
-    const sortedAbsences = absences.sort(
-      (a, b) => b.fecha.getTime() - a.fecha.getTime()
-    );
+    const sortedAbsences = absences
+      .flatMap((a) => a.fechas.map((f) => ({ ...a, fecha: f })))
+      .sort((a, b) => b.fecha.getTime() - a.fecha.getTime());
 
     for (let i = 0; i < sortedAbsences.length; i++) {
       const absence = sortedAbsences[i];
@@ -894,7 +907,7 @@ export class AbsenceService {
 
       const absences = users.map((user) => ({
         usuario_id: user.id,
-        fecha: format(date, "yyyy-MM-dd"),
+        fechas: [format(date, "yyyy-MM-dd")],
         tipo_ausencia: "dia_libre",
         hora_inicio: "00:00",
         hora_fin: "23:59",
@@ -934,7 +947,7 @@ export class AbsenceService {
       const { error } = await supabase
         .from("ausencias")
         .delete()
-        .eq("fecha", dateStr)
+        .contains("fechas", [dateStr])
         .eq("tipo_ausencia", "dia_libre");
 
       if (error) {
@@ -957,11 +970,11 @@ export class AbsenceService {
     try {
       const { data, error } = await supabase
         .from("ausencias")
-        .select("fecha, razon")
-        .eq("tipo_ausencia", "festivo")
-        .gte("fecha", format(startDate, "yyyy-MM-dd"))
-        .lte("fecha", format(endDate, "yyyy-MM-dd"))
-        .order("fecha", { ascending: true });
+        .select("fechas, razon")
+        .eq("tipo_ausencia", "dia_libre")
+        .gte("fechas", format(startDate, "yyyy-MM-dd"))
+        .lte("fechas", format(endDate, "yyyy-MM-dd"))
+        .order("fechas", { ascending: true });
 
       if (error) {
         throw new Error(`Error fetching holidays: ${error.message}`);
@@ -969,9 +982,11 @@ export class AbsenceService {
 
       const uniqueHolidays = new Map<string, string>();
       (data || []).forEach((item) => {
-        if (!uniqueHolidays.has(item.fecha)) {
-          uniqueHolidays.set(item.fecha, item.razon);
-        }
+        (item.fechas || []).forEach((f: string) => {
+          if (!uniqueHolidays.has(f)) {
+            uniqueHolidays.set(f, item.razon);
+          }
+        });
       });
 
       return Array.from(uniqueHolidays.entries()).map(([date, name]) => ({
@@ -987,7 +1002,7 @@ export class AbsenceService {
   static async updateAbsence(
     absenceId: string,
     updates: {
-      fecha?: Date;
+      fechas?: Date[]; // ✅ array of dates, same as createAbsence
       razon?: string;
       horaInicio?: string;
       horaFin?: string;
@@ -1007,8 +1022,9 @@ export class AbsenceService {
       patch.edited_by = editor.id;
       patch.edited_at = new Date().toISOString();
 
-      if (updates.fecha)
-        patch.edited_fecha = updates.fecha.toISOString().split("T")[0];
+      if (updates.fechas) {
+        patch.edited_fecha = updates.fechas[0].toISOString().split("T")[0]; // 👈 keep first date for traceability
+      }
       if (updates.horaInicio) patch.edited_hora_inicio = updates.horaInicio;
       if (updates.horaFin) patch.edited_hora_fin = updates.horaFin;
       if (updates.razon) patch.edited_razon = updates.razon;
@@ -1019,7 +1035,10 @@ export class AbsenceService {
       patch.fecha_aprobacion = null;
     }
 
-    if (updates.fecha) patch.fecha = updates.fecha.toISOString().split("T")[0];
+    // ✅ store full array of dates
+    if (updates.fechas) {
+      patch.fechas = updates.fechas.map((d) => d.toISOString().split("T")[0]);
+    }
     if (updates.razon) patch.razon = updates.razon;
     if (updates.horaInicio) patch.hora_inicio = updates.horaInicio;
     if (updates.horaFin) patch.hora_fin = updates.horaFin;

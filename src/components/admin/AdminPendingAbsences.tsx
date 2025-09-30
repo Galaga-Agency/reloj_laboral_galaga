@@ -16,6 +16,7 @@ import type { Absence, Usuario } from "@/types";
 import PrimaryButton from "@/components/ui/PrimaryButton";
 import SecondaryButton from "@/components/ui/SecondaryButton";
 import { AbsenceEditModal } from "../modals/AbsenceEditModal";
+import { Toast } from "@/components/ui/Toast";
 
 interface AdminPendingAbsencesProps {
   currentAdmin: Usuario;
@@ -34,9 +35,8 @@ export function AdminPendingAbsences({
   const [absenceBeingEdited, setAbsenceBeingEdited] = useState<Absence | null>(
     null
   );
-
-  const [message, setMessage] = useState<{
-    type: "success" | "error";
+  const [toast, setToast] = useState<{
+    type: "success" | "error" | "warning";
     text: string;
   } | null>(null);
 
@@ -48,7 +48,7 @@ export function AdminPendingAbsences({
     setIsLoading(true);
     try {
       const [absences, allUsers] = await Promise.all([
-        AbsenceService.getAllAbsences(),
+        AbsenceService.getAllAbsences(undefined, undefined, true),
         AdminService.getAllUsers(),
       ]);
 
@@ -76,30 +76,51 @@ export function AdminPendingAbsences({
     status: "aprobada" | "rechazada"
   ) => {
     setUpdatingId(absenceId);
-    setMessage(null);
     try {
       await AbsenceService.updateAbsenceStatus(
         absenceId,
         status,
         currentAdmin.id
       );
-      setMessage({
+      setToast({
         type: "success",
         text:
           status === "aprobada"
             ? "Ausencia aprobada correctamente"
             : "Ausencia rechazada correctamente",
       });
-      setTimeout(() => setMessage(null), 3000);
       await loadData();
       onUpdate();
     } catch (error) {
       console.error("Error updating absence status:", error);
-      setMessage({
+      setToast({
         type: "error",
         text: "Error al actualizar el estado de la ausencia",
       });
-      setTimeout(() => setMessage(null), 5000);
+    } finally {
+      setUpdatingId(null);
+    }
+  };
+
+  const handleDelete = async (absenceId: string) => {
+    console.log("Attempting to delete absence:", absenceId);
+    setUpdatingId(absenceId);
+    try {
+      await AbsenceService.deleteAbsence(absenceId);
+      console.log("Delete successful, reloading data...");
+      setToast({
+        type: "success",
+        text: "Ausencia eliminada correctamente",
+      });
+      await loadData();
+      console.log("Data reloaded");
+      onUpdate();
+    } catch (error) {
+      console.error("Error deleting absence:", error);
+      setToast({
+        type: "error",
+        text: "Error al eliminar la ausencia",
+      });
     } finally {
       setUpdatingId(null);
     }
@@ -117,6 +138,14 @@ export function AdminPendingAbsences({
 
   return (
     <div className="bg-white/10 backdrop-blur-md rounded-2xl p-6 border border-white/20">
+      {toast && (
+        <Toast
+          type={toast.type}
+          message={toast.text}
+          onClose={() => setToast(null)}
+        />
+      )}
+
       <div className="flex items-center justify-between mb-6">
         <div className="flex items-center gap-3">
           <FiAlertCircle className="text-yellow-400 text-2xl" />
@@ -130,18 +159,6 @@ export function AdminPendingAbsences({
           </div>
         </div>
       </div>
-
-      {message && (
-        <div
-          className={`p-3 rounded-lg mb-4 ${
-            message.type === "success"
-              ? "bg-green-500/20 border border-green-500/30 text-green-300"
-              : "bg-red-500/20 border border-red-500/30 text-red-300"
-          }`}
-        >
-          {message.text}
-        </div>
-      )}
 
       {pendingAbsences.length === 0 ? (
         <div className="text-center py-12">
@@ -166,7 +183,7 @@ export function AdminPendingAbsences({
                       {user?.nombre || "Usuario desconocido"}
                     </p>
                     <p className="text-white/60 text-sm">
-                      {AbsenceStatisticsCalculator.getReasonLabel(
+                      {AbsenceStatisticsCalculator.getTypeLabel(
                         absence.tipoAusencia
                       )}
                     </p>
@@ -178,9 +195,19 @@ export function AdminPendingAbsences({
 
                 <div className="space-y-3 mb-4">
                   <div className="flex items-center justify-between text-sm">
-                    <span className="text-white/60">Fecha:</span>
+                    <span className="text-white/60">Fecha(s):</span>
                     <span className="text-white font-medium">
-                      {format(absence.fecha, "dd/MM/yyyy EEEE", { locale: es })}
+                      {absence.fechas.length === 1
+                        ? format(absence.fechas[0], "dd/MM/yyyy EEEE", {
+                            locale: es,
+                          })
+                        : `${format(absence.fechas[0], "dd/MM/yyyy", {
+                            locale: es,
+                          })} - ${format(
+                            absence.fechas[absence.fechas.length - 1],
+                            "dd/MM/yyyy",
+                            { locale: es }
+                          )} (${absence.fechas.length} días)`}
                     </span>
                   </div>
                   <div className="flex items-center justify-between text-sm">
@@ -214,8 +241,8 @@ export function AdminPendingAbsences({
                   )}
                   {absence.adjuntoUrl && (
                     <div className="pt-2 border-t border-white/10">
-                      <a
-                        href={absence.adjuntoUrl}
+                      
+                      <a  href={absence.adjuntoUrl}
                         target="_blank"
                         rel="noopener noreferrer"
                         className="flex items-center gap-2 text-teal hover:text-teal/80 text-sm transition-colors"
@@ -290,14 +317,14 @@ export function AdminPendingAbsences({
                   </SecondaryButton>
 
                   <SecondaryButton
-                    onClick={() => handleStatusUpdate(absence.id, "rechazada")}
+                    onClick={() => handleDelete(absence.id)}
                     disabled={updatingId === absence.id}
                     size="sm"
                     darkBg
-                    className="flex-1  !bg-red-500/10 !text-red-500 !border-red-500/80 !hover:border-red"
+                    className="flex-1 !bg-red-500/10 !text-red-500 !border-red-500/80 !hover:border-red"
                   >
                     <FiX className="w-4 h-4" />
-                    Rechazar
+                    Eliminar
                   </SecondaryButton>
                 </div>
               </div>
@@ -306,7 +333,6 @@ export function AdminPendingAbsences({
         </div>
       )}
 
-      {/* Modal for editing */}
       {absenceBeingEdited && (
         <AbsenceEditModal
           isOpen={!!absenceBeingEdited}
@@ -322,7 +348,7 @@ export function AdminPendingAbsences({
                 updates,
                 { id: currentAdmin.id, isAdmin: currentAdmin.isAdmin }
               );
-              setMessage({
+              setToast({
                 type: "success",
                 text: "Ausencia actualizada correctamente",
               });
@@ -330,7 +356,7 @@ export function AdminPendingAbsences({
               await loadData();
               onUpdate();
             } catch (err) {
-              setMessage({
+              setToast({
                 type: "error",
                 text: "Error al actualizar ausencia",
               });

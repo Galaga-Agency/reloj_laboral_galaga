@@ -7,7 +7,6 @@ export type AbsenceType =
   | "permiso_personal"
   | "dia_libre";
 
-
 export type AbsenceStatus =
   | "pendiente"
   | "aprobada"
@@ -17,7 +16,7 @@ export type AbsenceStatus =
 export interface Absence {
   id: string;
   usuarioId: string;
-  fecha: Date;
+  fechas: Date[];
   tipoAusencia: string;
   horaInicio: string;
   horaFin: string;
@@ -40,5 +39,3 @@ export interface Absence {
   editedRazon?: string;
   editedComentarios?: string;
 }
-
-

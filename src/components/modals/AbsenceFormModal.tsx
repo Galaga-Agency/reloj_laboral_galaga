@@ -16,15 +16,20 @@ import SecondaryButton from "@/components/ui/SecondaryButton";
 import { AbsenceService } from "@/services/absence-service";
 import type { Usuario, AbsenceType } from "@/types";
 import { CustomInput } from "../ui/CustomInput";
+import { Toast } from "@/components/ui/Toast";
 
-interface AbsenceFormProps {
+interface AbsenceFormModalProps {
   usuario: Usuario;
   onClose: () => void;
   onSuccess: () => void;
 }
 
-export function AbsenceForm({ usuario, onClose, onSuccess }: AbsenceFormProps) {
-  const [selectedDate, setSelectedDate] = useState<string>("");
+export function AbsenceFormModal({
+  usuario,
+  onClose,
+  onSuccess,
+}: AbsenceFormModalProps) {
+  const [selectedDates, setSelectedDates] = useState<string[]>([]);
   const [showCalendar, setShowCalendar] = useState(false);
   const [tipoAusencia, setTipoAusencia] = useState<AbsenceType | "">("");
   const [horaInicio, setHoraInicio] = useState("");
@@ -50,9 +55,7 @@ export function AbsenceForm({ usuario, onClose, onSuccess }: AbsenceFormProps) {
   const absenceReasons = AbsenceService.getAbsenceReasons();
 
   const handleCalendarSelect = (dates: string[]) => {
-    if (dates.length > 0) {
-      setSelectedDate(dates[0]);
-    }
+    setSelectedDates(dates);
     setShowCalendar(false);
   };
 
@@ -82,7 +85,8 @@ export function AbsenceForm({ usuario, onClose, onSuccess }: AbsenceFormProps) {
   };
 
   const validateForm = (): string | null => {
-    if (!selectedDate) return "Debes seleccionar una fecha";
+    if (selectedDates.length === 0)
+      return "Debes seleccionar al menos una fecha";
     if (!tipoAusencia) return "Debes seleccionar el tipo de ausencia";
     if (!razon) return "Debes seleccionar un motivo";
 
@@ -116,7 +120,7 @@ export function AbsenceForm({ usuario, onClose, onSuccess }: AbsenceFormProps) {
     try {
       await AbsenceService.createAbsence({
         usuarioId: usuario.id,
-        fecha: new Date(selectedDate),
+        fechas: selectedDates.map((d) => new Date(d)),
         tipoAusencia: tipoAusencia as AbsenceType,
         horaInicio: tipoAusencia === "ausencia_completa" ? "00:00" : horaInicio,
         horaFin: tipoAusencia === "ausencia_completa" ? "23:59" : horaFin,
@@ -124,14 +128,14 @@ export function AbsenceForm({ usuario, onClose, onSuccess }: AbsenceFormProps) {
         comentarios: comentarios || undefined,
         file: selectedFile || undefined,
         createdBy: usuario.id,
+        isAdmin : usuario.isAdmin
       });
 
       onSuccess();
       onClose();
-    } catch (err) {
-      setError(
-        err instanceof Error ? err.message : "Error al reportar la ausencia"
-      );
+    } catch (err: any) {
+      setError(err)
+      console.log(err);
     } finally {
       setIsSubmitting(false);
     }
@@ -174,10 +178,14 @@ export function AbsenceForm({ usuario, onClose, onSuccess }: AbsenceFormProps) {
             >
               <FiCalendar className="w-5 h-5" />
               <span>
-                {selectedDate
-                  ? format(new Date(selectedDate), "EEEE, dd 'de' MMMM yyyy", {
-                      locale: es,
-                    })
+                {selectedDates.length > 0
+                  ? selectedDates.length === 1
+                    ? format(
+                        new Date(selectedDates[0]),
+                        "EEEE, dd 'de' MMMM yyyy",
+                        { locale: es }
+                      )
+                    : `${selectedDates.length} días seleccionados`
                   : "Seleccionar fecha"}
               </span>
             </button>
@@ -316,7 +324,7 @@ export function AbsenceForm({ usuario, onClose, onSuccess }: AbsenceFormProps) {
 
       {showCalendar && (
         <CustomCalendar
-          selectedDates={selectedDate ? [selectedDate] : []}
+          selectedDates={selectedDates}
           onBulkSelect={handleCalendarSelect}
           onClose={() => setShowCalendar(false)}
           triggerRef={calendarTriggerRef}

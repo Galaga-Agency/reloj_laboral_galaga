@@ -30,6 +30,7 @@ export function AdminAbsencesPanel({
   const [selectedAbsences, setSelectedAbsences] = useState<Absence[]>([]);
   const [users, setUsers] = useState<Usuario[]>([]);
   const [isLoadingUsers, setIsLoadingUsers] = useState(false);
+  const [refreshKey, setRefreshKey] = useState(0);
 
   const pendingRef = useRef<HTMLDivElement>(null);
   const statisticsRef = useRef<HTMLDivElement>(null);
@@ -86,6 +87,7 @@ export function AdminAbsencesPanel({
   };
 
   const handleStatusUpdate = () => {
+    setRefreshKey((prev) => prev + 1);
     if (selectedDate) {
       handleDateSelect(selectedDate, selectedAbsences);
     }
@@ -103,14 +105,17 @@ export function AdminAbsencesPanel({
       <div ref={statisticsRef}>
         <AdminAbsenceStatistics />
       </div>
-
       <div ref={calendarRef} className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <AdminAbsenceCalendar onDateSelect={handleDateSelect} />
+        <AdminAbsenceCalendar
+          refreshKey={refreshKey}
+          onDateSelect={handleDateSelect}
+        />
         <AdminAbsenceDetails
           selectedDate={selectedDate}
           absences={selectedAbsences}
           currentAdmin={currentAdmin}
           onStatusUpdate={handleStatusUpdate}
+          refreshKey={refreshKey}
         />
       </div>
 

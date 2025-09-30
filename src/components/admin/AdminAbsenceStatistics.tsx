@@ -1,37 +1,21 @@
 import { useState, useRef, useMemo } from "react";
 import {
-  FiTrendingUp,
   FiAlertCircle,
   FiClock,
   FiBarChart2,
   FiCalendar,
 } from "react-icons/fi";
-import {
-  format,
-  startOfDay,
-  endOfDay,
-  subDays,
-  startOfMonth,
-  endOfMonth,
-  subMonths,
-  startOfYear,
-} from "date-fns";
+import { format } from "date-fns";
 import { es } from "date-fns/locale";
 import { useAbsenceStatistics } from "@/hooks/useAbsenceStatistics";
-import { AbsenceStatisticsCalculator } from "@/utils/absence-statistics";
+import {
+  AbsenceStatisticsCalculator,
+  DateRangePreset,
+  getDateRangeFromPreset,
+  isCustomRangeValid,
+} from "@/utils/absence-statistics";
 import { CustomDropdown } from "@/components/ui/CustomDropdown";
 import { CustomCalendar } from "@/components/ui/CustomCalendar";
-import type { AbsenceStats } from "@/utils/absence-statistics";
-
-type DateRangePreset =
-  | "today"
-  | "yesterday"
-  | "last_7_days"
-  | "current_month"
-  | "last_month"
-  | "last_3_months"
-  | "current_year"
-  | "custom";
 
 export function AdminAbsenceStatistics() {
   const [selectedPreset, setSelectedPreset] =
@@ -54,44 +38,8 @@ export function AdminAbsenceStatistics() {
     { value: "custom", label: "Rango Personalizado" },
   ];
 
-  const getDateRangeFromPreset = (
-    preset: DateRangePreset
-  ): { start: Date; end: Date } => {
-    const now = new Date();
-
-    switch (preset) {
-      case "today":
-        return { start: startOfDay(now), end: endOfDay(now) };
-      case "yesterday":
-        const yesterday = subDays(now, 1);
-        return { start: startOfDay(yesterday), end: endOfDay(yesterday) };
-      case "last_7_days":
-        return { start: startOfDay(subDays(now, 7)), end: endOfDay(now) };
-      case "current_month":
-        return { start: startOfMonth(now), end: endOfMonth(now) };
-      case "last_month":
-        const lastMonth = subMonths(now, 1);
-        return { start: startOfMonth(lastMonth), end: endOfMonth(lastMonth) };
-      case "last_3_months":
-        const threeMonthsAgo = subMonths(now, 3);
-        return { start: startOfMonth(threeMonthsAgo), end: endOfMonth(now) };
-      case "current_year":
-        return { start: startOfYear(now), end: endOfMonth(now) };
-      case "custom":
-        if (customDateRange.start && customDateRange.end) {
-          return {
-            start: startOfDay(new Date(customDateRange.start)),
-            end: endOfDay(new Date(customDateRange.end)),
-          };
-        }
-        return { start: startOfDay(now), end: endOfDay(now) };
-      default:
-        return { start: startOfDay(now), end: endOfDay(now) };
-    }
-  };
-
   const dateRange = useMemo(
-    () => getDateRangeFromPreset(selectedPreset),
+    () => getDateRangeFromPreset(selectedPreset, customDateRange),
     [selectedPreset, customDateRange]
   );
 
@@ -111,38 +59,19 @@ export function AdminAbsenceStatistics() {
     setShowCalendar(false);
   };
 
-  const getSelectedDatesArray = (): string[] => {
-    if (!customDateRange.start || !customDateRange.end) return [];
-
-    const start = new Date(customDateRange.start);
-    const end = new Date(customDateRange.end);
-    const dates: string[] = [];
-
-    for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
-      dates.push(format(d, "yyyy-MM-dd"));
-    }
-
-    return dates;
-  };
-
-  const isCustomRangeValid = () => {
-    if (selectedPreset !== "custom") return true;
-    if (!customDateRange.start || !customDateRange.end) return false;
-    return new Date(customDateRange.start) <= new Date(customDateRange.end);
-  };
-
   const getDateRangeDisplay = () => {
-    return `${format(dateRange.start, "dd/MM/yyyy")} - ${format(
+    return `${format(dateRange.start, "dd/MM/yyyy", { locale: es })} - ${format(
       dateRange.end,
-      "dd/MM/yyyy"
+      "dd/MM/yyyy",
+      { locale: es }
     )}`;
   };
 
   if (isLoading) {
     return (
       <div className="bg-white/10 backdrop-blur-md rounded-2xl p-6 border border-white/20">
-        <div className="text-center py-12">
-          <div className="text-white">Cargando estadísticas...</div>
+        <div className="text-center py-12 text-white">
+          Cargando estadísticas...
         </div>
       </div>
     );
@@ -157,7 +86,7 @@ export function AdminAbsenceStatistics() {
 
   return (
     <div className="bg-white/10 backdrop-blur-md rounded-2xl p-6 border border-white/20">
-      <div className="flex items-center justify-between mb-6 flex-wrap gap-4">
+      <div className="flex items-center justify-between mb-6">
         <div className="flex items-center gap-3">
           <FiBarChart2 className="text-2xl text-white" />
           <div>
@@ -204,18 +133,17 @@ export function AdminAbsenceStatistics() {
                   : "Seleccionar fechas"}
               </span>
             </button>
-            {!isCustomRangeValid() &&
-              customDateRange.start &&
-              customDateRange.end && (
-                <p className="text-xs text-red-300 mt-1">
-                  La fecha de inicio debe ser anterior o igual a la fecha de fin
-                </p>
-              )}
+            {!isCustomRangeValid(selectedPreset, customDateRange) && (
+              <p className="text-xs text-red-300 mt-1">
+                La fecha de inicio debe ser anterior o igual a la fecha de fin
+              </p>
+            )}
           </div>
         )}
       </div>
 
-      {!stats || stats.totalAbsences === 0 ? (
+      {!stats ||
+      (stats.totalAbsences === 0 && stats.scheduledDaysOffCount === 0) ? (
         <div className="text-center py-12 border-t border-white/20 pt-6">
           <FiAlertCircle className="w-12 h-12 text-white/40 mx-auto mb-3" />
           <p className="text-white/60">
@@ -225,7 +153,8 @@ export function AdminAbsenceStatistics() {
         </div>
       ) : (
         <>
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6 pb-6 border-b border-white/20">
+          {/* Summary Boxes */}
+          <div className="grid grid-cols-2 lg:grid-cols-5 gap-4 mb-6 pb-6 border-b border-white/20">
             <div className="bg-white/5 rounded-lg p-4 text-center">
               <p className="text-white/60 text-xs mb-1">Total Ausencias</p>
               <p className="text-white font-bold text-2xl">
@@ -250,8 +179,15 @@ export function AdminAbsenceStatistics() {
                 {Math.round((stats.averageAbsenceDuration / 60) * 10) / 10}h
               </p>
             </div>
+            <div className="bg-white/5 rounded-lg p-4 text-center">
+              <p className="text-white/60 text-xs mb-1">Días Libres</p>
+              <p className="text-green-400 font-bold text-2xl">
+                {stats.scheduledDaysOffCount}
+              </p>
+            </div>
           </div>
 
+          {/* Motivos */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             <div>
               <h4 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
@@ -291,6 +227,7 @@ export function AdminAbsenceStatistics() {
               </div>
             </div>
 
+            {/* Tipos */}
             <div>
               <h4 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
                 <FiClock className="w-5 h-5" />
@@ -331,6 +268,7 @@ export function AdminAbsenceStatistics() {
             </div>
           </div>
 
+          {/* Footer Counters */}
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mt-6 pt-6 border-t border-white/20">
             <div className="text-center">
               <p className="text-yellow-400 font-bold text-lg">
@@ -362,7 +300,11 @@ export function AdminAbsenceStatistics() {
 
       {showCalendar && (
         <CustomCalendar
-          selectedDates={getSelectedDatesArray()}
+          selectedDates={
+            customDateRange.start && customDateRange.end
+              ? [customDateRange.start, customDateRange.end]
+              : []
+          }
           onBulkSelect={handleCalendarSelect}
           onClose={() => setShowCalendar(false)}
           triggerRef={calendarTriggerRef}

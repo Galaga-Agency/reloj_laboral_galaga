@@ -358,4 +358,98 @@ export class AdminService {
       throw new Error("Failed to delete user");
     }
   }
+
+  static async getWorkersStatus(): Promise<any[]> {
+    const { data: users, error: usersError } = await supabase
+      .from("usuarios")
+      .select("*")
+      .eq("is_active", true)
+      .order("nombre", { ascending: true });
+
+    if (usersError) throw usersError;
+
+    const today = startOfDay(new Date());
+    const { data: todayRecords, error: recordsError } = await supabase
+      .from("registros_tiempo")
+      .select("*")
+      .gte("fecha", today.toISOString())
+      .order("fecha", { ascending: false });
+
+    if (recordsError) throw recordsError;
+
+    const statusList = (users || []).map((user: any) => {
+      const userRecords = (todayRecords || [])
+        .filter((r: any) => r.usuario_id === user.id)
+        .map((r: any) => ({
+          id: r.id,
+          usuarioId: r.usuario_id,
+          fecha: new Date(r.fecha),
+          tipoRegistro: r.tipo_registro,
+          esSimulado: r.es_simulado,
+        }));
+
+      let isWorking = false;
+      let lastEntry: Date | undefined;
+      let lastExit: Date | undefined;
+      let timeWorkedToday = 0;
+      let lastActivity: Date | undefined;
+
+      if (userRecords.length > 0) {
+        const latestRecord = userRecords[0];
+        lastActivity = latestRecord.fecha;
+        isWorking = latestRecord.tipoRegistro === "entrada";
+
+        let currentEntry: Date | null = null;
+
+        for (const record of userRecords.reverse()) {
+          if (record.tipoRegistro === "entrada") {
+            currentEntry = record.fecha;
+            if (!lastEntry || record.fecha > lastEntry) {
+              lastEntry = record.fecha;
+            }
+          } else if (record.tipoRegistro === "salida" && currentEntry) {
+            const minutes = Math.floor(
+              (record.fecha.getTime() - currentEntry.getTime()) / (1000 * 60)
+            );
+            timeWorkedToday += minutes;
+            if (!lastExit || record.fecha > lastExit) {
+              lastExit = record.fecha;
+            }
+            currentEntry = null;
+          }
+        }
+
+        if (currentEntry) {
+          const minutes = Math.floor(
+            (new Date().getTime() - currentEntry.getTime()) / (1000 * 60)
+          );
+          timeWorkedToday += minutes;
+        }
+      }
+
+      return {
+        user: {
+          id: user.id,
+          nombre: user.nombre,
+          email: user.email,
+          firstLogin: user.first_login,
+          isAdmin: user.is_admin,
+          isActive: user.is_active ?? true,
+          role: user.role,
+          dias_libres: user.dias_libres ?? [],
+          horas_diarias: user.horas_diarias ?? 8,
+          horas_viernes: user.horas_viernes ?? 6,
+          auto_entry_enabled: user.auto_entry_enabled ?? false,
+          include_lunch_break: user.include_lunch_break ?? false,
+        },
+        isWorking,
+        lastEntry,
+        lastExit,
+        timeWorkedToday,
+        lastActivity,
+      };
+    });
+
+    return statusList;
+  }
 }

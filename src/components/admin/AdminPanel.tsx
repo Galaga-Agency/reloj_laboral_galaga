@@ -7,6 +7,7 @@ import { AdminSystemDocumentation } from "../AdminSystemDocs";
 import { AdminUserReports } from "@/components/AdminUserReports";
 import { AdminAbsencesPanel } from "@/components/admin/AdminAbsencesPanel";
 import { PendingChangesPanel } from "@/components/admin/PendingChangesPanel";
+import { WorkersMonitor } from "@/components/admin/WorkersMonitor";
 import { useSecretSequence } from "@/hooks/useSecretSequence";
 import {
   FiUsers,
@@ -17,6 +18,7 @@ import {
   FiTrendingUp,
   FiCalendar,
   FiBell,
+  FiActivity,
 } from "react-icons/fi";
 import { AbsenceService } from "@/services/absence-service";
 import { TimeCorrectionsService } from "@/services/time-corrections-service";
@@ -25,7 +27,7 @@ interface AdminPanelProps {
   currentUser: Usuario;
 }
 
-type AdminView = "users" | "absences" | "pending-changes";
+type AdminView = "users" | "monitor" | "absences" | "pending-changes";
 
 type AbsenceSubView =
   | "pending"
@@ -36,7 +38,7 @@ type AbsenceSubView =
   | "days-off";
 
 export function AdminPanel({ currentUser }: AdminPanelProps) {
-  const [activeView, setActiveView] = useState<AdminView>("users");
+  const [activeView, setActiveView] = useState<AdminView>("monitor");
   const [activeAbsenceSubView, setActiveAbsenceSubView] =
     useState<AbsenceSubView>("pending");
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
@@ -193,6 +195,11 @@ export function AdminPanel({ currentUser }: AdminPanelProps) {
   };
 
   const navItems = [
+    {
+      id: "monitor" as const,
+      label: "Monitor en Tiempo Real",
+      icon: FiActivity,
+    },
     {
       id: "users" as const,
       label: "Usuarios y Registros",
@@ -363,6 +370,8 @@ export function AdminPanel({ currentUser }: AdminPanelProps) {
               />
             )}
           </div>
+        ) : activeView === "monitor" ? (
+          <WorkersMonitor currentAdmin={currentUser} />
         ) : activeView === "pending-changes" ? (
           <PendingChangesPanel
             currentAdmin={currentUser}

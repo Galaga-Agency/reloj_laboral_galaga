@@ -58,29 +58,17 @@ export function AuthProvider({ children }: AuthProviderProps) {
     handleCloseModal,
   } = useMonthlyReports(usuario);
 
-  console.log(
-    "🔍 AuthProvider render - isLoading:",
-    isLoading,
-    "isLoadingReport:",
-    isLoadingReport
-  );
-
   useEffect(() => {
     let mounted = true;
 
     const initializeAuth = async () => {
-      console.log("🔍 Starting auth initialization");
       try {
         const {
           data: { session },
         } = await supabase.auth.getSession();
 
-        console.log("📦 Session:", session ? "exists" : "null");
-
         if (session?.user && mounted) {
-          console.log("👤 Getting current user");
           const currentUser = await AuthService.getCurrentUser();
-          console.log("✅ Current user:", currentUser);
           if (currentUser && mounted) {
             setUsuario(currentUser);
           }
@@ -101,9 +89,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
       data: { subscription },
     } = supabase.auth.onAuthStateChange(async (event, session) => {
       if (!mounted) return;
-
-      console.log("🔄 Auth state change:", event);
-
+      
       switch (event) {
         case "INITIAL_SESSION":
         case "SIGNED_IN":

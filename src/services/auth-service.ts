@@ -47,9 +47,25 @@ export class AuthService {
       role: userRecord.role,
       gdprConsentGiven: userRecord.gdpr_consent_given ?? false,
       gdprConsentDate: userRecord.gdpr_consent_date,
-      emailNotificationsConsent: userRecord.email_notifications_consent ?? false,
+      emailNotificationsConsent:
+        userRecord.email_notifications_consent ?? false,
       geolocationConsent: userRecord.geolocation_consent ?? false,
-      consentVersion: userRecord.consent_version
+      consentVersion: userRecord.consent_version,
+      dias_libres: userRecord.dias_libres || [],
+      horas_diarias: userRecord.horas_diarias || 8,
+      horas_viernes: userRecord.horas_viernes || 7,
+      auto_entry_enabled: userRecord.auto_entry_enabled ?? false,
+      include_lunch_break: userRecord.include_lunch_break ?? true,
+      hora_entrada_min: userRecord.hora_entrada_min,
+      hora_entrada_max: userRecord.hora_entrada_max,
+      hora_salida_min: userRecord.hora_salida_min,
+      hora_salida_max: userRecord.hora_salida_max,
+      hora_salida_viernes_min: userRecord.hora_salida_viernes_min,
+      hora_salida_viernes_max: userRecord.hora_salida_viernes_max,
+      hora_inicio_descanso: userRecord.hora_inicio_descanso,
+      hora_fin_descanso: userRecord.hora_fin_descanso,
+      duracion_descanso_min: userRecord.duracion_descanso_min,
+      duracion_descanso_max: userRecord.duracion_descanso_max,
     };
   }
 
@@ -155,12 +171,27 @@ export class AuthService {
           role: userRecord.role,
           gdprConsentGiven: userRecord.gdpr_consent_given ?? false,
           gdprConsentDate: userRecord.gdpr_consent_date,
-          emailNotificationsConsent: userRecord.email_notifications_consent ?? false,
+          emailNotificationsConsent:
+            userRecord.email_notifications_consent ?? false,
           geolocationConsent: userRecord.geolocation_consent ?? false,
-          consentVersion: userRecord.consent_version
+          consentVersion: userRecord.consent_version,
+          dias_libres: userRecord.dias_libres || [],
+          horas_diarias: userRecord.horas_diarias || 8,
+          horas_viernes: userRecord.horas_viernes || 7,
+          auto_entry_enabled: userRecord.auto_entry_enabled ?? false,
+          include_lunch_break: userRecord.include_lunch_break ?? true,
+          hora_entrada_min: userRecord.hora_entrada_min,
+          hora_entrada_max: userRecord.hora_entrada_max,
+          hora_salida_min: userRecord.hora_salida_min,
+          hora_salida_max: userRecord.hora_salida_max,
+          hora_salida_viernes_min: userRecord.hora_salida_viernes_min,
+          hora_salida_viernes_max: userRecord.hora_salida_viernes_max,
+          hora_inicio_descanso: userRecord.hora_inicio_descanso,
+          hora_fin_descanso: userRecord.hora_fin_descanso,
+          duracion_descanso_min: userRecord.duracion_descanso_min,
+          duracion_descanso_max: userRecord.duracion_descanso_max,
         };
 
-        console.log("Returning user:", result);
         return result;
       };
 

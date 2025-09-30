@@ -1,4 +1,28 @@
+import {
+  startOfDay,
+  endOfDay,
+  subDays,
+  startOfMonth,
+  endOfMonth,
+  subMonths,
+  startOfYear,
+} from "date-fns";
 import type { Absence } from "@/types";
+
+export type DateRangePreset =
+  | "today"
+  | "yesterday"
+  | "last_7_days"
+  | "current_month"
+  | "last_month"
+  | "last_3_months"
+  | "current_year"
+  | "custom";
+
+export interface DateRange {
+  start: Date;
+  end: Date;
+}
 
 export interface AbsenceReasonStats {
   razon: string;
@@ -16,19 +40,80 @@ export interface AbsenceTypeStats {
 }
 
 export interface AbsenceStats {
-  totalAbsences: number;
-  totalHoursMissed: number;
-  totalDaysMissed: number;
+  totalAbsences: number; // only real absences (no dia_libre)
+  totalHoursMissed: number; // hours lost (no dia_libre)
+  totalDaysMissed: number; // full days missed (no dia_libre)
   affectedUsers: number;
   reasonStats: AbsenceReasonStats[];
   typeStats: AbsenceTypeStats[];
   pendingCount: number;
   approvedCount: number;
   rejectedCount: number;
-  scheduledDaysOffCount: number;
+  scheduledDaysOffCount: number; // ✅ new: count dia_libre separately
   averageAbsenceDuration: number;
 }
 
+/* -------------------- DATE HELPERS -------------------- */
+export function getDateRangeFromPreset(
+  preset: DateRangePreset,
+  customRange?: { start: string; end: string }
+): DateRange {
+  const now = new Date();
+
+  switch (preset) {
+    case "today":
+      return { start: startOfDay(now), end: endOfDay(now) };
+    case "yesterday":
+      const yesterday = subDays(now, 1);
+      return { start: startOfDay(yesterday), end: endOfDay(yesterday) };
+    case "last_7_days":
+      return { start: startOfDay(subDays(now, 7)), end: endOfDay(now) };
+    case "current_month":
+      return { start: startOfMonth(now), end: endOfMonth(now) };
+    case "last_month":
+      const lastMonth = subMonths(now, 1);
+      return { start: startOfMonth(lastMonth), end: endOfMonth(lastMonth) };
+    case "last_3_months":
+      const threeMonthsAgo = subMonths(now, 3);
+      return { start: startOfMonth(threeMonthsAgo), end: endOfMonth(now) };
+    case "current_year":
+      return { start: startOfYear(now), end: endOfMonth(now) };
+    case "custom":
+      if (customRange?.start && customRange?.end) {
+        return {
+          start: startOfDay(new Date(customRange.start)),
+          end: endOfDay(new Date(customRange.end)),
+        };
+      }
+      return { start: startOfDay(now), end: endOfDay(now) };
+    default:
+      return { start: startOfDay(now), end: endOfDay(now) };
+  }
+}
+
+export function isCustomRangeValid(
+  preset: DateRangePreset,
+  customRange: { start: string; end: string }
+): boolean {
+  if (preset !== "custom") return true;
+  if (!customRange.start || !customRange.end) return false;
+  return new Date(customRange.start) <= new Date(customRange.end);
+}
+
+/** Expand an Absence with fechas[] into single-day items with fecha */
+export function expandAbsences(
+  absence: Absence
+): (Absence & { fecha: Date })[] {
+  if (Array.isArray((absence as any).fechas)) {
+    return (absence as any).fechas.map((f: Date) => ({
+      ...absence,
+      fecha: new Date(f),
+    }));
+  }
+  return [{ ...absence, fecha: (absence as any).fecha ?? new Date() }];
+}
+
+/* -------------------- CALCULATOR -------------------- */
 export class AbsenceStatisticsCalculator {
   static calculate(
     absences: Absence[],
@@ -50,14 +135,17 @@ export class AbsenceStatisticsCalculator {
       };
     }
 
-    // Skip weekends + holidays
-    const validAbsences = absences.filter((a) => {
+    const expandedAbsences = absences.flatMap((a) =>
+      a.fechas.map((fecha) => ({ ...a, fecha }))
+    );
+
+    const scheduledDaysOff = expandedAbsences.filter(
+      (a: any) => a.tipoAusencia === "dia_libre"
+    );
+
+    const validAbsences = expandedAbsences.filter((a: any) => {
       const day = new Date(a.fecha).getDay();
-      return (
-        day !== 0 && // Sunday
-        day !== 6 && // Saturday
-        a.tipoAusencia !== "dia_libre"
-      );
+      return day !== 0 && day !== 6;
     });
 
     if (validAbsences.length === 0) {
@@ -71,36 +159,41 @@ export class AbsenceStatisticsCalculator {
         pendingCount: 0,
         approvedCount: 0,
         rejectedCount: 0,
-        scheduledDaysOffCount: 0,
+        scheduledDaysOffCount: scheduledDaysOff.length,
         averageAbsenceDuration: 0,
       };
     }
 
-    // Replace duracionMinutos for full days using user horas_diarias
-    const adjustedAbsences = validAbsences.map((a) => {
+    const adjustedAbsences = validAbsences.map((a: any) => {
       if (a.tipoAusencia === "ausencia_completa") {
-        const dailyHours = userHoursMap[a.usuarioId] ?? 8; // default 8h
+        const dailyHours = userHoursMap[a.usuarioId] ?? 8;
         return { ...a, duracionMinutos: dailyHours * 60 };
       }
       return a;
     });
 
-    const totalMinutes = adjustedAbsences.reduce(
-      (sum, a) => sum + a.duracionMinutos,
+    const realAbsencesOnly = adjustedAbsences.filter(
+      (a: any) => a.tipoAusencia !== "dia_libre"
+    );
+
+    const totalMinutes = realAbsencesOnly.reduce(
+      (sum: number, a: any) => sum + a.duracionMinutos,
       0
     );
     const totalHours = totalMinutes / 60;
-    const uniqueUsers = new Set(adjustedAbsences.map((a) => a.usuarioId));
-    const fullDayAbsences = adjustedAbsences.filter(
-      (a) => a.tipoAusencia === "ausencia_completa"
+    const uniqueUsers = new Set(adjustedAbsences.map((a: any) => a.usuarioId));
+    const fullDayAbsences = realAbsencesOnly.filter(
+      (a: any) => a.tipoAusencia === "ausencia_completa"
     ).length;
 
     const reasonMap = new Map<string, { count: number; minutes: number }>();
-    adjustedAbsences.forEach((absence) => {
+    adjustedAbsences.forEach((absence: any) => {
       const current = reasonMap.get(absence.razon) || { count: 0, minutes: 0 };
+      const minutesToAdd =
+        absence.tipoAusencia === "dia_libre" ? 0 : absence.duracionMinutos;
       reasonMap.set(absence.razon, {
         count: current.count + 1,
-        minutes: current.minutes + absence.duracionMinutos,
+        minutes: current.minutes + minutesToAdd,
       });
     });
 
@@ -116,14 +209,16 @@ export class AbsenceStatisticsCalculator {
       .sort((a, b) => b.count - a.count);
 
     const typeMap = new Map<string, { count: number; minutes: number }>();
-    adjustedAbsences.forEach((absence) => {
+    adjustedAbsences.forEach((absence: any) => {
       const current = typeMap.get(absence.tipoAusencia) || {
         count: 0,
         minutes: 0,
       };
+      const minutesToAdd =
+        absence.tipoAusencia === "dia_libre" ? 0 : absence.duracionMinutos;
       typeMap.set(absence.tipoAusencia, {
         count: current.count + 1,
-        minutes: current.minutes + absence.duracionMinutos,
+        minutes: current.minutes + minutesToAdd,
       });
     });
 
@@ -138,23 +233,26 @@ export class AbsenceStatisticsCalculator {
       .sort((a, b) => b.count - a.count);
 
     return {
-      totalAbsences: adjustedAbsences.length,
+      totalAbsences: realAbsencesOnly.length,
       totalHoursMissed: Math.round(totalHours * 10) / 10,
       totalDaysMissed: fullDayAbsences,
       affectedUsers: uniqueUsers.size,
       reasonStats,
       typeStats,
-      pendingCount: adjustedAbsences.filter((a) => a.estado === "pendiente")
-        .length,
-      approvedCount: adjustedAbsences.filter((a) => a.estado === "aprobada")
-        .length,
-      rejectedCount: adjustedAbsences.filter((a) => a.estado === "rechazada")
-        .length,
-      scheduledDaysOffCount: adjustedAbsences.filter(
-        (a) => a.tipoAusencia === "dia_libre"
+      pendingCount: realAbsencesOnly.filter(
+        (a: any) => a.estado === "pendiente"
       ).length,
+      approvedCount: realAbsencesOnly.filter(
+        (a: any) => a.estado === "aprobada"
+      ).length,
+      rejectedCount: realAbsencesOnly.filter(
+        (a: any) => a.estado === "rechazada"
+      ).length,
+      scheduledDaysOffCount: scheduledDaysOff.length,
       averageAbsenceDuration:
-        Math.round((totalMinutes / adjustedAbsences.length) * 10) / 10,
+        realAbsencesOnly.length > 0
+          ? Math.round((totalMinutes / realAbsencesOnly.length) * 10) / 10
+          : 0,
     };
   }
 
@@ -163,14 +261,27 @@ export class AbsenceStatisticsCalculator {
       tardanza_trafico: "Tardanza - Tráfico",
       tardanza_transporte: "Tardanza - Transporte",
       tardanza_personal: "Tardanza - Motivo Personal",
+      tardanza: "Tardanza",
       cita_medica: "Cita Médica",
       cita_banco: "Gestión Bancaria",
       cita_oficial: "Gestión Administrativa",
+      ausencia_parcial: "Ausencia Parcial",
       emergencia_familiar: "Emergencia Familiar",
+      ausencia_completa: "Ausencia Completa",
       enfermedad: "Enfermedad",
-      dia_libre: "Día Libre Programado",
+      dia_libre: "Día Libre o Vacaciones",
       otro: "Otro Motivo",
     };
     return labels[razon] || razon;
+  }
+
+  static getTypeLabel(tipo: string): string {
+    const labels: Record<string, string> = {
+      ausencia_completa: "Ausencia Completa",
+      ausencia_parcial: "Ausencia Parcial",
+      dia_libre: "Día Libre o Vacaciones",
+      salida_temprana: "Salida Temprana",
+    };
+    return labels[tipo] || tipo;
   }
 }

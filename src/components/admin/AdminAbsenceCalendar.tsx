@@ -17,10 +17,12 @@ import { AbsenceService } from "@/services/absence-service";
 
 interface AdminAbsenceCalendarProps {
   onDateSelect: (date: Date, absences: Absence[]) => void;
+  refreshKey: number;
 }
 
 export function AdminAbsenceCalendar({
   onDateSelect,
+  refreshKey
 }: AdminAbsenceCalendarProps) {
   const [currentMonth, setCurrentMonth] = useState(new Date());
   const [absences, setAbsences] = useState<Absence[]>([]);
@@ -29,7 +31,7 @@ export function AdminAbsenceCalendar({
 
   useEffect(() => {
     loadAbsences();
-  }, [currentMonth]);
+  }, [currentMonth, refreshKey]);
 
   const loadAbsences = async () => {
     setIsLoading(true);
@@ -86,7 +88,9 @@ export function AdminAbsenceCalendar({
   const allDays = [...paddedDays, ...daysInMonth, ...nextMonthDays];
 
   const getAbsencesForDate = (date: Date): Absence[] => {
-    return absences.filter((absence) => isSameDay(absence.fecha, date));
+    return absences.filter((absence) =>
+      (absence.fechas || []).some((f) => isSameDay(new Date(f), date))
+    );
   };
 
   const handleDateClick = (date: Date) => {
@@ -124,12 +128,18 @@ export function AdminAbsenceCalendar({
   };
 
   const getAbsenceIndicatorColor = (absences: Absence[]): string => {
-    if (absences.some((a) => a.tipoAusencia === "dia_libre" || "festivo")) {
+    if (
+      absences.some(
+        (a) => a.tipoAusencia === "dia_libre"
+      )
+    ) {
       return "bg-green-500";
     }
+
     if (absences.some((a) => a.tipoAusencia === "ausencia_completa")) {
       return "bg-red-500";
     }
+
     if (
       absences.some(
         (a) =>

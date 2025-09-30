@@ -43,8 +43,8 @@ export function WorkStatistics({ registros }: WorkStatisticsProps) {
           <div
             className={`text-sm mt-1 px-2 py-1 ${
               overtimeInfo.isOvertime
-                ? "text-red-700  "
-                : "text-teal"
+                ? "text-white  bg-red-500/80 w-fit rounded-full"
+                : "text-white bg-teal  w-fit rounded-full"
             }`}
           >
             {overtimeInfo.isOvertime

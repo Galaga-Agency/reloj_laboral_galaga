@@ -42,10 +42,17 @@ export function WorkSettings({ usuario, registros = [] }: WorkSettingsProps) {
 
   const loadDiasLibres = async () => {
     try {
-      const absences = await AbsenceService.getAbsencesByUser(usuario.id);
+      const absences = await AbsenceService.getAbsencesByUser(
+        usuario.id,
+        undefined,
+        undefined,
+        true 
+      );
+      console.log("All absences for user:", absences);
       const dayOffAbsences = absences.filter(
         (a) => a.tipoAusencia === "dia_libre"
       );
+      console.log("Filtered days off:", dayOffAbsences);
       setDaysOff(dayOffAbsences);
     } catch (error) {
       console.error("Error loading dias libres:", error);
@@ -150,6 +157,7 @@ export function WorkSettings({ usuario, registros = [] }: WorkSettingsProps) {
         onRefresh={loadDiasLibres}
         onDelete={handleDeleteDayOff}
         currentUserId={usuario.id}
+        currentUser={usuario}
       />
 
       <PasswordChangeBlock

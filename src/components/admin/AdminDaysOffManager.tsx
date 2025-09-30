@@ -78,13 +78,15 @@ export function AdminDaysOffManager({
 
       const daysOffList = absences
         .filter((a) => a.tipoAusencia === "dia_libre")
-        .map((a) => ({
-          id: a.id,
-          usuarioId: a.usuarioId,
-          usuarioNombre: "",
-          fecha: format(a.fecha, "yyyy-MM-dd"),
-          razon: a.razon,
-        }));
+        .flatMap((a) =>
+          a.fechas.map((f) => ({
+            id: a.id,
+            usuarioId: a.usuarioId,
+            usuarioNombre: "",
+            fecha: format(new Date(f), "yyyy-MM-dd"),
+            razon: a.razon,
+          }))
+        );
 
       const allUsers = await AdminService.getAllUsers();
       const userMap = new Map(allUsers.map((u) => [u.id, u.nombre]));
@@ -121,13 +123,14 @@ export function AdminDaysOffManager({
 
         await AbsenceService.createAbsence({
           usuarioId: selectedUserId,
-          fecha: dayOffDate,
+          fechas: [dayOffDate],
           tipoAusencia: "dia_libre",
           horaInicio: "00:00",
           horaFin: "23:59",
           razon: dayOffReason.trim(),
           comentarios: `Día libre creado por ${currentAdmin.nombre}`,
           createdBy: currentAdmin.id,
+          isAdmin: currentAdmin.isAdmin,
         });
       }
 
@@ -175,36 +178,36 @@ export function AdminDaysOffManager({
     }
   };
 
-const handleUpdateDayOff = async () => {
-  if (!editDayOff) return;
+  const handleUpdateDayOff = async () => {
+    if (!editDayOff) return;
 
-  setIsUpdating(true);
-  try {
-    await AbsenceService.updateAbsence(
-      editDayOff.id,
-      {
-        fecha: new Date(editDayOff.fecha),
-        razon: editDayOff.razon,
-      },
-      { id: currentAdmin.id, isAdmin: currentAdmin.isAdmin }
-    );
+    setIsUpdating(true);
+    try {
+      await AbsenceService.updateAbsence(
+        editDayOff.id,
+        {
+          fechas: [new Date(editDayOff.fecha)],
+          razon: editDayOff.razon,
+        },
+        { id: currentAdmin.id, isAdmin: currentAdmin.isAdmin }
+      );
 
-    setMessage({
-      type: "success",
-      text: "Día libre actualizado correctamente",
-    });
-    setTimeout(() => setMessage(null), 3000);
+      setMessage({
+        type: "success",
+        text: "Día libre actualizado correctamente",
+      });
+      setTimeout(() => setMessage(null), 3000);
 
-    setEditDayOff(null);
-    loadDaysOff();
-  } catch (error) {
-    console.error("Error updating day off:", error);
-    setMessage({ type: "error", text: "Error al actualizar el día libre" });
-    setTimeout(() => setMessage(null), 3000);
-  } finally {
-    setIsUpdating(false);
-  }
-};
+      setEditDayOff(null);
+      loadDaysOff();
+    } catch (error) {
+      console.error("Error updating day off:", error);
+      setMessage({ type: "error", text: "Error al actualizar el día libre" });
+      setTimeout(() => setMessage(null), 3000);
+    } finally {
+      setIsUpdating(false);
+    }
+  };
 
   const userOptions = users.map((u) => ({ value: u.id, label: u.nombre }));
 
@@ -221,9 +224,8 @@ const handleUpdateDayOff = async () => {
       <div className="bg-white/10 backdrop-blur-md rounded-2xl p-6">
         {/* Header */}
         <div className="flex items-center gap-3 pb-6 border-b border-white/10">
-          <div className="p-2 bg-blue-500/20 rounded-lg">
-            <FiUser className="w-5 h-5 text-blue-400" />
-          </div>
+          <FiUser className="w-5 h-5 text-white" />
+
           <div>
             <h2 className="text-xl font-bold text-white">
               Gestión de Días Libres

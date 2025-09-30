@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import type { Usuario, EstadoTrabajo } from "@/types";
 import { format } from "date-fns";
 import { es } from "date-fns/locale";
@@ -7,8 +7,9 @@ import { useTimeRecords } from "@/hooks/useTimeRecords";
 import PrimaryButton from "@/components/ui/PrimaryButton";
 import SecondaryButton from "@/components/ui/SecondaryButton";
 import { ConfirmModal } from "@/components/modals/ConfirmModal";
-import { AbsenceForm } from "@/components/forms/AbsenceForm";
+import { AbsenceFormModal } from "@/components/modals/AbsenceFormModal";
 import { Link } from "react-router-dom";
+import { Toast } from "@/components/ui/Toast";
 
 interface Props {
   usuario: Usuario;
@@ -29,6 +30,10 @@ export function RelojPrincipal({
   const [optimisticState, setOptimisticState] = useState<EstadoTrabajo | null>(
     null
   );
+  const [toast, setToast] = useState<{
+    type: "success" | "error" | "warning";
+    text: string;
+  } | null>(null);
 
   const hookData = useTimeRecords(usuario.id);
 
@@ -84,8 +89,13 @@ export function RelojPrincipal({
   };
 
   const handleAbsenceSuccess = () => {
+    setToast({ type: "success", text: "Ausencia reportada correctamente" });
     onStatusChange?.();
   };
+
+  const handleToastClose = useCallback(() => {
+    setToast(null);
+  }, []);
 
   const getStatusDisplay = () => {
     switch (estadoActual) {
@@ -218,10 +228,18 @@ export function RelojPrincipal({
       />
 
       {showAbsenceForm && (
-        <AbsenceForm
+        <AbsenceFormModal
           usuario={usuario}
           onClose={() => setShowAbsenceForm(false)}
           onSuccess={handleAbsenceSuccess}
+        />
+      )}
+
+      {toast && (
+        <Toast
+          type={toast.type}
+          message={toast.text}
+          onClose={handleToastClose}
         />
       )}
     </div>

@@ -14,6 +14,7 @@ import {
   endOfMonth,
   subMonths,
   startOfYear,
+  endOfYear,
 } from "date-fns";
 import { es } from "date-fns/locale";
 import { AbsenceService } from "@/services/absence-service";
@@ -84,7 +85,7 @@ export function AdminAbsenceWorkerList({
         const threeMonthsAgo = subMonths(now, 3);
         return { start: startOfMonth(threeMonthsAgo), end: endOfMonth(now) };
       case "current_year":
-        return { start: startOfYear(now), end: endOfMonth(now) };
+        return { start: startOfYear(now), end: endOfYear(now) };
       case "custom":
         if (customDateRange.start && customDateRange.end) {
           return {
@@ -263,7 +264,7 @@ export function AdminAbsenceWorkerList({
     <div className="bg-white/5 backdrop-blur-md rounded-2xl p-6 border border-white/20">
       <div className="flex items-center gap-3 mb-6">
         <FiUsers className="text-2xl text-white" />
-        <h3 className="text-xl font-bold text-white">Informes por Empleado</h3>
+        <h3 className="text-xl font-bold text-white">Informes de Ausencias</h3>
       </div>
 
       {message && (
@@ -363,7 +364,9 @@ export function AdminAbsenceWorkerList({
         <div className="bg-white/05 backdrop-blur-md rounded-2xl p-6">
           <div className="flex items-center gap-2 mb-4">
             <FiUsers className="w-5 h-5 text-white" />
-            <h2 className="text-xl font-semibold text-white">Empleados</h2>
+            <h2 className="text-xl font-semibold text-white">
+              Buscar por Empleado
+            </h2>
           </div>
 
           <div className="relative mb-4">
@@ -491,10 +494,15 @@ export function AdminAbsenceWorkerList({
                           <div className="flex items-start justify-between mb-3">
                             <div>
                               <p className="text-white font-medium">
-                                {format(absence.fecha, "dd/MM/yyyy EEEE", {
-                                  locale: es,
-                                })}
+                                {absence.fechas && absence.fechas.length > 0
+                                  ? format(
+                                      new Date(absence.fechas[0]),
+                                      "dd/MM/yyyy EEEE",
+                                      { locale: es }
+                                    )
+                                  : "Fecha no disponible"}
                               </p>
+
                               <p className="text-white/60 text-sm">
                                 {AbsenceStatisticsCalculator.getReasonLabel(
                                   absence.tipoAusencia

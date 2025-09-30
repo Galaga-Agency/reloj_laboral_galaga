@@ -22,6 +22,7 @@ interface AdminAbsenceDetailsProps {
   absences: Absence[];
   currentAdmin: Usuario;
   onStatusUpdate: () => void;
+  refreshKey: number;
 }
 
 export function AdminAbsenceDetails({
@@ -29,6 +30,7 @@ export function AdminAbsenceDetails({
   absences,
   currentAdmin,
   onStatusUpdate,
+  refreshKey,
 }: AdminAbsenceDetailsProps) {
   const [updatingId, setUpdatingId] = useState<string | null>(null);
   const [users, setUsers] = useState<Map<string, Usuario>>(new Map());
@@ -284,7 +286,7 @@ export function AdminAbsenceDetails({
                     disabled={updatingId === absence.id}
                     size="sm"
                     darkBg
-                    className="flex-1"
+                    className="flex-1 md:flex-none px-4 py-2 !bg-red-500/20 !border !border-red-500 !hover:bg-red-500/30 !text-white"
                   >
                     <FiX className="w-4 h-4" />
                     Rechazar

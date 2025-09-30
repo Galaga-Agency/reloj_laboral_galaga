@@ -4,7 +4,7 @@ import { es } from "date-fns/locale";
 import { FiCalendar, FiPlus, FiTrash2, FiRefreshCw } from "react-icons/fi";
 import { DateManager, type DateRange } from "@/utils/date-management";
 import { CustomCalendar } from "@/components/ui/CustomCalendar";
-import type { Absence } from "@/types";
+import type { Absence, Usuario } from "@/types";
 import { AbsenceService } from "@/services/absence-service";
 
 interface HolidayVacationPickerProps {
@@ -12,6 +12,7 @@ interface HolidayVacationPickerProps {
   onRefresh?: () => void;
   onDelete: (absenceId: string) => void;
   currentUserId: string;
+  currentUser: Usuario
 }
 
 export function HolidayVacationPicker({
@@ -19,56 +20,62 @@ export function HolidayVacationPicker({
   onRefresh,
   onDelete,
   currentUserId,
+  currentUser
 }: HolidayVacationPickerProps) {
   const [showCalendar, setShowCalendar] = useState(false);
   const buttonRef = useRef<HTMLButtonElement>(null);
 
-  const selectedDates = daysOff.map((d) => format(d.fecha, "yyyy-MM-dd"));
+  // Flatten all fechas[] into strings
+  const selectedDates = daysOff.flatMap((d) =>
+    d.fechas.map((f) => format(f, "yyyy-MM-dd"))
+  );
+
   const dateRanges = DateManager.groupIntoRanges(selectedDates);
 
   const getReasonForDate = (dateStr: string): string => {
-    const absence = daysOff.find(
-      (d) => format(d.fecha, "yyyy-MM-dd") === dateStr
+    const absence = daysOff.find((d) =>
+      d.fechas.some((f) => format(f, "yyyy-MM-dd") === dateStr)
     );
     return absence?.razon || "Vacaciones";
   };
 
   const handleBulkSelect = async (dates: string[]) => {
     try {
-      for (const dateStr of dates) {
-        const dayOffDate = new Date(dateStr + "T00:00:00");
+      const fechas = dates.map((d) => new Date(d + "T00:00:00"));
 
-        await AbsenceService.createAbsence({
-          usuarioId: currentUserId,
-          fecha: dayOffDate,
-          tipoAusencia: "dia_libre",
-          horaInicio: "00:00",
-          horaFin: "23:59",
-          razon: "Vacaciones",
-          comentarios: "Día libre agregado por el usuario",
-          createdBy: currentUserId,
-        });
-      }
+      await AbsenceService.createAbsence({
+        usuarioId: currentUserId,
+        fechas,
+        tipoAusencia: "dia_libre",
+        horaInicio: "00:00",
+        horaFin: "23:59",
+        razon: "Vacaciones",
+        comentarios: "Bloque de días libres agregado por el usuario",
+        createdBy: currentUserId,
+        isAdmin: currentUser.isAdmin
+      });
 
-      if (onRefresh) {
-        await onRefresh();
-      }
+      if (onRefresh) await onRefresh();
       setShowCalendar(false);
     } catch (error) {
-      console.error("Error creating days off:", error);
+      console.error("Error creating days off block:", error);
     }
   };
 
   const handleRemoveDate = (date: string) => {
-    const absence = daysOff.find((d) => format(d.fecha, "yyyy-MM-dd") === date);
+    const absence = daysOff.find((d) =>
+      d.fechas.some((f) => format(f, "yyyy-MM-dd") === date)
+    );
     if (absence) onDelete(absence.id);
   };
 
   const handleRemoveRange = (range: DateRange) => {
-    const absencesToDelete = daysOff.filter((d) => {
-      const dateStr = format(d.fecha, "yyyy-MM-dd");
-      return dateStr >= range.start && dateStr <= range.end;
-    });
+    const absencesToDelete = daysOff.filter((d) =>
+      d.fechas.some((f) => {
+        const dateStr = format(f, "yyyy-MM-dd");
+        return dateStr >= range.start && dateStr <= range.end;
+      })
+    );
     absencesToDelete.forEach((a) => onDelete(a.id));
   };
 
@@ -141,9 +148,7 @@ export function HolidayVacationPicker({
                         {format(
                           parseISO(range.start),
                           "d 'de' MMMM 'de' yyyy",
-                          {
-                            locale: es,
-                          }
+                          { locale: es }
                         )}
                       </span>
                       <span className="text-xs text-white/60 italic">

@@ -154,9 +154,7 @@ export function AdminBankHolidaysManager({ currentAdmin }: AdminBankHolidaysMana
     <>
       <div className="bg-white/10 backdrop-blur-md rounded-2xl p-6">
         <div className="flex items-center gap-3 pb-6 border-b border-white/10">
-          <div className="p-2 bg-teal/20 rounded-lg">
-            <FiCalendar className="w-5 h-5 text-teal" />
-          </div>
+            <FiCalendar className="w-5 h-5 text-white" />
           <div>
             <h2 className="text-xl font-bold text-white">Festivos</h2>
             <p className="text-white/70 text-sm">

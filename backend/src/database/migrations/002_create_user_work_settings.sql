@@ -1,0 +1,9 @@
+CREATE TABLE IF NOT EXISTS user_work_settings (
+  usuario_id UUID PRIMARY KEY REFERENCES usuarios(id) ON DELETE CASCADE,
+  horas_diarias NUMERIC(5,2) NOT NULL DEFAULT 8,
+  horas_viernes NUMERIC(5,2) NOT NULL DEFAULT 6,
+  include_lunch_break BOOLEAN NOT NULL DEFAULT FALSE,
+  auto_entry_enabled BOOLEAN NOT NULL DEFAULT FALSE,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);

@@ -183,6 +183,29 @@ export interface Database {
           Database["public"]["Tables"]["time_corrections"]["Row"]
         >;
       };
+      
+      teleworking_schedules: {
+        Row: {
+          id: string;
+          usuario_id: string;
+          fecha: string;
+          location: "office" | "remote";
+          created_by: string;
+          created_by_name: string;
+          notes: string | null;
+          created_at: string | null;
+          updated_at: string | null;
+        };
+        Insert: Omit<
+          Database["public"]["Tables"]["teleworking_schedules"]["Row"],
+          "id"
+        > & {
+          id?: string;
+        };
+        Update: Partial<
+          Database["public"]["Tables"]["teleworking_schedules"]["Row"]
+        >;
+      };
     };
   };
 }

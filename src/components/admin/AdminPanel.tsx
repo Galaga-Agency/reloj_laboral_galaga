@@ -8,6 +8,7 @@ import { AdminUserReports } from "@/components/AdminUserReports";
 import { AdminAbsencesPanel } from "@/components/admin/AdminAbsencesPanel";
 import { PendingChangesPanel } from "@/components/admin/PendingChangesPanel";
 import { WorkersMonitor } from "@/components/admin/WorkersMonitor";
+import { TeleworkingPanel } from "@/components/admin/TeleworkingPanel";
 import { useSecretSequence } from "@/hooks/useSecretSequence";
 import {
   FiUsers,
@@ -19,6 +20,7 @@ import {
   FiCalendar,
   FiBell,
   FiActivity,
+  FiHome,
 } from "react-icons/fi";
 import { AbsenceService } from "@/services/absence-service";
 import { TimeCorrectionsService } from "@/services/time-corrections-service";
@@ -27,7 +29,12 @@ interface AdminPanelProps {
   currentUser: Usuario;
 }
 
-type AdminView = "users" | "monitor" | "absences" | "pending-changes";
+type AdminView =
+  | "users"
+  | "monitor"
+  | "absences"
+  | "pending-changes"
+  | "teleworking";
 
 type AbsenceSubView =
   | "pending"
@@ -97,8 +104,6 @@ export function AdminPanel({ currentUser }: AdminPanelProps) {
         AdminService.getAllUsers(),
       ]);
 
-      console.log("ALL ABSENCES:", absences);
-
       const userMap = new Map<string, Usuario>();
       allUsers.forEach((user) => userMap.set(user.id, user));
 
@@ -106,18 +111,10 @@ export function AdminPanel({ currentUser }: AdminPanelProps) {
         const creator = userMap.get(a.createdBy || "");
         const isPending = a.estado === "pendiente";
         const isNotAdminCreated = !creator || !creator.isAdmin;
-        
-        console.log("Checking:", {
-          id: a.id,
-          estado: a.estado,
-          creatorIsAdmin: creator?.isAdmin,
-          willCount: isPending && isNotAdminCreated
-        });
-        
+
         return isPending && isNotAdminCreated;
       }).length;
 
-      console.log("FINAL COUNT:", pending);
       setPendingAbsencesCount(pending);
       return pending;
     } catch (error) {
@@ -237,6 +234,11 @@ export function AdminPanel({ currentUser }: AdminPanelProps) {
       icon: FiAlertCircle,
       badge: pendingAbsencesCount > 0 ? pendingAbsencesCount : undefined,
     },
+    {
+      id: "teleworking" as const,
+      label: "Teletrabajo",
+      icon: FiHome,
+    },
   ];
 
   const absenceSubNavItems = [
@@ -250,6 +252,7 @@ export function AdminPanel({ currentUser }: AdminPanelProps) {
 
   return (
     <div className="flex flex-col lg:flex-row gap-6 max-w-screen md:max-w-[1600px] mx-auto overflow-hidden">
+      {/* Mobile Menu Toggle */}
       <button
         onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
         className="lg:hidden fixed bottom-24 right-6 z-40 p-4 bg-teal rounded-full shadow-2xl text-white hover:scale-110 transition-transform"
@@ -261,6 +264,7 @@ export function AdminPanel({ currentUser }: AdminPanelProps) {
         )}
       </button>
 
+      {/* Sidebar */}
       <aside
         className={`fixed lg:sticky top-0 left-0 h-screen lg:h-auto lg:top-6 z-30
           w-80 lg:w-72 xl:w-80 flex-shrink-0
@@ -287,57 +291,58 @@ export function AdminPanel({ currentUser }: AdminPanelProps) {
               const isActive = activeView === item.id;
 
               return (
-                <button
-                  key={item.id}
-                  onClick={() => handleViewChange(item.id)}
-                  className={`relative flex items-center gap-3 px-4 py-3.5 rounded-xl text-left transition-all font-medium
-                    ${
-                      isActive
-                        ? "bg-teal text-white shadow-lg"
-                        : "bg-transparent text-azul-profundo lg:text-white/80 hover:bg-hielo/30 lg:hover:bg-white/10"
-                    }`}
-                >
-                  <Icon className="w-5 h-5 flex-shrink-0" />
-                  <span>{item.label}</span>
-                  {item.badge && (
-                    <span className="bg-red-500 text-white text-xs font-bold rounded-full w-5 h-5 flex items-center justify-center ml-auto">
-                      {item.badge}
-                    </span>
+                <div key={item.id} className="flex flex-col">
+                  <button
+                    onClick={() => handleViewChange(item.id)}
+                    className={`relative flex items-center gap-3 px-4 py-3.5 rounded-xl text-left transition-all font-medium
+                      ${
+                        isActive
+                          ? "bg-teal text-white shadow-lg"
+                          : "bg-transparent text-azul-profundo lg:text-white/80 hover:bg-hielo/30 lg:hover:bg-white/10"
+                      }`}
+                  >
+                    <Icon className="w-5 h-5 flex-shrink-0" />
+                    <span>{item.label}</span>
+                    {item.badge && (
+                      <span className="bg-red-500 text-white text-xs font-bold rounded-full w-5 h-5 flex items-center justify-center ml-auto">
+                        {item.badge}
+                      </span>
+                    )}
+                  </button>
+
+                  {item.id === "absences" && isActive && (
+                    <div className="mt-2 ml-6 flex flex-col gap-1 border-l-2 border-white/20 pl-2">
+                      {absenceSubNavItems.map((subItem) => {
+                        const SubIcon = subItem.icon;
+                        const subActive = activeAbsenceSubView === subItem.id;
+                        return (
+                          <button
+                            key={subItem.id}
+                            onClick={() =>
+                              handleAbsenceSubViewChange(subItem.id)
+                            }
+                            className={`flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-all
+                              ${
+                                subActive
+                                  ? "bg-white/40 text-teal font-medium"
+                                  : "text-azul-profundo/70 lg:text-white/60 hover:bg-hielo/20 lg:hover:bg-white/10"
+                              }`}
+                          >
+                            <SubIcon className="w-4 h-4 flex-shrink-0" />
+                            <span>{subItem.label}</span>
+                          </button>
+                        );
+                      })}
+                    </div>
                   )}
-                </button>
+                </div>
               );
             })}
           </nav>
-
-          {activeView === "absences" && (
-            <div className="mt-4 pl-4 border-l-2 border-white/20">
-              <div className="flex flex-col gap-1">
-                {absenceSubNavItems.map((item) => {
-                  const Icon = item.icon;
-                  const isActive = activeAbsenceSubView === item.id;
-
-                  return (
-                    <button
-                      key={item.id}
-                      onClick={() => handleAbsenceSubViewChange(item.id)}
-                      className={`flex items-center gap-3 px-4 py-2.5 rounded-lg text-left transition-all text-sm cursor-pointer
-                        ${
-                          isActive
-                            ? "bg-white/40 text-teal font-medium"
-                            : "text-azul-profundo/70 lg:text-white/60 hover:bg-hielo/20 lg:hover:bg-white/10"
-                        }`}
-                    >
-                      <Icon className="w-4 h-4 flex-shrink-0" />
-                      <span>{item.label}</span>
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
-          )}
         </div>
       </aside>
 
+      {/* Mobile Overlay */}
       {isMobileMenuOpen && (
         <div
           onClick={() => setIsMobileMenuOpen(false)}
@@ -345,6 +350,7 @@ export function AdminPanel({ currentUser }: AdminPanelProps) {
         />
       )}
 
+      {/* Main Content */}
       <main className="flex-1 min-w-0">
         {error && (
           <div className="bg-red-500/10 border border-red-500/20 rounded-lg p-4 text-red-300 mb-6">
@@ -397,6 +403,8 @@ export function AdminPanel({ currentUser }: AdminPanelProps) {
             currentAdmin={currentUser}
             onChangesProcessed={handleChangesProcessed}
           />
+        ) : activeView === "teleworking" ? (
+          <TeleworkingPanel currentAdmin={currentUser} />
         ) : (
           <AdminAbsencesPanel
             currentAdmin={currentUser}

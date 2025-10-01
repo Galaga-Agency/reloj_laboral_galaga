@@ -11,6 +11,7 @@ import { AbsenceFormModal } from "@/components/modals/AbsenceFormModal";
 import { WorkLocationModal } from "@/components/modals/WorkLocationModal";
 import { Link } from "react-router-dom";
 import { Toast } from "@/components/ui/Toast";
+import { HiOutlineSwitchHorizontal } from "react-icons/hi";
 
 interface Props {
   usuario: Usuario;
@@ -195,8 +196,8 @@ export function RelojPrincipal({
                   {currentLocation === "oficina" ? "Oficina" : "Teletrabajo"}
                 </span>
               </div>
-              <span className="text-white/50 text-sm group-hover:text-white/70 transition-colors">
-                ↻
+              <span className="text-white/50 text-md group-hover:text-white/70 transition-colors">
+                <HiOutlineSwitchHorizontal/>
               </span>
             </button>
           )}

@@ -92,12 +92,32 @@ export function AdminPanel({ currentUser }: AdminPanelProps) {
 
   const loadPendingAbsencesCount = async () => {
     try {
-      const now = new Date();
-      const absences = await AbsenceService.getAllAbsences(
-        new Date(now.getFullYear(), 0, 1),
-        now
-      );
-      const pending = absences.filter((a) => a.estado === "pendiente").length;
+      const [absences, allUsers] = await Promise.all([
+        AbsenceService.getAllAbsences(undefined, undefined, true),
+        AdminService.getAllUsers(),
+      ]);
+
+      console.log("ALL ABSENCES:", absences);
+
+      const userMap = new Map<string, Usuario>();
+      allUsers.forEach((user) => userMap.set(user.id, user));
+
+      const pending = absences.filter((a) => {
+        const creator = userMap.get(a.createdBy || "");
+        const isPending = a.estado === "pendiente";
+        const isNotAdminCreated = !creator || !creator.isAdmin;
+        
+        console.log("Checking:", {
+          id: a.id,
+          estado: a.estado,
+          creatorIsAdmin: creator?.isAdmin,
+          willCount: isPending && isNotAdminCreated
+        });
+        
+        return isPending && isNotAdminCreated;
+      }).length;
+
+      console.log("FINAL COUNT:", pending);
       setPendingAbsencesCount(pending);
       return pending;
     } catch (error) {
@@ -280,7 +300,7 @@ export function AdminPanel({ currentUser }: AdminPanelProps) {
                   <Icon className="w-5 h-5 flex-shrink-0" />
                   <span>{item.label}</span>
                   {item.badge && (
-                    <span className="bg-red-500 text-white text-xs font-bold rounded-full w-5 h-5 flex items-center justify-center">
+                    <span className="bg-red-500 text-white text-xs font-bold rounded-full w-5 h-5 flex items-center justify-center ml-auto">
                       {item.badge}
                     </span>
                   )}
@@ -381,6 +401,7 @@ export function AdminPanel({ currentUser }: AdminPanelProps) {
           <AdminAbsencesPanel
             currentAdmin={currentUser}
             activeSubView={activeAbsenceSubView}
+            onAbsencesChanged={loadPendingCounts}
           />
         )}
       </main>

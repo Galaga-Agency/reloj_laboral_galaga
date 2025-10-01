@@ -20,11 +20,13 @@ interface AdminAbsencesPanelProps {
     | "workers"
     | "holidays"
     | "days-off";
+  onAbsencesChanged?: () => void;
 }
 
 export function AdminAbsencesPanel({
   currentAdmin,
   activeSubView,
+  onAbsencesChanged,
 }: AdminAbsencesPanelProps) {
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
   const [selectedAbsences, setSelectedAbsences] = useState<Absence[]>([]);
@@ -90,6 +92,9 @@ export function AdminAbsencesPanel({
     setRefreshKey((prev) => prev + 1);
     if (selectedDate) {
       handleDateSelect(selectedDate, selectedAbsences);
+    }
+    if (onAbsencesChanged) {
+      onAbsencesChanged();
     }
   };
 

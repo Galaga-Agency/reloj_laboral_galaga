@@ -32,7 +32,6 @@ interface AuthContextType {
     userId: string,
     consentData: GDPRConsentData
   ) => Promise<void>;
-  setUserDirectly: (user: Usuario) => void;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -54,7 +53,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
   const [isLoading, setIsLoading] = useState(true);
   const [isLoggingOut, setIsLoggingOut] = useState(false);
 
-  console.log("AuthProvider render:", {
+  console.log("🔵 AuthProvider render:", {
     usuario: usuario?.email,
     isLoading,
     isLoggingOut,
@@ -69,30 +68,33 @@ export function AuthProvider({ children }: AuthProviderProps) {
 
   useEffect(() => {
     let mounted = true;
-    console.log("AuthProvider useEffect triggered");
+    console.log("🟢 AuthProvider useEffect TRIGGERED");
 
     const initializeAuth = async () => {
-      console.log("Starting auth initialization");
+      console.log("🟡 Starting auth initialization");
       try {
         const {
           data: { session },
         } = await supabase.auth.getSession();
 
-        console.log("Session check:", { hasSession: !!session });
+        console.log("🟣 Session check:", { hasSession: !!session, sessionUser: session?.user?.email });
 
         if (session?.user && mounted) {
-          console.log("Session exists, fetching user");
+          console.log("🔵 Session exists, fetching user");
           const currentUser = await AuthService.getCurrentUser();
+          console.log("🟢 getCurrentUser returned:", currentUser?.email || "null");
           if (currentUser && mounted) {
-            console.log("User fetched:", currentUser.email);
+            console.log("✅ User fetched successfully, setting usuario");
             setUsuario(currentUser);
           }
+        } else {
+          console.log("⚪ No session, skipping user fetch");
         }
       } catch (error) {
-        console.error("Error initializing auth:", error);
+        console.error("❌ Error initializing auth:", error);
       } finally {
         if (mounted) {
-          console.log("Setting isLoading to false");
+          console.log("🏁 Setting isLoading to FALSE");
           setIsLoading(false);
         }
       }
@@ -103,77 +105,79 @@ export function AuthProvider({ children }: AuthProviderProps) {
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange(async (event, session) => {
-      console.log("Auth state change:", event);
-      if (!mounted) return;
+      console.log("🔔 Auth state change event:", event, "session:", session?.user?.email);
+      if (!mounted) {
+        console.log("⚠️ Component unmounted, ignoring auth state change");
+        return;
+      }
 
       switch (event) {
-        case "INITIAL_SESSION":
-        case "SIGNED_IN":
-          if (session?.user) {
-            try {
-              const currentUser = await AuthService.getCurrentUser();
-              if (currentUser && mounted) {
-                setUsuario(currentUser);
-              }
-            } catch (error) {
-              console.error("Error getting user after sign in:", error);
-              if (mounted) {
-                setUsuario(null);
-              }
-            }
-          }
-          break;
-
         case "SIGNED_OUT":
+          console.log("🔴 SIGNED_OUT event handler");
           if (mounted) {
+            console.log("🔴 Clearing usuario, isLoggingOut=false, isLoading=false");
             setUsuario(null);
             setIsLoggingOut(false);
+            setIsLoading(false);
           }
           break;
 
         case "TOKEN_REFRESHED":
+          console.log("🔄 TOKEN_REFRESHED event handler");
           if (session?.user && mounted) {
             try {
               const currentUser = await AuthService.getCurrentUser();
+              console.log("🔄 TOKEN_REFRESHED getCurrentUser returned:", currentUser?.email || "null");
               if (currentUser && mounted) {
                 setUsuario(currentUser);
               }
             } catch (error) {
-              console.error("Error refreshing user:", error);
+              console.error("❌ TOKEN_REFRESHED error:", error);
             }
           }
           break;
+
+        default:
+          console.log("⚪ Ignoring auth event:", event);
       }
     });
 
     return () => {
-      console.log("AuthProvider cleanup");
+      console.log("🧹 AuthProvider cleanup");
       mounted = false;
       subscription.unsubscribe();
     };
   }, []);
 
   const login = async (email: string, password: string): Promise<Usuario> => {
+    console.log("🔑 login() called for:", email);
     const user = await AuthService.signIn(email, password);
+    console.log("🔑 login() got user:", user.email);
+    console.log("🔑 Setting usuario and isLoading=false");
     setUsuario(user);
     setIsLoading(false);
     return user;
   };
 
   const logout = async (): Promise<void> => {
+    console.log("👋 logout() called");
     setIsLoggingOut(true);
 
     try {
       setUsuario(null);
       await AuthService.signOut();
+      console.log("👋 logout() successful");
     } catch (error) {
-      console.error("Error during logout:", error);
+      console.error("❌ logout() error:", error);
     } finally {
+      console.log("👋 Setting isLoggingOut=false, isLoading=false");
       setIsLoggingOut(false);
+      setIsLoading(false);
     }
   };
 
   const updatePassword = async (newPassword: string): Promise<void> => {
+    console.log("🔐 updatePassword() called");
     await AuthService.updatePassword(newPassword);
     if (usuario) {
       setUsuario({ ...usuario, firstLogin: false });
@@ -181,6 +185,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
   };
 
   const markPasswordUpdated = (): void => {
+    console.log("✏️ markPasswordUpdated() called");
     if (usuario) {
       setUsuario({ ...usuario, firstLogin: false });
     }
@@ -190,6 +195,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
     userId: string,
     consentData: GDPRConsentData
   ): Promise<void> => {
+    console.log("📝 updateUserGDPRConsent() called for:", userId);
     const { error } = await supabase
       .from("usuarios")
       .update({
@@ -217,12 +223,6 @@ export function AuthProvider({ children }: AuthProviderProps) {
     }
   };
 
-  const setUserDirectly = (user: Usuario) => {
-    console.log("setUserDirectly called:", user.email);
-    setUsuario(user);
-    setIsLoading(false);
-  };
-
   const value: AuthContextType = {
     usuario,
     isLoading,
@@ -233,7 +233,6 @@ export function AuthProvider({ children }: AuthProviderProps) {
     updatePassword,
     markPasswordUpdated,
     updateUserGDPRConsent,
-    setUserDirectly,
   };
 
   return (

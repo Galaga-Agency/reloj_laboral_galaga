@@ -2,12 +2,13 @@ import { useState, useEffect, useCallback } from "react";
 import type { Usuario, EstadoTrabajo } from "@/types";
 import { format } from "date-fns";
 import { es } from "date-fns/locale";
-import { FiPlay, FiSquare, FiAlertCircle } from "react-icons/fi";
+import { FiPlay, FiSquare, FiAlertCircle, FiHome, FiBriefcase } from "react-icons/fi";
 import { useTimeRecords } from "@/hooks/useTimeRecords";
 import PrimaryButton from "@/components/ui/PrimaryButton";
 import SecondaryButton from "@/components/ui/SecondaryButton";
 import { ConfirmModal } from "@/components/modals/ConfirmModal";
 import { AbsenceFormModal } from "@/components/modals/AbsenceFormModal";
+import { WorkLocationModal } from "@/components/modals/WorkLocationModal";
 import { Link } from "react-router-dom";
 import { Toast } from "@/components/ui/Toast";
 
@@ -27,9 +28,10 @@ export function RelojPrincipal({
   const [horaActual, setHoraActual] = useState(new Date());
   const [showConfirmModal, setShowConfirmModal] = useState(false);
   const [showAbsenceForm, setShowAbsenceForm] = useState(false);
-  const [optimisticState, setOptimisticState] = useState<EstadoTrabajo | null>(
-    null
-  );
+  const [showLocationModal, setShowLocationModal] = useState(false);
+  const [showLocationSwitchModal, setShowLocationSwitchModal] = useState(false);
+  const [currentLocation, setCurrentLocation] = useState<"oficina" | "teletrabajo" | null>(null);
+  const [optimisticState, setOptimisticState] = useState<EstadoTrabajo | null>(null);
   const [toast, setToast] = useState<{
     type: "success" | "error" | "warning";
     text: string;
@@ -37,12 +39,13 @@ export function RelojPrincipal({
 
   const hookData = useTimeRecords(usuario.id);
 
-  const estadoActual =
-    optimisticState ?? propEstadoActual ?? hookData.estadoActual;
+  const estadoActual = optimisticState ?? propEstadoActual ?? hookData.estadoActual;
   const tiempoTrabajado = propTiempoTrabajado ?? hookData.tiempoTrabajado;
   const availableActions = hookData.availableActions;
   const performAction = hookData.performAction;
+  const updateLocation = hookData.updateLocation;
   const error = hookData.error;
+  const registros = hookData.registros;
 
   useEffect(() => {
     const timer = setInterval(() => setHoraActual(new Date()), 1000);
@@ -58,20 +61,66 @@ export function RelojPrincipal({
     }
   }, [optimisticState]);
 
+  useEffect(() => {
+    const todayEntradas = registros.filter(
+      (r) => r.tipoRegistro === "entrada" && 
+      new Date(r.fecha).toDateString() === new Date().toDateString()
+    );
+    
+    if (todayEntradas.length > 0) {
+      const latestEntrada = todayEntradas[0];
+      setCurrentLocation(latestEntrada.ubicacion || null);
+    } else {
+      setCurrentLocation(null);
+    }
+  }, [registros]);
+
   const handleAction = async (action: "entrada" | "salida") => {
+    if (action === "entrada") {
+      setShowLocationModal(true);
+      return;
+    }
+
     if (action === "salida") {
       setShowConfirmModal(true);
       return;
     }
+  };
 
-    setOptimisticState(action === "entrada" ? "trabajando" : "parado");
+  const handleLocationConfirm = async (location: 'oficina' | 'teletrabajo') => {
+    setShowLocationModal(false);
+    setOptimisticState("trabajando");
+    setCurrentLocation(location);
 
     try {
-      await performAction(action);
+      await performAction("entrada", { ubicacion: location });
       onStatusChange?.();
     } catch (err) {
       setOptimisticState(null);
+      setCurrentLocation(null);
       console.error("Error performing action:", err);
+    }
+  };
+
+  const handleLocationSwitch = async (newLocation: "oficina" | "teletrabajo") => {
+    setShowLocationSwitchModal(false);
+    const oldLocation = currentLocation;
+    setCurrentLocation(newLocation);
+    
+    try {
+      await updateLocation(newLocation);
+      setToast({ 
+        type: "success", 
+        text: `Cambiado a ${newLocation === "oficina" ? "Oficina" : "Teletrabajo"}` 
+      });
+      onStatusChange?.();
+    } catch (err) {
+      setCurrentLocation(oldLocation);
+      console.error("Error switching location:", err);
+      setToast({ 
+        type: "error", 
+        text: "Error al cambiar ubicación" 
+      });
     }
   };
 
@@ -81,6 +130,7 @@ export function RelojPrincipal({
 
     try {
       await performAction("salida");
+      setCurrentLocation(null);
       onStatusChange?.();
     } catch (err) {
       setOptimisticState(null);
@@ -129,7 +179,28 @@ export function RelojPrincipal({
           </div>
         )}
 
-        <div className="clock-container bg-white/10 backdrop-blur rounded-3xl shadow-2xl p-12 text-center">
+        <div className="clock-container bg-white/10 backdrop-blur rounded-3xl shadow-2xl p-12 text-center relative">
+          {currentLocation && estadoActual === "trabajando" && (
+            <button
+              onClick={() => setShowLocationSwitchModal(true)}
+              className="absolute top-6 right-6 flex items-center gap-3 px-5 py-3 rounded-2xl bg-white/10 hover:bg-white/20 border border-white/20 hover:border-white/30 backdrop-blur-sm transition-all duration-200 group shadow-lg"
+            >
+              <div className="flex items-center gap-2">
+                {currentLocation === "oficina" ? (
+                  <FiBriefcase className="w-5 h-5 text-white" />
+                ) : (
+                  <FiHome className="w-5 h-5 text-white" />
+                )}
+                <span className="text-white font-semibold">
+                  {currentLocation === "oficina" ? "Oficina" : "Teletrabajo"}
+                </span>
+              </div>
+              <span className="text-white/50 text-sm group-hover:text-white/70 transition-colors">
+                ↻
+              </span>
+            </button>
+          )}
+
           <div className="text-5xl md:text-7xl font-mono font-bold text-white pb-4">
             {format(horaActual, "HH:mm:ss")}
           </div>
@@ -225,6 +296,18 @@ export function RelojPrincipal({
         message="Vas a parar el tiempo de trabajo. Podrás volver a iniciarlo cuando quieras."
         confirmText="Sí, parar"
         cancelText="Cancelar"
+      />
+
+      <WorkLocationModal
+        isOpen={showLocationModal}
+        onConfirm={handleLocationConfirm}
+        onCancel={() => setShowLocationModal(false)}
+      />
+
+      <WorkLocationModal
+        isOpen={showLocationSwitchModal}
+        onConfirm={handleLocationSwitch}
+        onCancel={() => setShowLocationSwitchModal(false)}
       />
 
       {showAbsenceForm && (

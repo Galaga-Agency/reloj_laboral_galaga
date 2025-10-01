@@ -12,7 +12,8 @@ interface UseTimeRecordsReturn {
     label: string;
     type: "primary" | "danger";
   }>;
-  performAction: (action: "entrada" | "salida") => Promise<void>;
+  performAction: (action: "entrada" | "salida", options?: { ubicacion?: 'oficina' | 'teletrabajo' }) => Promise<void>;
+  updateLocation: (newLocation: 'oficina' | 'teletrabajo') => Promise<void>;
   isLoading: boolean;
   error: string | null;
   refetch: () => Promise<void>;
@@ -53,7 +54,7 @@ export function useTimeRecords(usuarioId: string): UseTimeRecordsReturn {
   }, [usuarioId, updateStateFromRecords]);
 
   const performAction = useCallback(
-    async (action: "entrada" | "salida") => {
+    async (action: "entrada" | "salida", options?: { ubicacion?: 'oficina' | 'teletrabajo' }) => {
       const validation = ClockStateManager.canPerformAction(
         action,
         estadoActual
@@ -67,35 +68,32 @@ export function useTimeRecords(usuarioId: string): UseTimeRecordsReturn {
       try {
         const now = new Date();
 
-        // Create optimistic record
         const optimisticRecord: RegistroTiempo = {
           id: "temp-" + Date.now(),
           usuarioId,
           fecha: now,
           tipoRegistro: action,
           esSimulado: false,
+          ...(options?.ubicacion && { ubicacion: options.ubicacion })
         };
 
-        // IMMEDIATE UI UPDATE - Don't wait for server
         const optimisticRecords = [optimisticRecord, ...registros];
         setRegistros(optimisticRecords);
         updateStateFromRecords(optimisticRecords);
 
-        // Now do the server request in background
         const serverRecord = await TimeRecordsService.createRecord({
           fecha: now,
           tipoRegistro: action,
           esSimulado: false,
           usuarioId,
+          ...(options?.ubicacion && { ubicacion: options.ubicacion })
         });
 
-        // Replace the optimistic record with the real one
         setRegistros((prev) => [
           serverRecord,
           ...prev.filter((r) => r.id !== optimisticRecord.id),
         ]);
       } catch (err) {
-        // Rollback optimistic update on error
         setRegistros(registros);
         updateStateFromRecords(registros);
 
@@ -108,13 +106,46 @@ export function useTimeRecords(usuarioId: string): UseTimeRecordsReturn {
     [usuarioId, estadoActual, registros, updateStateFromRecords]
   );
 
-  // Update worked time every minute when working
+  const updateLocation = useCallback(
+    async (newLocation: 'oficina' | 'teletrabajo') => {
+      setError(null);
+
+      try {
+        const todayEntradas = registros.filter(
+          (r) => r.tipoRegistro === "entrada" && 
+          new Date(r.fecha).toDateString() === new Date().toDateString()
+        );
+
+        if (todayEntradas.length === 0) {
+          throw new Error("No hay registro de entrada hoy");
+        }
+
+        const latestEntrada = todayEntradas[0];
+
+        const updatedRecord = await TimeRecordsService.updateRecord(
+          latestEntrada.id,
+          { ubicacion: newLocation }
+        );
+
+        setRegistros((prev) =>
+          prev.map((r) => (r.id === updatedRecord.id ? updatedRecord : r))
+        );
+      } catch (err) {
+        const errorMessage =
+          err instanceof Error ? err.message : "Error desconocido";
+        setError(errorMessage);
+        throw err;
+      }
+    },
+    [registros]
+  );
+
   useEffect(() => {
     if (estadoActual === "trabajando") {
       const interval = setInterval(() => {
         const workedTime = ClockStateManager.calculateWorkedTime(registros);
         setTiempoTrabajado(workedTime);
-      }, 60000); // Update every minute
+      }, 60000);
 
       return () => clearInterval(interval);
     }
@@ -132,6 +163,7 @@ export function useTimeRecords(usuarioId: string): UseTimeRecordsReturn {
     tiempoTrabajado,
     availableActions,
     performAction,
+    updateLocation,
     isLoading: false,
     error,
     refetch: fetchRegistros,

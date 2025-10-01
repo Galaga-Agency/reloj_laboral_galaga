@@ -140,6 +140,7 @@ export interface Database {
           validado_por_admin: string | null;
           validado_por_admin_nombre: string | null;
           fecha_validacion: string | null;
+          ubicacion: string | null;
         };
         Insert: Omit<
           Database["public"]["Tables"]["registros_tiempo"]["Row"],

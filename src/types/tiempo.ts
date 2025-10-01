@@ -8,6 +8,7 @@ export interface RegistroTiempo {
   fechaUltimaModificacion?: Date;
   modificadoPorAdmin?: string;
   nombreAdminModificador?: string;
+  ubicacion?: "oficina" | "teletrabajo";
 }
 
 export interface OvertimeData {

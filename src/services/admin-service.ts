@@ -359,98 +359,105 @@ export class AdminService {
     }
   }
 
-  static async getWorkersStatus(): Promise<any[]> {
-    const { data: users, error: usersError } = await supabase
-      .from("usuarios")
-      .select("*")
-      .eq("is_active", true)
-      .eq("role", "employee")
-      .order("nombre", { ascending: true });
+static async getWorkersStatus(): Promise<any[]> {
+  const { data: users, error: usersError } = await supabase
+    .from("usuarios")
+    .select("*")
+    .eq("is_active", true)
+    .eq("role", "employee")
+    .order("nombre", { ascending: true });
 
-    if (usersError) throw usersError;
+  if (usersError) throw usersError;
 
-    const today = startOfDay(new Date());
-    const { data: todayRecords, error: recordsError } = await supabase
-      .from("registros_tiempo")
-      .select("*")
-      .gte("fecha", today.toISOString())
-      .order("fecha", { ascending: false });
+  const today = startOfDay(new Date());
+  const { data: todayRecords, error: recordsError } = await supabase
+    .from("registros_tiempo")
+    .select("*")
+    .gte("fecha", today.toISOString())
+    .order("fecha", { ascending: false });
 
-    if (recordsError) throw recordsError;
+  if (recordsError) throw recordsError;
 
-    const statusList = (users || []).map((user: any) => {
-      const userRecords = (todayRecords || [])
-        .filter((r: any) => r.usuario_id === user.id)
-        .map((r: any) => ({
-          id: r.id,
-          usuarioId: r.usuario_id,
-          fecha: new Date(r.fecha),
-          tipoRegistro: r.tipo_registro,
-          esSimulado: r.es_simulado,
-        }));
+  const statusList = (users || []).map((user: any) => {
+    const userRecords = (todayRecords || [])
+      .filter((r: any) => r.usuario_id === user.id)
+      .map((r: any) => ({
+        id: r.id,
+        usuarioId: r.usuario_id,
+        fecha: new Date(r.fecha),
+        tipoRegistro: r.tipo_registro,
+        esSimulado: r.es_simulado,
+        ubicacion: r.ubicacion, 
+      }));
 
-      let isWorking = false;
-      let lastEntry: Date | undefined;
-      let lastExit: Date | undefined;
-      let timeWorkedToday = 0;
-      let lastActivity: Date | undefined;
+    let isWorking = false;
+    let lastEntry: Date | undefined;
+    let lastExit: Date | undefined;
+    let currentLocation: 'oficina' | 'teletrabajo' | null = null; 
+    let timeWorkedToday = 0;
+    let lastActivity: Date | undefined;
 
-      if (userRecords.length > 0) {
-        const latestRecord = userRecords[0];
-        lastActivity = latestRecord.fecha;
-        isWorking = latestRecord.tipoRegistro === "entrada";
+    if (userRecords.length > 0) {
+      const latestRecord = userRecords[0];
+      lastActivity = latestRecord.fecha;
+      isWorking = latestRecord.tipoRegistro === "entrada";
+      
+      if (isWorking) {
+        currentLocation = latestRecord.ubicacion || null;
+      }
 
-        let currentEntry: Date | null = null;
+      let currentEntry: Date | null = null;
 
-        for (const record of userRecords.reverse()) {
-          if (record.tipoRegistro === "entrada") {
-            currentEntry = record.fecha;
-            if (!lastEntry || record.fecha > lastEntry) {
-              lastEntry = record.fecha;
-            }
-          } else if (record.tipoRegistro === "salida" && currentEntry) {
-            const minutes = Math.floor(
-              (record.fecha.getTime() - currentEntry.getTime()) / (1000 * 60)
-            );
-            timeWorkedToday += minutes;
-            if (!lastExit || record.fecha > lastExit) {
-              lastExit = record.fecha;
-            }
-            currentEntry = null;
+      for (const record of userRecords.reverse()) {
+        if (record.tipoRegistro === "entrada") {
+          currentEntry = record.fecha;
+          if (!lastEntry || record.fecha > lastEntry) {
+            lastEntry = record.fecha;
           }
-        }
-
-        if (currentEntry) {
+        } else if (record.tipoRegistro === "salida" && currentEntry) {
           const minutes = Math.floor(
-            (new Date().getTime() - currentEntry.getTime()) / (1000 * 60)
+            (record.fecha.getTime() - currentEntry.getTime()) / (1000 * 60)
           );
           timeWorkedToday += minutes;
+          if (!lastExit || record.fecha > lastExit) {
+            lastExit = record.fecha;
+          }
+          currentEntry = null;
         }
       }
 
-      return {
-        user: {
-          id: user.id,
-          nombre: user.nombre,
-          email: user.email,
-          firstLogin: user.first_login,
-          isAdmin: user.is_admin,
-          isActive: user.is_active ?? true,
-          role: user.role,
-          dias_libres: user.dias_libres ?? [],
-          horas_diarias: user.horas_diarias ?? 8,
-          horas_viernes: user.horas_viernes ?? 6,
-          auto_entry_enabled: user.auto_entry_enabled ?? false,
-          include_lunch_break: user.include_lunch_break ?? false,
-        },
-        isWorking,
-        lastEntry,
-        lastExit,
-        timeWorkedToday,
-        lastActivity,
-      };
-    });
+      if (currentEntry) {
+        const minutes = Math.floor(
+          (new Date().getTime() - currentEntry.getTime()) / (1000 * 60)
+        );
+        timeWorkedToday += minutes;
+      }
+    }
 
-    return statusList;
-  }
+    return {
+      user: {
+        id: user.id,
+        nombre: user.nombre,
+        email: user.email,
+        firstLogin: user.first_login,
+        isAdmin: user.is_admin,
+        isActive: user.is_active ?? true,
+        role: user.role,
+        dias_libres: user.dias_libres ?? [],
+        horas_diarias: user.horas_diarias ?? 8,
+        horas_viernes: user.horas_viernes ?? 6,
+        auto_entry_enabled: user.auto_entry_enabled ?? false,
+        include_lunch_break: user.include_lunch_break ?? false,
+      },
+      isWorking,
+      currentLocation,
+      lastEntry,
+      lastExit,
+      timeWorkedToday,
+      lastActivity,
+    };
+  });
+
+  return statusList;
+}
 }

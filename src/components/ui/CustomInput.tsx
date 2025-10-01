@@ -1,4 +1,4 @@
-import { forwardRef, useState } from "react";
+import { forwardRef, useState, useEffect } from "react";
 import { FiClock } from "react-icons/fi";
 
 interface CustomInputProps extends React.InputHTMLAttributes<HTMLInputElement> {
@@ -30,6 +30,12 @@ export const CustomInput = forwardRef<HTMLInputElement, CustomInputProps>(
     const [selectedHour, setSelectedHour] = useState<number | null>(null);
 
     const isTimeType = type === "time";
+
+    useEffect(() => {
+      if (isTimeType && value) {
+        setInternalValue(value as string);
+      }
+    }, [value, isTimeType]);
 
     const iconColor =
       variant === "darkBg"
@@ -75,15 +81,14 @@ export const CustomInput = forwardRef<HTMLInputElement, CustomInputProps>(
         <div className="relative">
           <input
             ref={ref}
-            type={isTimeType ? "text" : type} // force text only when it's our custom time picker
+            type={isTimeType ? "text" : type}
             readOnly={isTimeType}
             value={isTimeType ? internalValue : (value as string) || ""}
             onChange={(e) => {
               if (isTimeType) {
-                // ignore manual typing for time type
                 return;
               }
-              onChange?.(e); // allow typing in text/other inputs
+              onChange?.(e);
             }}
             onClick={() => isTimeType && setShowTimePicker((p) => !p)}
             className={`
@@ -124,11 +129,10 @@ export const CustomInput = forwardRef<HTMLInputElement, CustomInputProps>(
               className="
                 absolute top-full left-0 mt-2 z-20
                 flex gap-4 p-3
-                bg-white dark:bg-gray-900
+                bg-white
                 border rounded-xl shadow-lg
               "
             >
-              {/* Hours */}
               <div className="h-32 overflow-y-auto">
                 {[...Array(24)].map((_, h) => (
                   <button
@@ -136,8 +140,8 @@ export const CustomInput = forwardRef<HTMLInputElement, CustomInputProps>(
                     type="button"
                     className={`block w-12 py-1 rounded ${
                       selectedHour === h
-                        ? "bg-teal-500 text-white"
-                        : "hover:bg-teal-500 hover:text-white"
+                        ? "bg-teal text-white"
+                        : "hover:bg-teal hover:text-white"
                     }`}
                     onClick={() => handleHourClick(h)}
                   >
@@ -146,13 +150,12 @@ export const CustomInput = forwardRef<HTMLInputElement, CustomInputProps>(
                 ))}
               </div>
 
-              {/* Minutes */}
               <div className="h-32 overflow-y-auto">
                 {[0, 5, 10, 15, 20, 25, 30, 35, 40, 45, 50, 55].map((m) => (
                   <button
                     key={m}
                     type="button"
-                    className="block w-12 py-1 rounded hover:bg-teal-500 hover:text-white"
+                    className="block w-12 py-1 rounded hover:bg-teal hover:text-white"
                     onClick={() => handleMinuteClick(m)}
                   >
                     {String(m).padStart(2, "0")}

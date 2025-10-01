@@ -5,18 +5,27 @@ export class TimeRecordsService {
   static async createRecord(
     record: Omit<RegistroTiempo, "id">
   ): Promise<RegistroTiempo> {
+    console.log("Service received record:", record); // ADD THIS
+
+    const insertPayload = {
+      usuario_id: record.usuarioId,
+      fecha: record.fecha.toISOString(),
+      tipo_registro: record.tipoRegistro,
+      es_simulado: record.esSimulado || false,
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+      ...(record.ubicacion && { ubicacion: record.ubicacion }),
+    };
+
+    console.log("Inserting payload:", insertPayload); // ADD THIS
+
     const { data, error } = await supabase
       .from("registros_tiempo")
-      .insert({
-        usuario_id: record.usuarioId,
-        fecha: record.fecha.toISOString(),
-        tipo_registro: record.tipoRegistro,
-        es_simulado: record.esSimulado || false,
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString(),
-      })
+      .insert(insertPayload)
       .select()
       .single();
+
+    console.log("Supabase response:", { data, error }); // ADD THIS
 
     if (error) {
       throw new Error(`Error creating time record: ${error.message}`);
@@ -33,6 +42,7 @@ export class TimeRecordsService {
         ? new Date(data.fecha_ultima_modificacion)
         : undefined,
       modificadoPorAdmin: data.modificado_por_admin,
+      ubicacion: data.ubicacion,
     };
   }
 
@@ -60,6 +70,7 @@ export class TimeRecordsService {
         ? new Date(record.fecha_ultima_modificacion)
         : undefined,
       modificadoPorAdmin: record.modificado_por_admin,
+      ubicacion: record.ubicacion,
     }));
   }
 
@@ -73,6 +84,7 @@ export class TimeRecordsService {
       es_simulado: record.esSimulado || false,
       created_at: new Date().toISOString(),
       updated_at: new Date().toISOString(),
+      ...(record.ubicacion && { ubicacion: record.ubicacion }),
     }));
 
     const { data, error } = await supabase
@@ -97,6 +109,7 @@ export class TimeRecordsService {
         ? new Date(record.fecha_ultima_modificacion)
         : undefined,
       modificadoPorAdmin: record.modificado_por_admin,
+      ubicacion: record.ubicacion,
     }));
   }
 
@@ -129,6 +142,7 @@ export class TimeRecordsService {
         ? new Date(data.fecha_ultima_modificacion)
         : undefined,
       modificadoPorAdmin: data.modificado_por_admin,
+      ubicacion: data.ubicacion,
     };
   }
 
@@ -164,6 +178,53 @@ export class TimeRecordsService {
         ? new Date(record.fecha_ultima_modificacion)
         : undefined,
       modificadoPorAdmin: record.modificado_por_admin,
+      ubicacion: record.ubicacion,
     }));
+  }
+
+  static async updateRecord(
+    recordId: string,
+    updates: Partial<Omit<RegistroTiempo, "id">>
+  ): Promise<RegistroTiempo> {
+    const updatePayload: any = {};
+
+    if (updates.ubicacion !== undefined) {
+      updatePayload.ubicacion = updates.ubicacion;
+    }
+
+    if (updates.tipoRegistro !== undefined) {
+      updatePayload.tipo_registro = updates.tipoRegistro;
+    }
+
+    if (updates.fecha !== undefined) {
+      updatePayload.fecha = updates.fecha.toISOString();
+    }
+
+    updatePayload.updated_at = new Date().toISOString();
+
+    const { data, error } = await supabase
+      .from("registros_tiempo")
+      .update(updatePayload)
+      .eq("id", recordId)
+      .select()
+      .single();
+
+    if (error) {
+      throw new Error(`Error updating time record: ${error.message}`);
+    }
+
+    return {
+      id: data.id,
+      usuarioId: data.usuario_id,
+      fecha: new Date(data.fecha),
+      tipoRegistro: data.tipo_registro,
+      esSimulado: data.es_simulado,
+      fueModificado: data.fue_modificado,
+      fechaUltimaModificacion: data.fecha_ultima_modificacion
+        ? new Date(data.fecha_ultima_modificacion)
+        : undefined,
+      modificadoPorAdmin: data.modificado_por_admin,
+      ubicacion: data.ubicacion,
+    };
   }
 }

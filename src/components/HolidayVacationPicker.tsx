@@ -32,11 +32,43 @@ export function HolidayVacationPicker({
 
   const dateRanges = DateManager.groupIntoRanges(selectedDates);
 
-  const getReasonForDate = (dateStr: string): string => {
-    const absence = daysOff.find((d) =>
+  const getAbsenceForDate = (dateStr: string): Absence | undefined => {
+    return daysOff.find((d) =>
       d.fechas.some((f) => format(f, "yyyy-MM-dd") === dateStr)
     );
-    return absence?.razon || "Vacaciones";
+  };
+
+  const getStatusBadge = (status: string) => {
+    const statusConfig = {
+      pendiente: {
+        bg: "bg-yellow-500/20",
+        text: "text-yellow-300",
+        border: "border-yellow-500/30",
+        label: "Pendiente",
+      },
+      aprobada: {
+        bg: "bg-green-500/20",
+        text: "text-green-300",
+        border: "border-green-500/30",
+        label: "Aprobada",
+      },
+      rechazada: {
+        bg: "bg-red-500/20",
+        text: "text-red-300",
+        border: "border-red-500/30",
+        label: "Rechazada",
+      },
+    };
+
+    const config = statusConfig[status as keyof typeof statusConfig] || statusConfig.pendiente;
+
+    return (
+      <span
+        className={`px-2 py-1 rounded text-xs font-medium ${config.bg} ${config.text} border ${config.border}`}
+      >
+        {config.label}
+      </span>
+    );
   };
 
   const handleBulkSelect = async (dates: string[]) => {
@@ -63,9 +95,7 @@ export function HolidayVacationPicker({
   };
 
   const handleRemoveDate = (date: string) => {
-    const absence = daysOff.find((d) =>
-      d.fechas.some((f) => format(f, "yyyy-MM-dd") === date)
-    );
+    const absence = getAbsenceForDate(date);
     if (absence) onDelete(absence.id);
   };
 
@@ -156,60 +186,70 @@ export function HolidayVacationPicker({
           </div>
 
           <div className="flex flex-col gap-3">
-            {dateRanges.map((range, index) => (
-              <div
-                key={`${range.start}-${range.end}-${index}`}
-                className="flex items-center justify-between bg-white/5 px-4 py-3 rounded-lg border border-white/10"
-              >
-                <div className="flex flex-col gap-1">
-                  {range.count === 1 ? (
-                    <>
-                      <span className="text-sm font-medium text-white">
-                        {format(
-                          parseISO(range.start),
-                          "d 'de' MMMM 'de' yyyy",
-                          { locale: es }
-                        )}
-                      </span>
-                      <span className="text-xs text-white/60 italic">
-                        {getReasonForDate(range.start)}
-                      </span>
-                    </>
-                  ) : (
-                    <div className="flex flex-col gap-1">
-                      <span className="text-sm font-medium text-white">
-                        {format(parseISO(range.start), "d 'de' MMMM", {
-                          locale: es,
-                        })}{" "}
-                        -{" "}
-                        {format(parseISO(range.end), "d 'de' MMMM 'de' yyyy", {
-                          locale: es,
-                        })}
-                      </span>
-                      <span className="text-xs text-white/60">
-                        {range.count} días consecutivos
-                      </span>
-                      <span className="text-xs text-white/60 italic">
-                        {getReasonForDate(range.start)}
-                      </span>
-                    </div>
-                  )}
-                </div>
-                <button
-                  onClick={() => {
-                    if (range.count === 1) {
-                      handleRemoveDate(range.start);
-                    } else {
-                      handleRemoveRange(range);
-                    }
-                  }}
-                  className="text-red-400 hover:text-red-300 p-1 cursor-pointer"
-                  title={range.count === 1 ? "Eliminar día" : "Eliminar rango"}
+            {dateRanges.map((range, index) => {
+              const absence = getAbsenceForDate(range.start);
+              
+              return (
+                <div
+                  key={`${range.start}-${range.end}-${index}`}
+                  className="flex items-center justify-between bg-white/5 px-4 py-3 rounded-lg border border-white/10"
                 >
-                  <FiTrash2 className="w-4 h-4" />
-                </button>
-              </div>
-            ))}
+                  <div className="flex flex-col gap-1 flex-1">
+                    {range.count === 1 ? (
+                      <>
+                        <span className="text-sm font-medium text-white">
+                          {format(
+                            parseISO(range.start),
+                            "d 'de' MMMM 'de' yyyy",
+                            { locale: es }
+                          )}
+                        </span>
+                        <div className="flex items-center gap-2">
+                          <span className="text-xs text-white/60 italic">
+                            {absence?.razon || "Vacaciones"}
+                          </span>
+                          {absence && getStatusBadge(absence.estado)}
+                        </div>
+                      </>
+                    ) : (
+                      <div className="flex flex-col gap-1">
+                        <span className="text-sm font-medium text-white">
+                          {format(parseISO(range.start), "d 'de' MMMM", {
+                            locale: es,
+                          })}{" "}
+                          -{" "}
+                          {format(parseISO(range.end), "d 'de' MMMM 'de' yyyy", {
+                            locale: es,
+                          })}
+                        </span>
+                        <span className="text-xs text-white/60">
+                          {range.count} días consecutivos
+                        </span>
+                        <div className="flex items-center gap-2">
+                          <span className="text-xs text-white/60 italic">
+                            {absence?.razon || "Vacaciones"}
+                          </span>
+                          {absence && getStatusBadge(absence.estado)}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                  <button
+                    onClick={() => {
+                      if (range.count === 1) {
+                        handleRemoveDate(range.start);
+                      } else {
+                        handleRemoveRange(range);
+                      }
+                    }}
+                    className="text-red-400 hover:text-red-300 p-1 cursor-pointer ml-3"
+                    title={range.count === 1 ? "Eliminar día" : "Eliminar rango"}
+                  >
+                    <FiTrash2 className="w-4 h-4" />
+                  </button>
+                </div>
+              );
+            })}
           </div>
         </div>
       ) : (

@@ -204,14 +204,14 @@ export function AdminAbsenceStatistics() {
                           reason.razon
                         )}
                       </span>
-                      <span className="text-teal font-bold">
+                      <span className="text-white font-bold">
                         {reason.percentage}%
                       </span>
                     </div>
                     <div className="flex items-center gap-3 mb-2">
                       <div className="flex-1 bg-white/10 rounded-full h-2 overflow-hidden">
                         <div
-                          className="bg-gradient-to-r from-teal to-blue-400 h-full rounded-full transition-all duration-500"
+                          className="bg-gradient-to-r from-teal to-blue-400  h-full rounded-full transition-all duration-500"
                           style={{
                             width: `${(reason.count / maxReasonCount) * 100}%`,
                           }}
@@ -239,7 +239,7 @@ export function AdminAbsenceStatistics() {
                     <div className="flex items-center justify-between mb-2">
                       <span className="text-white font-medium text-sm">
                         {index + 1}.{" "}
-                        {AbsenceStatisticsCalculator.getReasonLabel(type.tipo)}
+                        {AbsenceStatisticsCalculator.getTypeLabel(type.tipo)}
                       </span>
                       <span className="text-orange-400 font-bold">
                         {type.percentage}%

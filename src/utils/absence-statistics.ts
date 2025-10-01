@@ -277,10 +277,14 @@ export class AbsenceStatisticsCalculator {
 
   static getTypeLabel(tipo: string): string {
     const labels: Record<string, string> = {
+      tardanza: "Tardanza",
       ausencia_completa: "Ausencia Completa",
       ausencia_parcial: "Ausencia Parcial",
       dia_libre: "Día Libre o Vacaciones",
       salida_temprana: "Salida Temprana",
+      permiso_medico: "Permiso Médico",
+      permiso_personal: "Permiso Personal",
+      cita_medica: "Cita Médica",
     };
     return labels[tipo] || tipo;
   }

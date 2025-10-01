@@ -58,8 +58,10 @@ export function AdminDaysOffManager({
   const loadUsers = async () => {
     try {
       const allUsers = await AdminService.getAllUsers();
-      const activeUsers = allUsers.filter((u) => u.isActive);
-      setUsers(activeUsers);
+      const activeEmployees = allUsers.filter(
+        (u) => u.isActive && u.role === "employee"
+      );
+      setUsers(activeEmployees);
     } catch (error) {
       console.error("Error loading users:", error);
     }

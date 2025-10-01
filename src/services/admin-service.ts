@@ -364,6 +364,7 @@ export class AdminService {
       .from("usuarios")
       .select("*")
       .eq("is_active", true)
+      .eq("role", "employee")
       .order("nombre", { ascending: true });
 
     if (usersError) throw usersError;

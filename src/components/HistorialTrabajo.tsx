@@ -26,6 +26,7 @@ import {
 import { DailyHoursCalculator } from "@/utils/daily-hours-calculator";
 import { DailyOvertimeIndicator } from "@/components/DailyOvertimeIndicator";
 import { TimeRecordCorrectionModal } from "@/components/modals/TimeRecordCorrectionModal";
+import { AbsenceHistory } from "./AbsenceHistory";
 
 export type DateRangeFilter =
   | "today"
@@ -476,6 +477,8 @@ export function HistorialTrabajo({
             </div>
           )}
         </div>
+
+        <AbsenceHistory usuario={currentUser} />
       </div>
 
       {successMessage && (

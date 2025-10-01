@@ -1,4 +1,3 @@
-// hooks/useUserRole.tsx
 import { useEffect, useState } from "react";
 import { useSupabaseClient, useUser } from "@supabase/auth-helpers-react";
 

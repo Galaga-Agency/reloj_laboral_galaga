@@ -16,13 +16,25 @@ export function RouteRenderer() {
   const { usuario, isLoading, isLoggingOut, isAuthenticated, logout } =
     useAuth();
 
-  if (isLoading) {
+  console.log("RouteRenderer render:", {
+    hasUsuario: !!usuario,
+    email: usuario?.email,
+    isLoading,
+    isLoggingOut,
+    isAuthenticated,
+  });
+
+  if (isLoading && !usuario) {
+    console.log("Showing loading screen");
     return <LoadingScreen />;
   }
 
   if (isLoggingOut) {
+    console.log("Showing logout screen");
     return <LoadingScreen message="Cerrando sesión..." />;
   }
+
+  console.log("Rendering routes");
 
   const needsPasswordUpdate = usuario?.firstLogin;
   const needsGDPRConsent = usuario && !usuario.gdprConsentGiven;

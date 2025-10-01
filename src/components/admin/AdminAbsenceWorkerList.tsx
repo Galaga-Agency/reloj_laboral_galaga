@@ -101,8 +101,9 @@ export function AdminAbsenceWorkerList({
 
   const filteredUsers = users.filter(
     (user) =>
-      user.nombre.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      user.email.toLowerCase().includes(searchQuery.toLowerCase())
+      user.role === "employee" &&
+      (user.nombre.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        user.email.toLowerCase().includes(searchQuery.toLowerCase()))
   );
 
   useEffect(() => {
@@ -504,7 +505,7 @@ export function AdminAbsenceWorkerList({
                               </p>
 
                               <p className="text-white/60 text-sm">
-                                {AbsenceStatisticsCalculator.getReasonLabel(
+                                {AbsenceStatisticsCalculator.getTypeLabel(
                                   absence.tipoAusencia
                                 )}
                               </p>
@@ -543,9 +544,7 @@ export function AdminAbsenceWorkerList({
                               Motivo:
                             </p>
                             <p className="text-white text-sm">
-                              {AbsenceStatisticsCalculator.getReasonLabel(
-                                absence.razon
-                              )}
+                              {absence.razon}
                             </p>
                           </div>
                           {absence.comentarios && (

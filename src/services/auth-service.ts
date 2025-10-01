@@ -28,9 +28,7 @@ export class AuthService {
       );
     }
 
-    // Check if user is active
     if (userRecord.is_active === false) {
-      // Sign out the user immediately since they shouldn't be logged in
       await supabase.auth.signOut();
       throw new Error(
         "Tu cuenta está desactivada. Contacta con el administrador."
@@ -97,115 +95,94 @@ export class AuthService {
   }
 
   static async getCurrentUser(): Promise<Usuario | null> {
-    console.log("AuthService.getCurrentUser() called");
-
     try {
-      const getUserPromise = async () => {
-        const {
-          data: { user },
-          error: userError,
-        } = await supabase.auth.getUser();
+      const {
+        data: { user },
+        error: userError,
+      } = await supabase.auth.getUser();
 
-        console.log("supabase.auth.getUser() result:", {
-          hasUser: !!user,
-          userId: user?.id,
-          userEmail: user?.email,
-          error: userError,
-        });
+      console.log("supabase.auth.getUser() result:", {
+        hasUser: !!user,
+        userId: user?.id,
+        userEmail: user?.email,
+        error: userError,
+      });
 
-        if (userError) {
-          console.error(
-            "Error getting user from supabase.auth.getUser():",
-            userError
-          );
-          return null;
-        }
-
-        if (!user) {
-          console.log("No user returned from supabase.auth.getUser()");
-          return null;
-        }
-
-        console.log(
-          "Fetching user record from usuarios table for ID:",
-          user.id
+      if (userError) {
+        console.error(
+          "Error getting user from supabase.auth.getUser():",
+          userError
         );
-
-        const { data: userRecord, error } = await supabase
-          .from("usuarios")
-          .select("*")
-          .eq("id", user.id)
-          .single();
-
-        console.log("usuarios table query result:", {
-          hasRecord: !!userRecord,
-          record: userRecord,
-          error: error,
-        });
-
-        if (error) {
-          if (error.code === "PGRST116") {
-            console.log("User record not found in usuarios table (PGRST116)");
-            return null;
-          }
-          console.error("Error fetching user record:", error);
-          throw new Error(
-            `Error al obtener datos del usuario: ${error.message}`
-          );
-        }
-
-        // Check if user is active - if not, sign them out
-        if (userRecord.is_active === false) {
-          console.log("User is inactive, signing them out");
-          await supabase.auth.signOut();
-          return null;
-        }
-
-        const result = {
-          id: userRecord.id,
-          nombre: userRecord.nombre,
-          email: userRecord.email,
-          firstLogin: userRecord.first_login,
-          isAdmin: userRecord.is_admin,
-          isActive: userRecord.is_active ?? true,
-          role: userRecord.role,
-          gdprConsentGiven: userRecord.gdpr_consent_given ?? false,
-          gdprConsentDate: userRecord.gdpr_consent_date,
-          emailNotificationsConsent:
-            userRecord.email_notifications_consent ?? false,
-          geolocationConsent: userRecord.geolocation_consent ?? false,
-          consentVersion: userRecord.consent_version,
-          dias_libres: userRecord.dias_libres || [],
-          horas_diarias: userRecord.horas_diarias || 8,
-          horas_viernes: userRecord.horas_viernes || 7,
-          auto_entry_enabled: userRecord.auto_entry_enabled ?? false,
-          include_lunch_break: userRecord.include_lunch_break ?? true,
-          hora_entrada_min: userRecord.hora_entrada_min,
-          hora_entrada_max: userRecord.hora_entrada_max,
-          hora_salida_min: userRecord.hora_salida_min,
-          hora_salida_max: userRecord.hora_salida_max,
-          hora_salida_viernes_min: userRecord.hora_salida_viernes_min,
-          hora_salida_viernes_max: userRecord.hora_salida_viernes_max,
-          hora_inicio_descanso: userRecord.hora_inicio_descanso,
-          hora_fin_descanso: userRecord.hora_fin_descanso,
-          duracion_descanso_min: userRecord.duracion_descanso_min,
-          duracion_descanso_max: userRecord.duracion_descanso_max,
-        };
-
-        return result;
-      };
-
-      const timeoutPromise = new Promise<null>((_, reject) =>
-        setTimeout(() => reject(new Error("getCurrentUser timeout")), 8000)
-      );
-
-      return await Promise.race([getUserPromise(), timeoutPromise]);
-    } catch (error) {
-      console.error("Exception in getCurrentUser():", error);
-      if (error instanceof Error && error.message.includes("timeout")) {
         return null;
       }
-      throw error;
+
+      if (!user) {
+        console.log("No user returned from supabase.auth.getUser()");
+        return null;
+      }
+
+      console.log("Fetching user record from usuarios table for ID:", user.id);
+
+      const { data: userRecord, error } = await supabase
+        .from("usuarios")
+        .select("*")
+        .eq("id", user.id)
+        .single();
+
+      console.log("usuarios table query result:", {
+        hasRecord: !!userRecord,
+        record: userRecord,
+        error: error,
+      });
+
+      if (error) {
+        if (error.code === "PGRST116") {
+          console.log("User record not found in usuarios table (PGRST116)");
+          return null;
+        }
+        console.error("Error fetching user record:", error);
+        throw new Error(`Error al obtener datos del usuario: ${error.message}`);
+      }
+
+      if (userRecord.is_active === false) {
+        console.log("User is inactive, signing them out");
+        await supabase.auth.signOut();
+        return null;
+      }
+
+      return {
+        id: userRecord.id,
+        nombre: userRecord.nombre,
+        email: userRecord.email,
+        firstLogin: userRecord.first_login,
+        isAdmin: userRecord.is_admin,
+        isActive: userRecord.is_active ?? true,
+        role: userRecord.role,
+        gdprConsentGiven: userRecord.gdpr_consent_given ?? false,
+        gdprConsentDate: userRecord.gdpr_consent_date,
+        emailNotificationsConsent:
+          userRecord.email_notifications_consent ?? false,
+        geolocationConsent: userRecord.geolocation_consent ?? false,
+        consentVersion: userRecord.consent_version,
+        dias_libres: userRecord.dias_libres || [],
+        horas_diarias: userRecord.horas_diarias || 8,
+        horas_viernes: userRecord.horas_viernes || 7,
+        auto_entry_enabled: userRecord.auto_entry_enabled ?? false,
+        include_lunch_break: userRecord.include_lunch_break ?? true,
+        hora_entrada_min: userRecord.hora_entrada_min,
+        hora_entrada_max: userRecord.hora_entrada_max,
+        hora_salida_min: userRecord.hora_salida_min,
+        hora_salida_max: userRecord.hora_salida_max,
+        hora_salida_viernes_min: userRecord.hora_salida_viernes_min,
+        hora_salida_viernes_max: userRecord.hora_salida_viernes_max,
+        hora_inicio_descanso: userRecord.hora_inicio_descanso,
+        hora_fin_descanso: userRecord.hora_fin_descanso,
+        duracion_descanso_min: userRecord.duracion_descanso_min,
+        duracion_descanso_max: userRecord.duracion_descanso_max,
+      };
+    } catch (error) {
+      console.error("Exception in getCurrentUser():", error);
+      return null;
     }
   }
 }

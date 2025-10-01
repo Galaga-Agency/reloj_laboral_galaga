@@ -12,7 +12,7 @@ interface HolidayVacationPickerProps {
   onRefresh?: () => void;
   onDelete: (absenceId: string) => void;
   currentUserId: string;
-  currentUser: Usuario
+  currentUser: Usuario;
 }
 
 export function HolidayVacationPicker({
@@ -20,12 +20,12 @@ export function HolidayVacationPicker({
   onRefresh,
   onDelete,
   currentUserId,
-  currentUser
+  currentUser,
 }: HolidayVacationPickerProps) {
   const [showCalendar, setShowCalendar] = useState(false);
+  const [isRefreshing, setIsRefreshing] = useState(false);
   const buttonRef = useRef<HTMLButtonElement>(null);
 
-  // Flatten all fechas[] into strings
   const selectedDates = daysOff.flatMap((d) =>
     d.fechas.map((f) => format(f, "yyyy-MM-dd"))
   );
@@ -52,7 +52,7 @@ export function HolidayVacationPicker({
         razon: "Vacaciones",
         comentarios: "Bloque de días libres agregado por el usuario",
         createdBy: currentUserId,
-        isAdmin: currentUser.isAdmin
+        isAdmin: currentUser.isAdmin,
       });
 
       if (onRefresh) await onRefresh();
@@ -83,6 +83,19 @@ export function HolidayVacationPicker({
     daysOff.forEach((a) => onDelete(a.id));
   };
 
+  const handleRefresh = async () => {
+    if (isRefreshing || !onRefresh) return;
+
+    setIsRefreshing(true);
+    try {
+      await onRefresh();
+    } catch (error) {
+      console.error("Error refreshing data:", error);
+    } finally {
+      setTimeout(() => setIsRefreshing(false), 500);
+    }
+  };
+
   return (
     <div className="bg-white/5 backdrop-blur-sm rounded-2xl shadow-lg p-6 border border-white/10 relative">
       <div className="flex items-center justify-between pb-6">
@@ -93,11 +106,18 @@ export function HolidayVacationPicker({
         <div className="absolute top-6 right-6 flex items-center gap-2">
           {onRefresh && (
             <button
-              onClick={onRefresh}
-              className="p-2 bg-white/10 text-white rounded-lg hover:bg-white/20 transition-colors"
+              onClick={handleRefresh}
+              disabled={isRefreshing}
+              className={`p-2 bg-white/10 text-white rounded-lg hover:bg-white/20 transition-colors ${
+                isRefreshing ? "opacity-70" : ""
+              }`}
               title="Refrescar"
             >
-              <FiRefreshCw className="w-4 h-4" />
+              <FiRefreshCw
+                className={`w-6 h-6 transition-transform duration-500 ${
+                  isRefreshing ? "animate-spin" : ""
+                }`}
+              />
             </button>
           )}
           <button

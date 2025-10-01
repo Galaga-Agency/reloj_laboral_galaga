@@ -88,7 +88,7 @@ export function AdminAbsenceDetails({
   };
 
   const getAbsenceTypeLabel = (tipo: string): string => {
-    return AbsenceStatisticsCalculator.getReasonLabel(tipo);
+    return AbsenceStatisticsCalculator.getTypeLabel(tipo);
   };
 
   const isSystemGenerated = (absence: Absence): boolean => {
@@ -223,7 +223,7 @@ export function AdminAbsenceDetails({
               <div className="mb-4">
                 <p className="text-white/60 text-xs mb-1">Motivo</p>
                 <p className="text-white text-sm">
-                  {AbsenceStatisticsCalculator.getReasonLabel(absence.razon)}
+                  {absence.razon}
                 </p>
               </div>
 

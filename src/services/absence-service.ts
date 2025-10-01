@@ -768,11 +768,7 @@ export class AbsenceService {
       x = 17;
       doc.text(`${index + 1}`, x, y + 5.5);
       x += 10;
-      doc.text(
-        AbsenceStatisticsCalculator.getReasonLabel(type.tipo),
-        x,
-        y + 5.5
-      );
+      doc.text(AbsenceStatisticsCalculator.getTypeLabel(type.tipo), x, y + 5.5);
       x += 80;
       doc.text(`${type.count}`, x, y + 5.5);
       x += 30;

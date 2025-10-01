@@ -5,58 +5,69 @@ import { initEntranceAnimation } from "@/utils/animations/entrance-animations";
 import { GDPRConsentPage } from "@/components/pages/GDPRConsentPage";
 import { PasswordUpdatePage } from "@/components/pages/PasswordUpdatePage";
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
+import { useAuth } from "@/context/AuthContext";
 
-type LoginStep = 'login' | 'password-update' | 'gdpr-consent' | 'complete';
+type LoginStep = "login" | "password-update" | "gdpr-consent" | "complete";
 
 export function LoginPage() {
-  const [currentStep, setCurrentStep] = useState<LoginStep>('login');
+  const [currentStep, setCurrentStep] = useState<LoginStep>("login");
   const [currentUser, setCurrentUser] = useState<Usuario | null>(null);
+  const navigate = useNavigate();
 
   useGSAPAnimations({ animations: [initEntranceAnimation], delay: 100 });
 
-  const handleLogin = (usuario: Usuario) => {
-    setCurrentUser(usuario);
-    
-    if (usuario.firstLogin) {
-      setCurrentStep('password-update');
-    } else if (!usuario.gdprConsentGiven) {
-      setCurrentStep('gdpr-consent');
-    } else {
-      window.location.href = '/panel';
-    }
-  };
+const handleLogin = (usuario: Usuario) => {
+  setCurrentUser(usuario);
+
+  if (usuario.firstLogin) {
+    setCurrentStep("password-update");
+  } else if (!usuario.gdprConsentGiven) {
+    setCurrentStep("gdpr-consent");
+  } else {
+    navigate("/panel", { replace: true });
+  }
+};
 
   const handlePasswordUpdated = () => {
     if (currentUser && !currentUser.gdprConsentGiven) {
-      setCurrentStep('gdpr-consent');
+      setCurrentStep("gdpr-consent");
     } else {
-      window.location.href = '/panel';
+      navigate("/panel", { replace: true });
     }
   };
 
   const handleGDPRConsentComplete = () => {
-    window.location.href = '/panel';
+    navigate("/panel", { replace: true });
   };
 
-  // Render different steps
-  if (currentStep === 'password-update' && currentUser) {
-    return <PasswordUpdatePage usuario={currentUser} onComplete={handlePasswordUpdated} />;
+  if (currentStep === "password-update" && currentUser) {
+    return (
+      <PasswordUpdatePage
+        usuario={currentUser}
+        onComplete={handlePasswordUpdated}
+      />
+    );
   }
 
-  if (currentStep === 'gdpr-consent' && currentUser) {
-    return <GDPRConsentPage usuario={currentUser} onConsentComplete={handleGDPRConsentComplete} />;
+  if (currentStep === "gdpr-consent" && currentUser) {
+    return (
+      <GDPRConsentPage
+        usuario={currentUser}
+        onConsentComplete={handleGDPRConsentComplete}
+      />
+    );
   }
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-azul-profundo to-teal relative">
-      {/* Mobile & Tablet Layout */}
       <div className="min-h-screen flex flex-col items-center justify-center px-6 lg:hidden">
         <img
           src="/assets/img/logos/logo-full.webp"
           alt="Galaga Agency"
           className="absolute top-6 left-6 w-32 md:w-40 h-auto fade-down opacity-0"
         />
-        
+
         <div
           className="flex flex-col gap-8 text-center"
           style={{ width: "clamp(320px, 90vw, 600px)" }}
@@ -83,7 +94,6 @@ export function LoginPage() {
         </div>
       </div>
 
-      {/* Desktop Layout */}
       <div className="hidden lg:flex min-h-screen">
         <div className="flex-1 flex items-center justify-center px-20">
           <div className="max-w-2xl">

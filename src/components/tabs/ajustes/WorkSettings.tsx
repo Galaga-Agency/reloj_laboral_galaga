@@ -1,14 +1,11 @@
 import { useState, useEffect } from "react";
 import { useSecretSequence } from "@/hooks/useSecretSequence";
-import { HolidayVacationPicker } from "@/components/HolidayVacationPicker";
-import { GenerateInformes } from "@/components/GenerateInformes";
-import { AdvancedWorkSettings } from "@/components/AdvancedWorkSettings";
-import { PasswordChangeBlock } from "./PasswordChangeBlock";
-import SecondaryButton from "./ui/SecondaryButton";
+import { AdvancedWorkSettings } from "@/components/tabs/ajustes/AdvancedWorkSettings";
 import { FiSave, FiCheck, FiX } from "react-icons/fi";
 import { RegistroTiempo, Usuario, Absence } from "@/types";
 import { supabase } from "@/lib/supabase";
-import { AbsenceService } from "@/services/absence-service";
+import { PasswordChangeBlock } from "@/components/PasswordChangeBlock";
+import SecondaryButton from "@/components/ui/SecondaryButton";
 
 interface WorkSettingsProps {
   usuario: Usuario;
@@ -17,7 +14,6 @@ interface WorkSettingsProps {
 
 export function WorkSettings({ usuario, registros = [] }: WorkSettingsProps) {
   const [settings, setSettings] = useState<Usuario>(usuario);
-  const [daysOff, setDaysOff] = useState<Absence[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [saveStatus, setSaveStatus] = useState<"idle" | "success" | "error">(
@@ -40,37 +36,9 @@ export function WorkSettings({ usuario, registros = [] }: WorkSettingsProps) {
     },
   });
 
-  const loadDiasLibres = async () => {
-    try {
-      const absences = await AbsenceService.getAbsencesByUser(
-        usuario.id,
-        undefined,
-        undefined,
-        true 
-      );
-      console.log("All absences for user:", absences);
-      const dayOffAbsences = absences.filter(
-        (a) => a.tipoAusencia === "dia_libre"
-      );
-      console.log("Filtered days off:", dayOffAbsences);
-      setDaysOff(dayOffAbsences);
-    } catch (error) {
-      console.error("Error loading dias libres:", error);
-    }
-  };
-
-  const handleDeleteDayOff = async (absenceId: string) => {
-    try {
-      await AbsenceService.deleteAbsence(absenceId);
-      await loadDiasLibres();
-    } catch (error) {
-      console.error("Error deleting day off:", error);
-    }
-  };
 
   useEffect(() => {
     setSettings(usuario);
-    loadDiasLibres();
   }, [usuario]);
 
   const saveSettings = async () => {
@@ -147,21 +115,8 @@ export function WorkSettings({ usuario, registros = [] }: WorkSettingsProps) {
 
   return (
     <div className="flex flex-col gap-6 max-w-[1400px] mx-auto">
-      <GenerateInformes
-        registros={registros.filter((r) => r.usuarioId === usuario.id)}
-        usuario={usuario}
-      />
-
-      <HolidayVacationPicker
-        daysOff={daysOff}
-        onRefresh={loadDiasLibres}
-        onDelete={handleDeleteDayOff}
-        currentUserId={usuario.id}
-        currentUser={usuario}
-      />
-
       <PasswordChangeBlock
-        onMessage={(m) => {
+        onMessage={(m: any) => {
           setMessage(m);
           setTimeout(() => setMessage(null), 3000);
         }}

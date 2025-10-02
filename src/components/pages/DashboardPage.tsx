@@ -1,17 +1,31 @@
 import { useState } from "react";
-import type { Usuario, VistaNavegacion } from "@/types";
-import { RelojPrincipal } from "@/components/RelojPrincipal";
-import { HistorialTrabajo } from "@/components/HistorialTrabajo";
-import { WorkSettings } from "@/components/WorkSettings";
-import { AdminPanel } from "@/components/admin/AdminPanel";
+import type { Usuario } from "@/types";
 import { DashboardTabs } from "@/components/DashboardTabs";
 import { DashboardHeader } from "@/components/DashboardHeader";
 import { useTimeRecords } from "@/hooks/useTimeRecords";
 import { useGSAPAnimations } from "@/hooks/useGSAPAnimations";
-import { FiClock, FiList, FiSettings, FiShield } from "react-icons/fi";
+import {
+  FiClock,
+  FiList,
+  FiSettings,
+  FiShield,
+  FiCalendar,
+} from "react-icons/fi";
 import { initEntranceAnimation } from "@/utils/animations/entrance-animations";
 import { useOvertimeCalculations } from "@/hooks/useOvertimeCalculations";
 import { OvertimeAlert } from "@/components/OvertimeAlert";
+import { RelojPrincipal } from "../tabs/reloj-main/RelojPrincipal";
+import { MiAgendaView } from "../tabs/mi-agenda/MiAgendaView";
+import { HistorialTrabajo } from "../tabs/historial/HistorialTrabajo";
+import { WorkSettings } from "../tabs/ajustes/WorkSettings";
+import { AdminPanel } from "../tabs/admin/AdminPanel";
+
+type VistaNavegacion =
+  | "reloj"
+  | "agenda"
+  | "historial"
+  | "configuracion"
+  | "admin";
 
 interface DashboardPageProps {
   usuario: Usuario;
@@ -29,6 +43,11 @@ export function DashboardPage({ usuario, onLogout }: DashboardPageProps) {
       id: "reloj" as const,
       label: "Fichaje",
       icon: <FiClock className="w-5 h-5" />,
+    },
+    {
+      id: "agenda" as const,
+      label: "Mi Agenda",
+      icon: <FiCalendar className="w-5 h-5" />,
     },
     {
       id: "historial" as const,
@@ -83,6 +102,7 @@ export function DashboardPage({ usuario, onLogout }: DashboardPageProps) {
                 onStatusChange={refetch}
               />
             )}
+            {vistaActual === "agenda" && <MiAgendaView usuario={usuario} />}
             {vistaActual === "historial" && (
               <HistorialTrabajo
                 usuarioId={usuario.id}

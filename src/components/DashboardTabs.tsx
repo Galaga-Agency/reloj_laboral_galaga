@@ -107,7 +107,7 @@ export function DashboardTabs({
               className="absolute inset-1 rounded-xl bg-white shadow-lg transition-transform duration-300 ease-out z-0 will-change-transform pointer-events-none"
               style={{
                 width: `calc(98% / ${tabs.length})`,
-                transform: `translateX(${activeIndex * 100}%)`,
+                transform: `translateX(${activeIndex * 101}%)`,
               }}
             />
           </div>

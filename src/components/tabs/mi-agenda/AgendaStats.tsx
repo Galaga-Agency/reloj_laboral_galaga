@@ -1,0 +1,140 @@
+import { useState } from "react";
+import { FiAlertCircle, FiCalendar, FiHome, FiClock } from "react-icons/fi";
+import {
+  startOfWeek,
+  endOfWeek,
+  startOfMonth,
+  endOfMonth,
+  startOfYear,
+  endOfYear,
+  subMonths,
+  subWeeks,
+} from "date-fns";
+import { CustomDropdown } from "@/components/ui/CustomDropdown";
+import type { Absence } from "@/types";
+import type { TeleworkingSchedule } from "@/types/teleworking";
+
+interface AgendaStatsProps {
+  absences: Absence[];
+  teleworkSchedules: TeleworkingSchedule[];
+}
+
+export function AgendaStats({ absences, teleworkSchedules }: AgendaStatsProps) {
+  const [timeRange, setTimeRange] = useState("this_week");
+
+  const timeRangeOptions = [
+    { value: "this_week", label: "Esta Semana" },
+    { value: "last_week", label: "Semana Pasada" },
+    { value: "this_month", label: "Este Mes" },
+    { value: "last_month", label: "Mes Pasado" },
+    { value: "this_year", label: "Este Año" },
+    { value: "all_time", label: "Todo el Tiempo" },
+  ];
+
+  const getDateRange = () => {
+    const now = new Date();
+    switch (timeRange) {
+      case "this_week":
+        return {
+          start: startOfWeek(now, { weekStartsOn: 1 }),
+          end: endOfWeek(now, { weekStartsOn: 1 }),
+        };
+      case "last_week":
+        const lastWeek = subWeeks(now, 1);
+        return {
+          start: startOfWeek(lastWeek, { weekStartsOn: 1 }),
+          end: endOfWeek(lastWeek, { weekStartsOn: 1 }),
+        };
+      case "this_month":
+        return { start: startOfMonth(now), end: endOfMonth(now) };
+      case "last_month":
+        const lastMonth = subMonths(now, 1);
+        return { start: startOfMonth(lastMonth), end: endOfMonth(lastMonth) };
+      case "this_year":
+        return { start: startOfYear(now), end: endOfYear(now) };
+      case "all_time":
+        return { start: new Date(2000, 0, 1), end: new Date(2099, 11, 31) };
+      default:
+        return {
+          start: startOfWeek(now, { weekStartsOn: 1 }),
+          end: endOfWeek(now, { weekStartsOn: 1 }),
+        };
+    }
+  };
+
+  const { start, end } = getDateRange();
+
+  const filteredAbsences = absences.filter((a) =>
+    a.fechas.some((f) => f >= start && f <= end)
+  );
+
+  const filteredTelework = teleworkSchedules.filter(
+    (t) => t.fecha >= start && t.fecha <= end
+  );
+
+  const stats = {
+    totalAbsences: filteredAbsences.filter(
+      (a) => a.tipoAusencia !== "dia_libre"
+    ).length,
+    daysOff: filteredAbsences.filter((a) => a.tipoAusencia === "dia_libre")
+      .length,
+    teleworkDays: filteredTelework.filter((t) => t.location === "remote")
+      .length,
+    pending: filteredAbsences.filter((a) => a.estado === "pendiente").length,
+  };
+
+  return (
+    <div className="space-y-4">
+      <div className="flex justify-end">
+        <CustomDropdown
+          options={timeRangeOptions}
+          value={timeRange}
+          onChange={setTimeRange}
+          placeholder="Seleccionar período"
+          className="w-48"
+          variant="darkBg"
+        />
+      </div>
+
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+        <div className="bg-white/10 p-4 rounded-xl">
+          <div className="flex items-center gap-2 text-sm text-white/70 mb-2">
+            <FiAlertCircle className="w-4 h-4" />
+            Ausencias
+          </div>
+          <div className="text-2xl font-bold text-white">
+            {stats.totalAbsences}
+          </div>
+        </div>
+
+        <div className="bg-white/10 p-4 rounded-xl">
+          <div className="flex items-center gap-2 text-sm text-white/70 mb-2">
+            <FiCalendar className="w-4 h-4" />
+            Días Libres
+          </div>
+          <div className="text-2xl font-bold text-white">{stats.daysOff}</div>
+        </div>
+
+        <div className="bg-white/10 p-4 rounded-xl">
+          <div className="flex items-center gap-2 text-sm text-white/70 mb-2">
+            <FiHome className="w-4 h-4" />
+            Teletrabajo
+          </div>
+          <div className="text-2xl font-bold text-white">
+            {stats.teleworkDays}
+          </div>
+        </div>
+
+        <div className="bg-white/10 p-4 rounded-xl">
+          <div className="flex items-center gap-2 text-sm text-white/70 mb-2">
+            <FiClock className="w-4 h-4" />
+            Pendientes
+          </div>
+          <div className="text-2xl font-bold text-yellow-400">
+            {stats.pending}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}

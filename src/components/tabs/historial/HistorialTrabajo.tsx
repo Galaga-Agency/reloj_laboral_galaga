@@ -17,16 +17,16 @@ import { FiRefreshCw, FiClock, FiAlertCircle, FiEdit3 } from "react-icons/fi";
 import PrimaryButton from "@/components/ui/PrimaryButton";
 import { TimeRecordsUtils } from "@/utils/time-records";
 import { TimeRecordsService } from "@/services/time-records-service";
-import { CustomDropdown } from "./ui/CustomDropdown";
-import { WorkStatistics } from "./WorkStatistics";
 import {
   TimeCorrectionsService,
   type TimeCorrection,
 } from "@/services/time-corrections-service";
 import { DailyHoursCalculator } from "@/utils/daily-hours-calculator";
-import { DailyOvertimeIndicator } from "@/components/DailyOvertimeIndicator";
+import { DailyOvertimeIndicator } from "@/components/tabs/reloj-main/DailyOvertimeIndicator";
 import { TimeRecordCorrectionModal } from "@/components/modals/TimeRecordCorrectionModal";
-import { AbsenceHistory } from "./AbsenceHistory";
+import { CustomDropdown } from "@/components/ui/CustomDropdown";
+import { WorkStatistics } from "./WorkStatistics";
+import { InformesHistorialregistros } from "./InformesHistorialregistros";
 
 export type DateRangeFilter =
   | "today"
@@ -477,8 +477,11 @@ export function HistorialTrabajo({
             </div>
           )}
         </div>
-
-        <AbsenceHistory usuario={currentUser} />
+        
+        <InformesHistorialregistros
+          registros={registros.filter((r) => r.usuarioId === usuarioId)}
+          usuario={currentUser}
+        />
       </div>
 
       {successMessage && (

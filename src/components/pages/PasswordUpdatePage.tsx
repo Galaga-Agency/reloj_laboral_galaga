@@ -1,7 +1,7 @@
 import { useForm } from "react-hook-form";
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { useAuth } from "@/context/AuthContext";
+import { useAuth } from "@/contexts/AuthContext";
 import type { Usuario } from "@/types";
 import { useGSAPAnimations } from "@/hooks/useGSAPAnimations";
 import PrimaryButton from "@/components/ui/PrimaryButton";

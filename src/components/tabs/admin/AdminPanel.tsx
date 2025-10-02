@@ -1,14 +1,14 @@
 import { useState, useEffect } from "react";
 import { AdminService, type TimeRange } from "@/services/admin-service";
 import type { Usuario, RegistroTiempo } from "@/types";
-import { UsersList } from "@/components/admin/UsersList";
-import { UserRecordsList } from "@/components/admin/UserRecordsList";
-import { AdminSystemDocumentation } from "../AdminSystemDocs";
-import { AdminUserReports } from "@/components/AdminUserReports";
-import { AdminAbsencesPanel } from "@/components/admin/AdminAbsencesPanel";
-import { PendingChangesPanel } from "@/components/admin/PendingChangesPanel";
-import { WorkersMonitor } from "@/components/admin/WorkersMonitor";
-import { TeleworkingPanel } from "@/components/admin/TeleworkingPanel";
+import { UsersList } from "@/components/tabs/admin/UsersList";
+import { UserRecordsList } from "@/components/tabs/admin/UserRecordsList";
+import { AdminSystemDocumentation } from "./AdminSystemDocs";
+import { AdminUserReports } from "@/components/tabs/admin/AdminUserReports";
+import { AdminAbsencesPanel } from "@/components/tabs/admin/AdminAbsencesPanel";
+import { PendingChangesPanel } from "@/components/tabs/admin/PendingChangesPanel";
+import { WorkersMonitor } from "@/components/tabs/admin/WorkersMonitor";
+import { TeleworkingPanel } from "@/components/tabs/admin/TeleworkingPanel";
 import { useSecretSequence } from "@/hooks/useSecretSequence";
 import {
   FiUsers,

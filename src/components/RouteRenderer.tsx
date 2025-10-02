@@ -7,7 +7,7 @@ import { PortalOficialPage } from "@/components/pages/PortalOficialPage";
 import { GDPRConsentPage } from "@/components/pages/GDPRConsentPage";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
 import { LoadingScreen } from "@/components/ui/LoadingScreen";
-import { useAuth } from "@/context/AuthContext";
+import { useAuth } from "@/contexts/AuthContext";
 import { ROUTES, getRedirectPath } from "@/utils/route-config";
 import { PrivacyPolicyPage } from "./pages/PrivacyPolicyPage";
 import { LegalNoticePage } from "./pages/LegalNoticePage";

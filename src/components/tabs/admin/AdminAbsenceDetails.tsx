@@ -270,30 +270,6 @@ export function AdminAbsenceDetails({
                     )}`}
               </div>
 
-              {absence.estado === "pendiente" && !isSystem && (
-                <div className="flex gap-3 pt-4 border-t border-white/10">
-                  <PrimaryButton
-                    onClick={() => handleStatusUpdate(absence.id, "aprobada")}
-                    disabled={updatingId === absence.id}
-                    size="sm"
-                    className="flex-1"
-                  >
-                    <FiCheck className="w-4 h-4" />
-                    {updatingId === absence.id ? "Procesando..." : "Aprobar"}
-                  </PrimaryButton>
-                  <SecondaryButton
-                    onClick={() => handleStatusUpdate(absence.id, "rechazada")}
-                    disabled={updatingId === absence.id}
-                    size="sm"
-                    darkBg
-                    className="flex-1 md:flex-none px-4 py-2 !bg-red-500/20 !border !border-red-500 !hover:bg-red-500/30 !text-white"
-                  >
-                    <FiX className="w-4 h-4" />
-                    Rechazar
-                  </SecondaryButton>
-                </div>
-              )}
-
               {absence.estado !== "pendiente" &&
                 absence.aprobadoPor &&
                 !isSystem && (

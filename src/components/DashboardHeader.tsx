@@ -4,7 +4,7 @@ import { FiLogOut } from "react-icons/fi";
 import type { Usuario, EstadoTrabajo } from "@/types";
 import SecondaryButton from "./ui/SecondaryButton";
 import { useDeviceDetect } from "@/hooks/useDeviceDetect";
-import { useAuth } from "@/context/AuthContext";
+import { useAuth } from "@/contexts/AuthContext";
 
 interface DashboardHeaderProps {
   usuario: Usuario;

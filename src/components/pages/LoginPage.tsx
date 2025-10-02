@@ -6,7 +6,7 @@ import { GDPRConsentPage } from "@/components/pages/GDPRConsentPage";
 import { PasswordUpdatePage } from "@/components/pages/PasswordUpdatePage";
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { useAuth } from "@/context/AuthContext";
+import { useAuth } from "@/contexts/AuthContext";
 
 type LoginStep = "login" | "password-update" | "gdpr-consent" | "complete";
 
@@ -17,17 +17,17 @@ export function LoginPage() {
 
   useGSAPAnimations({ animations: [initEntranceAnimation], delay: 100 });
 
-const handleLogin = (usuario: Usuario) => {
-  setCurrentUser(usuario);
+  const handleLogin = (usuario: Usuario) => {
+    setCurrentUser(usuario);
 
-  if (usuario.firstLogin) {
-    setCurrentStep("password-update");
-  } else if (!usuario.gdprConsentGiven) {
-    setCurrentStep("gdpr-consent");
-  } else {
-    navigate("/panel", { replace: true });
-  }
-};
+    if (usuario.firstLogin) {
+      setCurrentStep("password-update");
+    } else if (!usuario.gdprConsentGiven) {
+      setCurrentStep("gdpr-consent");
+    } else {
+      navigate("/panel", { replace: true });
+    }
+  };
 
   const handlePasswordUpdated = () => {
     if (currentUser && !currentUser.gdprConsentGiven) {

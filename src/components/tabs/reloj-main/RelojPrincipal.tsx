@@ -180,7 +180,7 @@ export function RelojPrincipal({
           </div>
         )}
 
-        <div className="clock-container bg-white/10 backdrop-blur rounded-3xl shadow-2xl p-12 text-center relative">
+        <div className="clock-container bg-white/10 backdrop-blur rounded-3xl shadow-2xl px-12 py-24 lg:py-12 text-center relative">
           {currentLocation && estadoActual === "trabajando" && (
             <button
               onClick={() => setShowLocationSwitchModal(true)}
@@ -192,7 +192,7 @@ export function RelojPrincipal({
                 ) : (
                   <FiHome className="w-5 h-5 text-white" />
                 )}
-                <span className="text-white font-semibold">
+                <span className="text-white font-semibold hidden md:block">
                   {currentLocation === "oficina" ? "Oficina" : "Teletrabajo"}
                 </span>
               </div>

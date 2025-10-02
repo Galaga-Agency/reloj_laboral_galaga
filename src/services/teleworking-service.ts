@@ -142,11 +142,17 @@ export class TeleworkingService {
       created_by_name: createdBy.nombre,
     }));
 
-    const { error } = await supabase
+    console.log("[TeleworkingService] bulkCreateSchedules input:", schedules);
+    console.log("[TeleworkingService] mapped records to insert:", records);
+
+    const { data, error } = await supabase
       .from("teleworking_schedules")
       .upsert(records, {
         onConflict: "usuario_id,fecha",
       });
+
+    console.log("[TeleworkingService] upsert response data:", data);
+    console.log("[TeleworkingService] upsert response error:", error);
 
     if (error) throw error;
   }

@@ -15,7 +15,7 @@ import { AbsenceStatisticsCalculator } from "@/utils/absence-statistics";
 import type { Absence, Usuario } from "@/types";
 import PrimaryButton from "@/components/ui/PrimaryButton";
 import SecondaryButton from "@/components/ui/SecondaryButton";
-import { AbsenceEditModal } from "../modals/AbsenceEditModal";
+import { AbsenceEditModal } from "../../modals/AbsenceEditModal";
 import { Toast } from "@/components/ui/Toast";
 
 interface AdminPendingAbsencesProps {
@@ -241,8 +241,8 @@ export function AdminPendingAbsences({
                   )}
                   {absence.adjuntoUrl && (
                     <div className="pt-2 border-t border-white/10">
-                      
-                      <a  href={absence.adjuntoUrl}
+                      <a
+                        href={absence.adjuntoUrl}
                         target="_blank"
                         rel="noopener noreferrer"
                         className="flex items-center gap-2 text-teal hover:text-teal/80 text-sm transition-colors"

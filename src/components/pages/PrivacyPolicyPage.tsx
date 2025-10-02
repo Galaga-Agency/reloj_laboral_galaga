@@ -1,6 +1,6 @@
-import { BackButton } from "@/components/BackButton";
+import { BackButton } from "@/components/ui/BackButton";
 import { DashboardHeader } from "@/components/DashboardHeader";
-import { useAuth } from "@/context/AuthContext";
+import { useAuth } from "@/contexts/AuthContext";
 import { useGSAPAnimations } from "@/hooks/useGSAPAnimations";
 import { useTimeRecords } from "@/hooks/useTimeRecords";
 import { initEntranceAnimation } from "@/utils/animations/entrance-animations";

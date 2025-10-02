@@ -130,7 +130,7 @@ export function HolidayVacationPicker({
     <div className="bg-white/5 backdrop-blur-sm rounded-2xl shadow-lg p-6 border border-white/10 relative">
       <div className="flex items-center justify-between pb-6">
         <h2 className="text-2xl font-bold text-white flex items-center gap-3 max-w-[80%]">
-          <FiCalendar className="text-teal flex-shrink-0" />
+          <FiCalendar className="text-white flex-shrink-0" />
           Días Libres y Vacaciones
         </h2>
         <div className="absolute top-6 right-6 flex items-center gap-2">

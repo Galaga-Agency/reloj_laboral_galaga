@@ -23,7 +23,7 @@ import { CustomDropdown } from "@/components/ui/CustomDropdown";
 import type { Usuario, Absence } from "@/types";
 import PrimaryButton from "@/components/ui/PrimaryButton";
 import { AbsenceStatisticsCalculator } from "@/utils/absence-statistics";
-import { CustomInput } from "../ui/CustomInput";
+import { CustomInput } from "../../ui/CustomInput";
 
 interface AdminAbsenceWorkerListProps {
   users: Usuario[];

@@ -7,15 +7,15 @@ import { useReports, type ReportPeriod } from "@/hooks/useReports";
 import PrimaryButton from "@/components/ui/PrimaryButton";
 import { CustomCalendar } from "@/components/ui/CustomCalendar";
 
-interface GenerateInformesProps {
+interface InformesHistorialregistrosProps {
   registros: RegistroTiempo[];
   usuario: Usuario;
 }
 
-export function GenerateInformes({
+export function InformesHistorialregistros({
   registros,
   usuario,
-}: GenerateInformesProps) {
+}: InformesHistorialregistrosProps) {
   const [message, setMessage] = useState<{
     type: "success" | "error";
     text: string;
@@ -100,7 +100,7 @@ export function GenerateInformes({
     <div className="bg-white/5 backdrop-blur-sm rounded-2xl shadow-lg p-6 border border-white/10">
       <div className="flex items-center gap-3 pb-6">
         <FiFileText className="text-2xl text-teal" />
-        <h2 className="text-2xl font-bold text-white">Generar Informes</h2>
+        <h2 className="text-2xl font-bold text-white">Generar Informes - Tiempo Trabajado</h2>
       </div>
 
       {message && (

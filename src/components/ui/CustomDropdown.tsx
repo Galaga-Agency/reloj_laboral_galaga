@@ -153,7 +153,7 @@ export function CustomDropdown({
       {isOpen && (
         <>
           <div
-            className="fixed inset-0 z-10"
+            className="fixed inset-0"
             onClick={() => setIsOpen(false)}
           />
 

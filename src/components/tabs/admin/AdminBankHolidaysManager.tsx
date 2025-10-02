@@ -9,6 +9,7 @@ import {
   FiAlertCircle,
 } from "react-icons/fi";
 import { AbsenceService } from "@/services/absence-service";
+import { useAbsences } from "@/contexts/AbsenceContext";
 import type { Usuario } from "@/types";
 import PrimaryButton from "@/components/ui/PrimaryButton";
 import { CustomInput } from "@/components/ui/CustomInput";
@@ -24,7 +25,9 @@ interface Holiday {
   name: string;
 }
 
-export function AdminBankHolidaysManager({ currentAdmin }: AdminBankHolidaysManagerProps) {
+export function AdminBankHolidaysManager({
+  currentAdmin,
+}: AdminBankHolidaysManagerProps) {
   const [holidays, setHolidays] = useState<Holiday[]>([]);
   const [newHolidayDate, setNewHolidayDate] = useState("");
   const [newHolidayName, setNewHolidayName] = useState("");
@@ -40,6 +43,8 @@ export function AdminBankHolidaysManager({ currentAdmin }: AdminBankHolidaysMana
     date: string;
     name: string;
   }>({ isOpen: false, date: "", name: "" });
+
+  const { refreshAbsences } = useAbsences();
 
   useEffect(() => {
     loadHolidays();
@@ -98,7 +103,8 @@ export function AdminBankHolidaysManager({ currentAdmin }: AdminBankHolidaysMana
 
         setNewHolidayDate("");
         setNewHolidayName("");
-        loadHolidays();
+        await loadHolidays();
+        await refreshAbsences();
       } else {
         setMessage({
           type: "error",
@@ -130,7 +136,8 @@ export function AdminBankHolidaysManager({ currentAdmin }: AdminBankHolidaysMana
           text: `Festivo "${deleteConfirm.name}" eliminado`,
         });
         setTimeout(() => setMessage(null), 3000);
-        loadHolidays();
+        await loadHolidays();
+        await refreshAbsences();
       } else {
         setMessage({
           type: "error",
@@ -154,7 +161,7 @@ export function AdminBankHolidaysManager({ currentAdmin }: AdminBankHolidaysMana
     <>
       <div className="bg-white/10 backdrop-blur-md rounded-2xl p-6">
         <div className="flex items-center gap-3 pb-6 border-b border-white/10">
-            <FiCalendar className="w-5 h-5 text-white" />
+          <FiCalendar className="w-5 h-5 text-white" />
           <div>
             <h2 className="text-xl font-bold text-white">Festivos</h2>
             <p className="text-white/70 text-sm">

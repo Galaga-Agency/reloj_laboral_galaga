@@ -1,5 +1,6 @@
-import { useState, useRef } from "react";
-import { TeleworkingService } from "@/services/teleworking-service";
+import { useState, useRef, useEffect } from "react";
+import { useTeleworking } from "@/contexts/TeleworkingContext";
+import { AdminService } from "@/services/admin-service";
 import type { Usuario } from "@/types";
 import type { TeleworkingLocation } from "@/types/teleworking";
 import { FiX, FiHome, FiMapPin, FiCalendar } from "react-icons/fi";
@@ -10,7 +11,6 @@ interface TeleworkingScheduleModalProps {
   user: Usuario | null;
   date: Date;
   currentAdmin: Usuario;
-  allUsers: Usuario[];
   onClose: () => void;
   onSave: () => void;
 }
@@ -19,10 +19,10 @@ export function TeleworkingScheduleModal({
   user,
   date,
   currentAdmin,
-  allUsers,
   onClose,
   onSave,
 }: TeleworkingScheduleModalProps) {
+  const [allUsers, setAllUsers] = useState<Usuario[]>([]);
   const [selectedUserId, setSelectedUserId] = useState(user?.id || "");
   const [location, setLocation] = useState<TeleworkingLocation>("office");
   const [notes, setNotes] = useState("");
@@ -33,6 +33,21 @@ export function TeleworkingScheduleModal({
   ]);
   const [showCalendar, setShowCalendar] = useState(false);
   const calendarTriggerRef = useRef<HTMLButtonElement>(null);
+
+  const { bulkCreateSchedules } = useTeleworking();
+
+  useEffect(() => {
+    loadUsers();
+  }, []);
+
+  const loadUsers = async () => {
+    try {
+      const users = await AdminService.getAllUsers();
+      setAllUsers(users.filter((u) => u.isActive && u.role === "employee"));
+    } catch (error) {
+      console.error("Error loading users:", error);
+    }
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -57,7 +72,7 @@ export function TeleworkingScheduleModal({
         location,
       }));
 
-      await TeleworkingService.bulkCreateSchedules(schedules, currentAdmin);
+      await bulkCreateSchedules(schedules);
 
       onSave();
     } catch (err) {

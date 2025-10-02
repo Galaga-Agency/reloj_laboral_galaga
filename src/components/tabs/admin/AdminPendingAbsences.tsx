@@ -9,10 +9,10 @@ import {
 } from "react-icons/fi";
 import { format } from "date-fns";
 import { es } from "date-fns/locale";
-import { AbsenceService } from "@/services/absence-service";
+import { useAbsences } from "@/contexts/AbsenceContext";
 import { AdminService } from "@/services/admin-service";
 import { AbsenceStatisticsCalculator } from "@/utils/absence-statistics";
-import type { Absence, Usuario } from "@/types";
+import type { Usuario, Absence } from "@/types";
 import PrimaryButton from "@/components/ui/PrimaryButton";
 import SecondaryButton from "@/components/ui/SecondaryButton";
 import { AbsenceEditModal } from "../../modals/AbsenceEditModal";
@@ -27,9 +27,14 @@ export function AdminPendingAbsences({
   currentAdmin,
   onUpdate,
 }: AdminPendingAbsencesProps) {
-  const [pendingAbsences, setPendingAbsences] = useState<Absence[]>([]);
+  const {
+    absences,
+    updateAbsenceStatus,
+    updateAbsence,
+    deleteAbsence,
+    isLoading,
+  } = useAbsences();
   const [users, setUsers] = useState<Map<string, Usuario>>(new Map());
-  const [isLoading, setIsLoading] = useState(false);
   const [updatingId, setUpdatingId] = useState<string | null>(null);
   const [isUpdating, setIsUpdating] = useState(false);
   const [absenceBeingEdited, setAbsenceBeingEdited] = useState<Absence | null>(
@@ -41,35 +46,28 @@ export function AdminPendingAbsences({
   } | null>(null);
 
   useEffect(() => {
-    loadData();
+    loadUsers();
   }, []);
 
-  const loadData = async () => {
-    setIsLoading(true);
+  const loadUsers = async () => {
     try {
-      const [absences, allUsers] = await Promise.all([
-        AbsenceService.getAllAbsences(undefined, undefined, true),
-        AdminService.getAllUsers(),
-      ]);
-
+      const allUsers = await AdminService.getAllUsers();
       const userMap = new Map<string, Usuario>();
       allUsers.forEach((user) => userMap.set(user.id, user));
-
-      const pending = absences.filter((a) => {
-        const creator = userMap.get(a.createdBy || "");
-        return a.estado === "pendiente" && (!creator || !creator.isAdmin);
-      });
-
-      pending.sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
-
-      setPendingAbsences(pending);
       setUsers(userMap);
     } catch (error) {
-      console.error("Error loading pending absences:", error);
-    } finally {
-      setIsLoading(false);
+      console.error("Error loading users:", error);
     }
   };
+
+  const pendingAbsences = absences
+    .filter((a) => {
+      if (a.estado !== "pendiente") return false;
+      if (!a.createdBy) return true;
+      if (a.createdBy === currentAdmin.id) return false;
+      return true;
+    })
+    .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
 
   const handleStatusUpdate = async (
     absenceId: string,
@@ -77,11 +75,7 @@ export function AdminPendingAbsences({
   ) => {
     setUpdatingId(absenceId);
     try {
-      await AbsenceService.updateAbsenceStatus(
-        absenceId,
-        status,
-        currentAdmin.id
-      );
+      await updateAbsenceStatus(absenceId, status);
       setToast({
         type: "success",
         text:
@@ -89,10 +83,8 @@ export function AdminPendingAbsences({
             ? "Ausencia aprobada correctamente"
             : "Ausencia rechazada correctamente",
       });
-      await loadData();
       onUpdate();
     } catch (error) {
-      console.error("Error updating absence status:", error);
       setToast({
         type: "error",
         text: "Error al actualizar el estado de la ausencia",
@@ -103,20 +95,15 @@ export function AdminPendingAbsences({
   };
 
   const handleDelete = async (absenceId: string) => {
-    console.log("Attempting to delete absence:", absenceId);
     setUpdatingId(absenceId);
     try {
-      await AbsenceService.deleteAbsence(absenceId);
-      console.log("Delete successful, reloading data...");
+      await deleteAbsence(absenceId);
       setToast({
         type: "success",
         text: "Ausencia eliminada correctamente",
       });
-      await loadData();
-      console.log("Data reloaded");
       onUpdate();
     } catch (error) {
-      console.error("Error deleting absence:", error);
       setToast({
         type: "error",
         text: "Error al eliminar la ausencia",
@@ -216,13 +203,6 @@ export function AdminPendingAbsences({
                       {absence.horaInicio} - {absence.horaFin}
                     </span>
                   </div>
-                  <div className="flex items-center justify-between text-sm">
-                    <span className="text-white/60">Duración:</span>
-                    <span className="text-white font-medium">
-                      {Math.floor(absence.duracionMinutos / 60)}h{" "}
-                      {absence.duracionMinutos % 60}m
-                    </span>
-                  </div>
                   <div className="pt-2 border-t border-white/10">
                     <p className="text-white/60 text-xs mb-1">Motivo:</p>
                     <p className="text-white text-sm">
@@ -231,71 +211,7 @@ export function AdminPendingAbsences({
                       )}
                     </p>
                   </div>
-                  {absence.comentarios && (
-                    <div className="pt-2 border-t border-white/10">
-                      <p className="text-white/60 text-xs mb-1">Comentarios:</p>
-                      <p className="text-white/80 text-sm">
-                        {absence.comentarios}
-                      </p>
-                    </div>
-                  )}
-                  {absence.adjuntoUrl && (
-                    <div className="pt-2 border-t border-white/10">
-                      <a
-                        href={absence.adjuntoUrl}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="flex items-center gap-2 text-teal hover:text-teal/80 text-sm transition-colors"
-                      >
-                        <FiFile className="w-4 h-4" />
-                        <span>
-                          {absence.adjuntoNombre || "Ver documento adjunto"}
-                        </span>
-                        <FiDownload className="w-4 h-4 ml-auto" />
-                      </a>
-                    </div>
-                  )}
                 </div>
-
-                <div className="text-white/50 text-xs mb-4">
-                  Reportado:{" "}
-                  {format(absence.createdAt, "dd/MM/yyyy HH:mm", {
-                    locale: es,
-                  })}
-                </div>
-
-                {absence.editedBy && (
-                  <div className="pt-2 border-t border-white/10 text-xs text-yellow-400">
-                    Editado por admin el{" "}
-                    {absence.editedAt
-                      ? format(absence.editedAt, "dd/MM/yyyy HH:mm", {
-                          locale: es,
-                        })
-                      : "N/D"}
-                    <div className="mt-1 text-white/80">
-                      {absence.editedFecha && (
-                        <div>
-                          Nueva fecha:{" "}
-                          {format(absence.editedFecha, "dd/MM/yyyy", {
-                            locale: es,
-                          })}
-                        </div>
-                      )}
-                      {absence.editedHoraInicio && absence.editedHoraFin && (
-                        <div>
-                          Nuevo horario: {absence.editedHoraInicio} -{" "}
-                          {absence.editedHoraFin}
-                        </div>
-                      )}
-                      {absence.editedRazon && (
-                        <div>Nuevo motivo: {absence.editedRazon}</div>
-                      )}
-                      {absence.editedComentarios && (
-                        <div>Comentarios: {absence.editedComentarios}</div>
-                      )}
-                    </div>
-                  </div>
-                )}
 
                 <div className="flex gap-3 pt-4 border-t border-white/10">
                   <PrimaryButton
@@ -343,17 +259,12 @@ export function AdminPendingAbsences({
           onSubmit={async (updates) => {
             setIsUpdating(true);
             try {
-              await AbsenceService.updateAbsence(
-                absenceBeingEdited!.id,
-                updates,
-                { id: currentAdmin.id, isAdmin: currentAdmin.isAdmin }
-              );
+              await updateAbsence(absenceBeingEdited.id, updates);
               setToast({
                 type: "success",
                 text: "Ausencia actualizada correctamente",
               });
               setAbsenceBeingEdited(null);
-              await loadData();
               onUpdate();
             } catch (err) {
               setToast({

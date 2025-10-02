@@ -7,7 +7,7 @@ import {
 } from "react-icons/fi";
 import { format } from "date-fns";
 import { es } from "date-fns/locale";
-import { useAbsenceStatistics } from "@/hooks/useAbsenceStatistics";
+import { useAbsences } from "@/contexts/AbsenceContext";
 import {
   AbsenceStatisticsCalculator,
   DateRangePreset,
@@ -27,6 +27,8 @@ export function AdminAbsenceStatistics() {
   const [showCalendar, setShowCalendar] = useState(false);
   const calendarTriggerRef = useRef<HTMLButtonElement>(null);
 
+  const { absences, isLoading } = useAbsences();
+
   const datePresets = [
     { value: "today", label: "Hoy" },
     { value: "yesterday", label: "Ayer" },
@@ -43,10 +45,17 @@ export function AdminAbsenceStatistics() {
     [selectedPreset, customDateRange]
   );
 
-  const { stats, isLoading } = useAbsenceStatistics(
-    dateRange.start,
-    dateRange.end
-  );
+  const stats = useMemo(() => {
+    const filteredAbsences = absences.filter((a) =>
+      a.fechas.some(
+        (f) => new Date(f) >= dateRange.start && new Date(f) <= dateRange.end
+      )
+    );
+
+    if (filteredAbsences.length === 0) return null;
+
+    return AbsenceStatisticsCalculator.calculate(filteredAbsences, {});
+  }, [absences, dateRange]);
 
   const handleCalendarSelect = (dates: string[]) => {
     if (dates.length > 0) {
@@ -142,8 +151,7 @@ export function AdminAbsenceStatistics() {
         )}
       </div>
 
-      {!stats ||
-      (stats.totalAbsences === 0 && stats.scheduledDaysOffCount === 0) ? (
+      {!stats || stats.totalAbsences === 0 ? (
         <div className="text-center py-12 border-t border-white/20 pt-6">
           <FiAlertCircle className="w-12 h-12 text-white/40 mx-auto mb-3" />
           <p className="text-white/60">
@@ -153,7 +161,6 @@ export function AdminAbsenceStatistics() {
         </div>
       ) : (
         <>
-          {/* Summary Boxes */}
           <div className="grid grid-cols-2 lg:grid-cols-5 gap-4 mb-6 pb-6 border-b border-white/20">
             <div className="bg-white/5 rounded-lg p-4 text-center">
               <p className="text-white/60 text-xs mb-1">Total Ausencias</p>
@@ -187,7 +194,6 @@ export function AdminAbsenceStatistics() {
             </div>
           </div>
 
-          {/* Motivos */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             <div>
               <h4 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
@@ -211,7 +217,7 @@ export function AdminAbsenceStatistics() {
                     <div className="flex items-center gap-3 mb-2">
                       <div className="flex-1 bg-white/10 rounded-full h-2 overflow-hidden">
                         <div
-                          className="bg-gradient-to-r from-teal to-blue-400  h-full rounded-full transition-all duration-500"
+                          className="bg-gradient-to-r from-teal to-blue-400 h-full rounded-full transition-all duration-500"
                           style={{
                             width: `${(reason.count / maxReasonCount) * 100}%`,
                           }}
@@ -227,7 +233,6 @@ export function AdminAbsenceStatistics() {
               </div>
             </div>
 
-            {/* Tipos */}
             <div>
               <h4 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
                 <FiClock className="w-5 h-5" />
@@ -268,7 +273,6 @@ export function AdminAbsenceStatistics() {
             </div>
           </div>
 
-          {/* Footer Counters */}
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mt-6 pt-6 border-t border-white/20">
             <div className="text-center">
               <p className="text-yellow-400 font-bold text-lg">

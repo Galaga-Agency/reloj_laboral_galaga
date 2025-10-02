@@ -10,7 +10,10 @@ import {
 } from "date-fns";
 import type { RegistroTiempo, Usuario } from "@/types";
 import { TimeRecordsUtils } from "@/utils/time-records";
-import { PDFReportGenerator, type ReportData } from "@/utils/pdf-reports";
+import {
+  PDFReportGenerator,
+  type ReportData,
+} from "@/utils/working-time-pdf-genarator";
 
 export type ReportPeriod = "today" | "week" | "month" | "custom";
 

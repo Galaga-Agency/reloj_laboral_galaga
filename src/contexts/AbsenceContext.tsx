@@ -1,4 +1,3 @@
-// contexts/AbsenceContext.tsx
 import {
   createContext,
   useContext,

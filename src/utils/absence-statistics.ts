@@ -40,20 +40,19 @@ export interface AbsenceTypeStats {
 }
 
 export interface AbsenceStats {
-  totalAbsences: number; // only real absences (no dia_libre)
-  totalHoursMissed: number; // hours lost (no dia_libre)
-  totalDaysMissed: number; // full days missed (no dia_libre)
+  totalAbsences: number;
+  totalHoursMissed: number;
+  totalDaysMissed: number;
   affectedUsers: number;
   reasonStats: AbsenceReasonStats[];
   typeStats: AbsenceTypeStats[];
   pendingCount: number;
   approvedCount: number;
   rejectedCount: number;
-  scheduledDaysOffCount: number; // ✅ new: count dia_libre separately
+  scheduledDaysOffCount: number;
   averageAbsenceDuration: number;
 }
 
-/* -------------------- DATE HELPERS -------------------- */
 export function getDateRangeFromPreset(
   preset: DateRangePreset,
   customRange?: { start: string; end: string }
@@ -100,7 +99,6 @@ export function isCustomRangeValid(
   return new Date(customRange.start) <= new Date(customRange.end);
 }
 
-/** Expand an Absence with fechas[] into single-day items with fecha */
 export function expandAbsences(
   absence: Absence
 ): (Absence & { fecha: Date })[] {
@@ -113,7 +111,6 @@ export function expandAbsences(
   return [{ ...absence, fecha: (absence as any).fecha ?? new Date() }];
 }
 
-/* -------------------- CALCULATOR -------------------- */
 export class AbsenceStatisticsCalculator {
   static calculate(
     absences: Absence[],
@@ -166,7 +163,7 @@ export class AbsenceStatisticsCalculator {
 
     const adjustedAbsences = validAbsences.map((a: any) => {
       if (a.tipoAusencia === "ausencia_completa") {
-        const dailyHours = userHoursMap[a.usuarioId] ?? 8;
+        const dailyHours = userHoursMap[a.usuarioId] || 8;
         return { ...a, duracionMinutos: dailyHours * 60 };
       }
       return a;

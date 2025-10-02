@@ -1,6 +1,5 @@
-import { useState, useEffect } from "react";
-import { TeleworkingService } from "@/services/teleworking-service";
-import type { TeleworkingSchedule } from "@/types/teleworking";
+import { useEffect, useState } from "react";
+import { useTeleworking } from "@/contexts/TeleworkingContext";
 import {
   format,
   startOfMonth,
@@ -14,7 +13,12 @@ import {
   endOfWeek,
 } from "date-fns";
 import { es } from "date-fns/locale";
-import { FiBriefcase, FiChevronLeft, FiChevronRight, FiHome } from "react-icons/fi";
+import {
+  FiBriefcase,
+  FiChevronLeft,
+  FiChevronRight,
+  FiHome,
+} from "react-icons/fi";
 
 interface TeleworkingCalendarProps {
   selectedDate: Date;
@@ -26,22 +30,13 @@ export function TeleworkingCalendar({
   onDateSelect,
 }: TeleworkingCalendarProps) {
   const [currentMonth, setCurrentMonth] = useState(selectedDate);
-  const [schedules, setSchedules] = useState<TeleworkingSchedule[]>([]);
+  const { schedules, refreshSchedules, isLoading } = useTeleworking();
 
   useEffect(() => {
-    loadMonthSchedules();
-  }, [currentMonth]);
-
-  const loadMonthSchedules = async () => {
-    try {
-      const year = currentMonth.getFullYear();
-      const month = currentMonth.getMonth() + 1;
-      const data = await TeleworkingService.getSchedulesForMonth(year, month);
-      setSchedules(data);
-    } catch (error) {
-      console.error("Error loading month schedules:", error);
-    }
-  };
+    const year = currentMonth.getFullYear();
+    const month = currentMonth.getMonth() + 1;
+    refreshSchedules(year, month);
+  }, [currentMonth, refreshSchedules]);
 
   const monthStart = startOfMonth(currentMonth);
   const monthEnd = endOfMonth(currentMonth);
@@ -64,6 +59,14 @@ export function TeleworkingCalendar({
     setCurrentMonth(today);
     onDateSelect(today);
   };
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center py-12">
+        <div className="text-white">Cargando horarios...</div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-4">

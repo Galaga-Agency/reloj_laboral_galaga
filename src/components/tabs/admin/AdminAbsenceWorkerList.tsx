@@ -8,46 +8,29 @@ import {
   FiClock,
   FiFile,
 } from "react-icons/fi";
-import {
-  format,
-  startOfMonth,
-  endOfMonth,
-  subMonths,
-  startOfYear,
-  endOfYear,
-} from "date-fns";
+import { format } from "date-fns";
 import { es } from "date-fns/locale";
 import { AbsenceService } from "@/services/absence-service";
+import { AdminService } from "@/services/admin-service";
+import { useAbsences } from "@/contexts/AbsenceContext";
 import { CustomCalendar } from "@/components/ui/CustomCalendar";
 import { CustomDropdown } from "@/components/ui/CustomDropdown";
-import type { Usuario, Absence } from "@/types";
+import type { Usuario } from "@/types";
 import PrimaryButton from "@/components/ui/PrimaryButton";
 import { AbsenceStatisticsCalculator } from "@/utils/absence-statistics";
 import { CustomInput } from "../../ui/CustomInput";
+import {
+  DateRangePreset,
+  getDateRangeFromPreset,
+  isCustomRangeValid,
+} from "@/utils/absence-statistics";
 
-interface AdminAbsenceWorkerListProps {
-  users: Usuario[];
-  isLoading: boolean;
-}
-
-type DateRangePreset =
-  | "current_month"
-  | "last_month"
-  | "last_3_months"
-  | "current_year"
-  | "custom";
-
-export function AdminAbsenceWorkerList({
-  users,
-  isLoading,
-}: AdminAbsenceWorkerListProps) {
+export function AdminAbsenceWorkerList() {
+  const [users, setUsers] = useState<Usuario[]>([]);
+  const [isLoadingUsers, setIsLoadingUsers] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedUser, setSelectedUser] = useState<Usuario | null>(null);
-  const [userAbsences, setUserAbsences] = useState<Absence[]>([]);
-  const [isLoadingAbsences, setIsLoadingAbsences] = useState(false);
-  const [generatingReportFor, setGeneratingReportFor] = useState<string | null>(
-    null
-  );
+  const [generatingReportFor, setGeneratingReportFor] = useState<string | null>(null);
   const [generatingCompanyReport, setGeneratingCompanyReport] = useState(false);
   const [message, setMessage] = useState<{
     type: "success" | "error";
@@ -62,6 +45,8 @@ export function AdminAbsenceWorkerList({
   const [showCalendar, setShowCalendar] = useState(false);
   const calendarTriggerRef = useRef<HTMLButtonElement>(null);
 
+  const { absences, isLoading } = useAbsences();
+
   const datePresets = [
     { value: "current_month", label: "Mes Actual" },
     { value: "last_month", label: "Mes Pasado" },
@@ -70,70 +55,40 @@ export function AdminAbsenceWorkerList({
     { value: "custom", label: "Rango Personalizado" },
   ];
 
-  const getDateRangeFromPreset = (
-    preset: DateRangePreset
-  ): { start: Date; end: Date } => {
-    const now = new Date();
+  const dateRange = getDateRangeFromPreset(selectedPreset, customDateRange);
 
-    switch (preset) {
-      case "current_month":
-        return { start: startOfMonth(now), end: endOfMonth(now) };
-      case "last_month":
-        const lastMonth = subMonths(now, 1);
-        return { start: startOfMonth(lastMonth), end: endOfMonth(lastMonth) };
-      case "last_3_months":
-        const threeMonthsAgo = subMonths(now, 3);
-        return { start: startOfMonth(threeMonthsAgo), end: endOfMonth(now) };
-      case "current_year":
-        return { start: startOfYear(now), end: endOfYear(now) };
-      case "custom":
-        if (customDateRange.start && customDateRange.end) {
-          return {
-            start: new Date(customDateRange.start),
-            end: new Date(customDateRange.end),
-          };
-        }
-        return { start: startOfMonth(now), end: endOfMonth(now) };
-      default:
-        return { start: startOfMonth(now), end: endOfMonth(now) };
+  useEffect(() => {
+    loadUsers();
+  }, []);
+
+  const loadUsers = async () => {
+    setIsLoadingUsers(true);
+    try {
+      const allUsers = await AdminService.getAllUsers();
+      setUsers(allUsers.filter((u) => u.role === "employee"));
+    } catch (error) {
+      console.error("Error loading users:", error);
+    } finally {
+      setIsLoadingUsers(false);
     }
   };
 
   const filteredUsers = users.filter(
     (user) =>
-      user.role === "employee" &&
-      (user.nombre.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        user.email.toLowerCase().includes(searchQuery.toLowerCase()))
+      user.nombre.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      user.email.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
-  useEffect(() => {
-    if (selectedUser) {
-      loadUserAbsences(selectedUser.id);
-    }
-  }, [selectedUser, selectedPreset, customDateRange]);
-
-  const loadUserAbsences = async (userId: string) => {
-    setIsLoadingAbsences(true);
-    try {
-      const dateRange = getDateRangeFromPreset(selectedPreset);
-      const absences = await AbsenceService.getAbsencesByUser(
-        userId,
-        dateRange.start,
-        dateRange.end,
-        true
-      );
-      setUserAbsences(absences);
-    } catch (error) {
-      console.error("Error loading user absences:", error);
-      setUserAbsences([]);
-    } finally {
-      setIsLoadingAbsences(false);
-    }
-  };
-
-  const handleUserSelect = (user: Usuario) => {
-    setSelectedUser(user);
-  };
+  const userAbsences = selectedUser
+    ? absences.filter(
+        (a) =>
+          a.usuarioId === selectedUser.id &&
+          a.fechas.some(
+            (f) =>
+              new Date(f) >= dateRange.start && new Date(f) <= dateRange.end
+          )
+      )
+    : [];
 
   const handleCalendarSelect = (dates: string[]) => {
     if (dates.length > 0) {
@@ -165,7 +120,6 @@ export function AdminAbsenceWorkerList({
     setMessage(null);
 
     try {
-      const dateRange = getDateRangeFromPreset(selectedPreset);
       await AbsenceService.generateCompanyAbsenceReport(
         dateRange.start,
         dateRange.end,
@@ -195,7 +149,6 @@ export function AdminAbsenceWorkerList({
     setMessage(null);
 
     try {
-      const dateRange = getDateRangeFromPreset(selectedPreset);
       await AbsenceService.generateUserAbsenceReport(
         user,
         dateRange.start,
@@ -218,20 +171,6 @@ export function AdminAbsenceWorkerList({
     }
   };
 
-  const isCustomRangeValid = () => {
-    if (selectedPreset !== "custom") return true;
-    if (!customDateRange.start || !customDateRange.end) return false;
-    return new Date(customDateRange.start) <= new Date(customDateRange.end);
-  };
-
-  const getDateRangeDisplay = () => {
-    const range = getDateRangeFromPreset(selectedPreset);
-    return `${format(range.start, "dd/MM/yyyy")} - ${format(
-      range.end,
-      "dd/MM/yyyy"
-    )}`;
-  };
-
   const getUserAbsenceStats = () => {
     if (userAbsences.length === 0) return null;
 
@@ -246,16 +185,12 @@ export function AdminAbsenceWorkerList({
     const approvedCount = userAbsences.filter(
       (a) => a.estado === "aprobada"
     ).length;
-    const rejectedCount = userAbsences.filter(
-      (a) => a.estado === "rechazada"
-    ).length;
 
     return {
       totalAbsences: userAbsences.length,
       totalHours,
       pendingCount,
       approvedCount,
-      rejectedCount,
     };
   };
 
@@ -315,13 +250,11 @@ export function AdminAbsenceWorkerList({
                   : "Seleccionar fechas"}
               </span>
             </button>
-            {!isCustomRangeValid() &&
-              customDateRange.start &&
-              customDateRange.end && (
-                <p className="text-xs text-red-300 mt-1">
-                  La fecha de inicio debe ser anterior o igual a la fecha de fin
-                </p>
-              )}
+            {!isCustomRangeValid(selectedPreset, customDateRange) && (
+              <p className="text-xs text-red-300 mt-1">
+                La fecha de inicio debe ser anterior o igual a la fecha de fin
+              </p>
+            )}
           </div>
         )}
       </div>
@@ -335,15 +268,18 @@ export function AdminAbsenceWorkerList({
             </h4>
           </div>
           <p className="text-white/60 text-xs mb-3">
-            Período: {getDateRangeDisplay()}
-          </p>
-          <p className="text-white/70 text-sm mb-4">
-            Incluye estadísticas completas, análisis por motivo, análisis por
-            tipo y detalle de todos los empleados
+            Período:{" "}
+            {`${format(dateRange.start, "dd/MM/yyyy")} - ${format(
+              dateRange.end,
+              "dd/MM/yyyy"
+            )}`}
           </p>
           <PrimaryButton
             onClick={handleGenerateCompanyReport}
-            disabled={generatingCompanyReport || !isCustomRangeValid()}
+            disabled={
+              generatingCompanyReport ||
+              !isCustomRangeValid(selectedPreset, customDateRange)
+            }
             className="w-full"
           >
             {generatingCompanyReport ? (
@@ -377,54 +313,33 @@ export function AdminAbsenceWorkerList({
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               placeholder="Buscar empleado..."
-              className="w-full pl-12 pr-4 py-3 bg-white/05 border border-white/20 rounded-xl text-white placeholder-white/50 focus:ring-2 focus:ring-teal focus:border-teal focus:outline-none transition-all"
+              className="w-full pl-12 pr-4 py-3 bg-white/05 border border-white/20 rounded-xl text-white placeholder-white/50"
+              variant="darkBg"
             />
           </div>
 
-          {isLoading ? (
+          {isLoadingUsers ? (
             <div className="text-center py-12">
               <div className="text-white">Cargando empleados...</div>
             </div>
           ) : filteredUsers.length === 0 ? (
             <div className="text-center py-12">
-              <p className="text-white/60">
-                {searchQuery
-                  ? "No se encontraron empleados"
-                  : "No hay empleados activos"}
-              </p>
+              <p className="text-white/60">No se encontraron empleados</p>
             </div>
           ) : (
             <div className="flex flex-col gap-3 max-h-[500px] overflow-y-auto">
               {filteredUsers.map((user) => (
                 <div
                   key={user.id}
-                  onClick={() => handleUserSelect(user)}
+                  onClick={() => setSelectedUser(user)}
                   className={`p-4 rounded-lg border cursor-pointer transition-all duration-200 ${
-                    !user.isActive
-                      ? "opacity-50 bg-gray-500/10 border-gray-500/20 blur-[0.5px]"
-                      : selectedUser?.id === user.id
+                    selectedUser?.id === user.id
                       ? "bg-white/10 border-white/20"
                       : "bg-white/5 border-white/10 hover:bg-white/10"
                   }`}
                 >
-                  <div className="flex-1 min-w-0">
-                    <h4
-                      className={`font-semibold truncate ${
-                        !user.isActive
-                          ? "text-white/60 line-through"
-                          : "text-white"
-                      }`}
-                    >
-                      {user.nombre}
-                    </h4>
-                    <p
-                      className={`text-sm truncate ${
-                        !user.isActive ? "text-white/50" : "text-white/60"
-                      }`}
-                    >
-                      {user.email}
-                    </p>
-                  </div>
+                  <h4 className="font-semibold text-white">{user.nombre}</h4>
+                  <p className="text-sm text-white/60">{user.email}</p>
                 </div>
               ))}
             </div>
@@ -443,7 +358,7 @@ export function AdminAbsenceWorkerList({
 
           {selectedUser ? (
             <div className="flex flex-col gap-4">
-              {isLoadingAbsences ? (
+              {isLoading ? (
                 <div className="text-center py-12">
                   <div className="animate-spin w-8 h-8 border-2 border-white/20 border-t-white mx-auto mb-3 rounded-full"></div>
                   <div className="text-white/70">Cargando ausencias...</div>
@@ -452,7 +367,7 @@ export function AdminAbsenceWorkerList({
                 <>
                   {stats && (
                     <div className="bg-white/5 rounded-xl p-4 border border-white/10">
-                      <div className="grid grid-cols-2 gap-3 text-sm mb-3">
+                      <div className="grid grid-cols-2 gap-3 text-sm">
                         <div>
                           <p className="text-white/60">Total Ausencias</p>
                           <p className="text-white font-semibold text-lg">
@@ -495,22 +410,18 @@ export function AdminAbsenceWorkerList({
                           <div className="flex items-start justify-between mb-3">
                             <div>
                               <p className="text-white font-medium">
-                                {absence.fechas && absence.fechas.length > 0
-                                  ? format(
-                                      new Date(absence.fechas[0]),
-                                      "dd/MM/yyyy EEEE",
-                                      { locale: es }
-                                    )
-                                  : "Fecha no disponible"}
+                                {format(
+                                  new Date(absence.fechas[0]),
+                                  "dd/MM/yyyy EEEE",
+                                  { locale: es }
+                                )}
                               </p>
-
                               <p className="text-white/60 text-sm">
                                 {AbsenceStatisticsCalculator.getTypeLabel(
                                   absence.tipoAusencia
                                 )}
                               </p>
-                            </div>
-                            <span
+                            </div><span
                               className={`px-3 py-1 rounded-full text-xs font-semibold border ${
                                 absence.estado === "pendiente"
                                   ? "bg-yellow-500/20 text-yellow-300 border-yellow-500/30"
@@ -532,13 +443,6 @@ export function AdminAbsenceWorkerList({
                               {absence.horaInicio} - {absence.horaFin}
                             </span>
                           </div>
-                          <div className="flex items-center justify-between text-sm mb-2">
-                            <span className="text-white/60">Duración:</span>
-                            <span className="text-white font-medium">
-                              {Math.floor(absence.duracionMinutos / 60)}h{" "}
-                              {absence.duracionMinutos % 60}m
-                            </span>
-                          </div>
                           <div className="pt-2 border-t border-white/10">
                             <p className="text-white/60 text-xs mb-1">
                               Motivo:
@@ -547,20 +451,10 @@ export function AdminAbsenceWorkerList({
                               {absence.razon}
                             </p>
                           </div>
-                          {absence.comentarios && (
-                            <div className="pt-2 border-t border-white/10 mt-2">
-                              <p className="text-white/60 text-xs mb-1">
-                                Comentarios:
-                              </p>
-                              <p className="text-white/80 text-sm">
-                                {absence.comentarios}
-                              </p>
-                            </div>
-                          )}
                           {absence.adjuntoUrl && (
                             <div className="pt-2 border-t border-white/10 mt-2">
-                              <a
-                                href={absence.adjuntoUrl}
+                              
+                              <a  href={absence.adjuntoUrl}
                                 target="_blank"
                                 rel="noopener noreferrer"
                                 className="flex items-center gap-2 text-white hover:text-white/80 text-sm transition-colors"
@@ -583,7 +477,7 @@ export function AdminAbsenceWorkerList({
                     onClick={() => handleGenerateReport(selectedUser)}
                     disabled={
                       generatingReportFor === selectedUser.id ||
-                      !isCustomRangeValid()
+                      !isCustomRangeValid(selectedPreset, customDateRange)
                     }
                     className="w-full"
                   >

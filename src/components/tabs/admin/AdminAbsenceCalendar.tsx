@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import {
   format,
   startOfMonth,
@@ -12,56 +12,20 @@ import {
 } from "date-fns";
 import { es } from "date-fns/locale";
 import { FiChevronLeft, FiChevronRight, FiCalendar } from "react-icons/fi";
-import type { Absence } from "@/types";
-import { AbsenceService } from "@/services/absence-service";
+import { useAbsences } from "@/contexts/AbsenceContext";
 
 interface AdminAbsenceCalendarProps {
-  onDateSelect: (date: Date, absences: Absence[]) => void;
-  refreshKey: number;
+  selectedDate: Date | null;
+  onDateSelect: (date: Date) => void;
 }
 
 export function AdminAbsenceCalendar({
+  selectedDate,
   onDateSelect,
-  refreshKey
 }: AdminAbsenceCalendarProps) {
   const [currentMonth, setCurrentMonth] = useState(new Date());
-  const [absences, setAbsences] = useState<Absence[]>([]);
-  const [selectedDate, setSelectedDate] = useState<Date | null>(null);
-  const [isLoading, setIsLoading] = useState(false);
+  const { absences, isLoading } = useAbsences();
 
-  useEffect(() => {
-    loadAbsences();
-  }, [currentMonth, refreshKey]);
-
-  const loadAbsences = async () => {
-    setIsLoading(true);
-    console.log(
-      "🗓️ AdminAbsenceCalendar: Loading absences for month",
-      currentMonth
-    );
-    try {
-      const monthStart = startOfMonth(currentMonth);
-      const monthEnd = endOfMonth(currentMonth);
-
-      console.log("📅 Date range:", { monthStart, monthEnd });
-
-      const data = await AbsenceService.getAllAbsences(
-        monthStart,
-        monthEnd,
-        true
-      );
-      console.log("✅ Absences loaded in calendar:", data.length);
-      console.log(
-        "🔍 Scheduled days in data:",
-        data.filter((a) => a.tipoAusencia === "dia_libre").length
-      );
-      setAbsences(data);
-    } catch (error) {
-      console.error("❌ Error loading absences:", error);
-    } finally {
-      setIsLoading(false);
-    }
-  };
   const monthStart = startOfMonth(currentMonth);
   const monthEnd = endOfMonth(currentMonth);
   const daysInMonth = eachDayOfInterval({ start: monthStart, end: monthEnd });
@@ -87,16 +51,10 @@ export function AdminAbsenceCalendar({
 
   const allDays = [...paddedDays, ...daysInMonth, ...nextMonthDays];
 
-  const getAbsencesForDate = (date: Date): Absence[] => {
+  const getAbsencesForDate = (date: Date) => {
     return absences.filter((absence) =>
       (absence.fechas || []).some((f) => isSameDay(new Date(f), date))
     );
-  };
-
-  const handleDateClick = (date: Date) => {
-    const dayAbsences = getAbsencesForDate(date);
-    setSelectedDate(date);
-    onDateSelect(date, dayAbsences);
   };
 
   const getDayStyle = (date: Date) => {
@@ -127,19 +85,13 @@ export function AdminAbsenceCalendar({
     return { classes, hasAbsences, absenceCount: dayAbsences.length };
   };
 
-  const getAbsenceIndicatorColor = (absences: Absence[]): string => {
-    if (
-      absences.some(
-        (a) => a.tipoAusencia === "dia_libre"
-      )
-    ) {
+  const getAbsenceIndicatorColor = (absences: any[]): string => {
+    if (absences.some((a) => a.tipoAusencia === "dia_libre")) {
       return "bg-green-500";
     }
-
     if (absences.some((a) => a.tipoAusencia === "ausencia_completa")) {
       return "bg-red-500";
     }
-
     if (
       absences.some(
         (a) =>
@@ -203,7 +155,7 @@ export function AdminAbsenceCalendar({
               return (
                 <button
                   key={index}
-                  onClick={() => handleDateClick(date)}
+                  onClick={() => onDateSelect(date)}
                   className={classes}
                 >
                   <span>{format(date, "d")}</span>

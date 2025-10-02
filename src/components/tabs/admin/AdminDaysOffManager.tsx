@@ -4,6 +4,7 @@ import { es } from "date-fns/locale";
 import { FiUser, FiPlus, FiTrash2, FiEdit3, FiCalendar } from "react-icons/fi";
 import { AbsenceService } from "@/services/absence-service";
 import { AdminService } from "@/services/admin-service";
+import { useAbsences } from "@/contexts/AbsenceContext";
 import type { Usuario } from "@/types";
 import PrimaryButton from "@/components/ui/PrimaryButton";
 import SecondaryButton from "@/components/ui/SecondaryButton";
@@ -50,10 +51,12 @@ export function AdminDaysOffManager({
   const [editDayOff, setEditDayOff] = useState<DayOff | null>(null);
   const [isUpdating, setIsUpdating] = useState(false);
 
+  const { refreshAbsences, absences } = useAbsences();
+
   useEffect(() => {
     loadUsers();
     loadDaysOff();
-  }, []);
+  }, [absences]);
 
   const loadUsers = async () => {
     try {
@@ -69,15 +72,6 @@ export function AdminDaysOffManager({
 
   const loadDaysOff = async () => {
     try {
-      const now = new Date();
-      const startOfYear = new Date(now.getFullYear(), 0, 1);
-      const endOfYear = new Date(now.getFullYear(), 11, 31);
-
-      const absences = await AbsenceService.getAllAbsences(
-        startOfYear,
-        endOfYear
-      );
-
       const daysOffList = absences
         .filter((a) => a.tipoAusencia === "dia_libre")
         .flatMap((a) =>
@@ -147,7 +141,7 @@ export function AdminDaysOffManager({
       setSelectedUserId("");
       setSelectedDates([]);
       setDayOffReason("");
-      loadDaysOff();
+      await refreshAbsences();
     } catch (error) {
       console.error("Error creating days off:", error);
       setMessage({ type: "error", text: "Error al crear los días libres" });
@@ -165,7 +159,7 @@ export function AdminDaysOffManager({
         text: "Día libre eliminado correctamente",
       });
       setTimeout(() => setMessage(null), 3000);
-      loadDaysOff();
+      await refreshAbsences();
     } catch (error) {
       console.error("Error deleting day off:", error);
       setMessage({ type: "error", text: "Error al eliminar el día libre" });
@@ -201,7 +195,7 @@ export function AdminDaysOffManager({
       setTimeout(() => setMessage(null), 3000);
 
       setEditDayOff(null);
-      loadDaysOff();
+      await refreshAbsences();
     } catch (error) {
       console.error("Error updating day off:", error);
       setMessage({ type: "error", text: "Error al actualizar el día libre" });
@@ -224,10 +218,8 @@ export function AdminDaysOffManager({
   return (
     <>
       <div className="bg-white/10 backdrop-blur-md rounded-2xl p-6">
-        {/* Header */}
         <div className="flex items-center gap-3 pb-6 border-b border-white/10">
           <FiUser className="w-5 h-5 text-white" />
-
           <div>
             <h2 className="text-xl font-bold text-white">
               Gestión de Días Libres
@@ -238,7 +230,6 @@ export function AdminDaysOffManager({
           </div>
         </div>
 
-        {/* Message */}
         {message && (
           <div
             className={`mt-4 p-3 rounded-lg ${
@@ -251,7 +242,6 @@ export function AdminDaysOffManager({
           </div>
         )}
 
-        {/* Create Section */}
         <div className="mt-6 p-4 bg-white/5 rounded-xl border border-white/10">
           <h3 className="text-white font-semibold mb-4 flex items-center gap-2">
             <FiPlus className="w-4 h-4" />
@@ -306,7 +296,6 @@ export function AdminDaysOffManager({
           </div>
         </div>
 
-        {/* List Section */}
         {Object.keys(groupedDaysOff).length > 0 && (
           <div className="mt-6">
             <h3 className="text-white font-semibold mb-4">
@@ -374,7 +363,6 @@ export function AdminDaysOffManager({
         )}
       </div>
 
-      {/* Confirm Delete */}
       <ConfirmModal
         isOpen={deleteConfirm.isOpen}
         onConfirm={handleDeleteDayOff}
@@ -396,7 +384,6 @@ export function AdminDaysOffManager({
         cancelText="Cancelar"
       />
 
-      {/* Edit Modal */}
       {editDayOff && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
           <div className="bg-white rounded-xl p-6 w-full max-w-md">
@@ -426,7 +413,6 @@ export function AdminDaysOffManager({
         </div>
       )}
 
-      {/* Calendar */}
       {showCalendar && (
         <CustomCalendar
           selectedDates={selectedDates}

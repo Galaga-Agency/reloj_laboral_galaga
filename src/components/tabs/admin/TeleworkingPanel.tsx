@@ -1,16 +1,11 @@
-import { useState, useEffect } from "react";
-import { TeleworkingService } from "@/services/teleworking-service";
-import { AdminService } from "@/services/admin-service";
+import { useState } from "react";
+import { useTeleworking } from "@/contexts/TeleworkingContext";
 import type { Usuario } from "@/types";
-import type {
-  DailyTeleworkingView,
-  TeleworkingLocation,
-} from "@/types/teleworking";
-import { TeleworkingCalendar } from "./TeleworkingCalendar";
-import { TeleworkingDailyView } from "./TeleworkingDailyView";
 import { format } from "date-fns";
 import { es } from "date-fns/locale";
 import { FiCalendar } from "react-icons/fi";
+import { TeleworkingCalendar } from "./TeleworkingCalendar";
+import { TeleworkingDailyView } from "./TeleworkingDailyView";
 import { TeleworkingScheduleModal } from "../../modals/TeleworkingScheduleModal";
 
 interface TeleworkingPanelProps {
@@ -19,35 +14,11 @@ interface TeleworkingPanelProps {
 
 export function TeleworkingPanel({ currentAdmin }: TeleworkingPanelProps) {
   const [selectedDate, setSelectedDate] = useState<Date>(new Date());
-  const [dailyView, setDailyView] = useState<DailyTeleworkingView | null>(null);
-  const [allUsers, setAllUsers] = useState<Usuario[]>([]);
-  const [isLoading, setIsLoading] = useState(false);
   const [showScheduleModal, setShowScheduleModal] = useState(false);
   const [selectedUser, setSelectedUser] = useState<Usuario | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
-    loadData();
-  }, [selectedDate]);
-
-  const loadData = async () => {
-    try {
-      setIsLoading(true);
-      setError(null);
-
-      const [view, users] = await Promise.all([
-        TeleworkingService.getScheduleForDate(selectedDate),
-        AdminService.getAllUsers(),
-      ]);
-
-      setDailyView(view);
-      setAllUsers(users.filter((u) => u.isActive && u.role === "employee"));
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Error loading data");
-    } finally {
-      setIsLoading(false);
-    }
-  };
+  const { refreshSchedules } = useTeleworking();
 
   const handleScheduleUser = (user?: Usuario) => {
     setSelectedUser(user || null);
@@ -57,16 +28,10 @@ export function TeleworkingPanel({ currentAdmin }: TeleworkingPanelProps) {
   const handleScheduleSaved = async () => {
     setShowScheduleModal(false);
     setSelectedUser(null);
-    await loadData();
-  };
-
-  const handleDeleteSchedule = async (scheduleId: string) => {
-    try {
-      await TeleworkingService.deleteSchedule(scheduleId);
-      await loadData();
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Error deleting schedule");
-    }
+    await refreshSchedules(
+      selectedDate.getFullYear(),
+      selectedDate.getMonth() + 1
+    );
   };
 
   return (
@@ -107,28 +72,16 @@ export function TeleworkingPanel({ currentAdmin }: TeleworkingPanelProps) {
         />
       </div>
 
-      {isLoading ? (
-        <div className="bg-white/10 backdrop-blur-md rounded-2xl p-12 border border-white/20 text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-teal mx-auto mb-4"></div>
-          <p className="text-white/70">Cargando datos...</p>
-        </div>
-      ) : (
-        dailyView && (
-          <TeleworkingDailyView
-            view={dailyView}
-            selectedDate={selectedDate}
-            onScheduleUser={handleScheduleUser}
-            onDeleteSchedule={handleDeleteSchedule}
-          />
-        )
-      )}
+      <TeleworkingDailyView
+        selectedDate={selectedDate}
+        onScheduleUser={handleScheduleUser}
+      />
 
       {showScheduleModal && (
         <TeleworkingScheduleModal
           user={selectedUser}
           date={selectedDate}
           currentAdmin={currentAdmin}
-          allUsers={allUsers}
           onClose={() => {
             setShowScheduleModal(false);
             setSelectedUser(null);

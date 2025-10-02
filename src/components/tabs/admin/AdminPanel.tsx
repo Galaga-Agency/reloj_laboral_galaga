@@ -10,6 +10,8 @@ import { PendingChangesPanel } from "@/components/tabs/admin/PendingChangesPanel
 import { WorkersMonitor } from "@/components/tabs/admin/WorkersMonitor";
 import { TeleworkingPanel } from "@/components/tabs/admin/TeleworkingPanel";
 import { useSecretSequence } from "@/hooks/useSecretSequence";
+import { useAbsences } from "@/contexts/AbsenceContext";
+import { TimeCorrectionsService } from "@/services/time-corrections-service";
 import {
   FiUsers,
   FiAlertCircle,
@@ -22,8 +24,6 @@ import {
   FiActivity,
   FiHome,
 } from "react-icons/fi";
-import { AbsenceService } from "@/services/absence-service";
-import { TimeCorrectionsService } from "@/services/time-corrections-service";
 
 interface AdminPanelProps {
   currentUser: Usuario;
@@ -60,8 +60,9 @@ export function AdminPanel({ currentUser }: AdminPanelProps) {
     type: "success" | "error";
     text: string;
   } | null>(null);
-  const [pendingAbsencesCount, setPendingAbsencesCount] = useState(0);
   const [pendingChangesCount, setPendingChangesCount] = useState(0);
+
+  const { absences, refreshAbsences } = useAbsences();
 
   const { isUnlocked, lock } = useSecretSequence({
     sequence: ["s", "e", "c", "r", "e", "t"],
@@ -75,51 +76,21 @@ export function AdminPanel({ currentUser }: AdminPanelProps) {
     },
   });
 
+  const pendingAbsencesCount = absences.filter(
+    (a) => a.estado === "pendiente" && a.createdBy !== currentUser.id
+  ).length;
+
   useEffect(() => {
     loadPendingCounts();
   }, []);
 
-  useEffect(() => {
-    if (activeView === "absences") {
-      loadPendingAbsencesCount();
-    }
-  }, [activeView]);
-
   const loadPendingCounts = async () => {
     try {
-      const [absencesCount, changesCount] = await Promise.all([
-        loadPendingAbsencesCount(),
-        TimeCorrectionsService.getPendingChangesCount(),
-      ]);
+      const changesCount =
+        await TimeCorrectionsService.getPendingChangesCount();
       setPendingChangesCount(changesCount);
     } catch (error) {
       console.error("Error loading pending counts:", error);
-    }
-  };
-
-  const loadPendingAbsencesCount = async () => {
-    try {
-      const [absences, allUsers] = await Promise.all([
-        AbsenceService.getAllAbsences(undefined, undefined, true),
-        AdminService.getAllUsers(),
-      ]);
-
-      const userMap = new Map<string, Usuario>();
-      allUsers.forEach((user) => userMap.set(user.id, user));
-
-      const pending = absences.filter((a) => {
-        const creator = userMap.get(a.createdBy || "");
-        const isPending = a.estado === "pendiente";
-        const isNotAdminCreated = !creator || !creator.isAdmin;
-
-        return isPending && isNotAdminCreated;
-      }).length;
-
-      setPendingAbsencesCount(pending);
-      return pending;
-    } catch (error) {
-      console.error("Error loading pending absences count:", error);
-      return 0;
     }
   };
 
@@ -153,11 +124,9 @@ export function AdminPanel({ currentUser }: AdminPanelProps) {
       setIsRecordsLoading(true);
       setError(null);
       const records = await AdminService.getUserRecords(userId, range);
-
       const sortedRecords = records.sort((a, b) => {
         return new Date(b.fecha).getTime() - new Date(a.fecha).getTime();
       });
-
       setUserRecords(sortedRecords);
     } catch (err) {
       setError(
@@ -206,6 +175,7 @@ export function AdminPanel({ currentUser }: AdminPanelProps) {
 
   const handleChangesProcessed = () => {
     loadPendingCounts();
+    refreshAbsences();
     if (selectedUser) {
       loadUserRecords(selectedUser.id, timeRange);
     }
@@ -252,7 +222,6 @@ export function AdminPanel({ currentUser }: AdminPanelProps) {
 
   return (
     <div className="flex flex-col lg:flex-row gap-6 max-w-screen md:max-w-[1600px] mx-auto overflow-hidden">
-      {/* Mobile Menu Toggle */}
       <button
         onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
         className="lg:hidden fixed bottom-24 right-6 z-40 p-4 bg-teal rounded-full shadow-2xl text-white hover:scale-110 transition-transform"
@@ -264,7 +233,6 @@ export function AdminPanel({ currentUser }: AdminPanelProps) {
         )}
       </button>
 
-      {/* Sidebar */}
       <aside
         className={`fixed lg:sticky top-0 left-0 h-screen lg:h-auto lg:top-6 z-30
           w-80 lg:w-72 xl:w-80 flex-shrink-0
@@ -342,7 +310,6 @@ export function AdminPanel({ currentUser }: AdminPanelProps) {
         </div>
       </aside>
 
-      {/* Mobile Overlay */}
       {isMobileMenuOpen && (
         <div
           onClick={() => setIsMobileMenuOpen(false)}
@@ -350,7 +317,6 @@ export function AdminPanel({ currentUser }: AdminPanelProps) {
         />
       )}
 
-      {/* Main Content */}
       <main className="flex-1 min-w-0">
         {error && (
           <div className="bg-red-500/10 border border-red-500/20 rounded-lg p-4 text-red-300 mb-6">
@@ -409,7 +375,10 @@ export function AdminPanel({ currentUser }: AdminPanelProps) {
           <AdminAbsencesPanel
             currentAdmin={currentUser}
             activeSubView={activeAbsenceSubView}
-            onAbsencesChanged={loadPendingCounts}
+            onAbsencesChanged={() => {
+              refreshAbsences();
+              loadPendingCounts();
+            }}
           />
         )}
       </main>

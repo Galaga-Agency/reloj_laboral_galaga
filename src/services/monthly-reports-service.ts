@@ -4,7 +4,10 @@ import { es } from "date-fns/locale";
 import type { RegistroTiempo, Usuario } from "@/types";
 import { TimeRecordsService } from "./time-records-service";
 import { TimeRecordsUtils } from "@/utils/time-records";
-import { PDFReportGenerator, type ReportData } from "@/utils/pdf-reports";
+import {
+  PDFReportGenerator,
+  type ReportData,
+} from "@/utils/working-time-pdf-genarator";
 
 export interface MonthlyReport {
   id: string;

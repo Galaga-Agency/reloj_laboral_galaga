@@ -1,8 +1,6 @@
-import { useState, useEffect, useMemo, useRef } from "react";
-import type { Absence, Usuario } from "@/types";
-import { startOfMonth, endOfMonth } from "date-fns";
-import { AdminService } from "@/services/admin-service";
-import { useAbsenceStatistics } from "@/hooks/useAbsenceStatistics";
+import { useRef, useState } from "react";
+import type { Usuario } from "@/types";
+import { useAbsences } from "@/contexts/AbsenceContext";
 import { AdminPendingAbsences } from "./AdminPendingAbsences";
 import { AdminAbsenceStatistics } from "./AdminAbsenceStatistics";
 import { AdminAbsenceCalendar } from "./AdminAbsenceCalendar";
@@ -28,11 +26,8 @@ export function AdminAbsencesPanel({
   activeSubView,
   onAbsencesChanged,
 }: AdminAbsencesPanelProps) {
+  const { refreshAbsences } = useAbsences();
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
-  const [selectedAbsences, setSelectedAbsences] = useState<Absence[]>([]);
-  const [users, setUsers] = useState<Usuario[]>([]);
-  const [isLoadingUsers, setIsLoadingUsers] = useState(false);
-  const [refreshKey, setRefreshKey] = useState(0);
 
   const pendingRef = useRef<HTMLDivElement>(null);
   const statisticsRef = useRef<HTMLDivElement>(null);
@@ -41,58 +36,8 @@ export function AdminAbsencesPanel({
   const holidaysRef = useRef<HTMLDivElement>(null);
   const daysOffRef = useRef<HTMLDivElement>(null);
 
-  const dateRange = useMemo(() => {
-    const now = new Date();
-    return {
-      start: startOfMonth(now),
-      end: endOfMonth(now),
-    };
-  }, []);
-
-  const { stats } = useAbsenceStatistics(dateRange.start, dateRange.end);
-
-  useEffect(() => {
-    loadUsers();
-  }, []);
-
-  useEffect(() => {
-    const refs = {
-      pending: pendingRef,
-      statistics: statisticsRef,
-      calendar: calendarRef,
-      workers: workersRef,
-      holidays: holidaysRef,
-      "days-off": daysOffRef,
-    };
-
-    const targetRef = refs[activeSubView];
-    if (targetRef.current) {
-      targetRef.current.scrollIntoView({ behavior: "smooth", block: "start" });
-    }
-  }, [activeSubView]);
-
-  const loadUsers = async () => {
-    setIsLoadingUsers(true);
-    try {
-      const allUsers = await AdminService.getAllUsers();
-      setUsers(allUsers.filter((u) => u.isActive));
-    } catch (error) {
-      console.error("Error loading users:", error);
-    } finally {
-      setIsLoadingUsers(false);
-    }
-  };
-
-  const handleDateSelect = (date: Date, absences: Absence[]) => {
-    setSelectedDate(date);
-    setSelectedAbsences(absences);
-  };
-
-  const handleStatusUpdate = () => {
-    setRefreshKey((prev) => prev + 1);
-    if (selectedDate) {
-      handleDateSelect(selectedDate, selectedAbsences);
-    }
+  const handleUpdate = async () => {
+    await refreshAbsences();
     if (onAbsencesChanged) {
       onAbsencesChanged();
     }
@@ -103,29 +48,27 @@ export function AdminAbsencesPanel({
       <div ref={pendingRef}>
         <AdminPendingAbsences
           currentAdmin={currentAdmin}
-          onUpdate={handleStatusUpdate}
+          onUpdate={handleUpdate}
         />
       </div>
 
       <div ref={statisticsRef}>
         <AdminAbsenceStatistics />
       </div>
+
       <div ref={calendarRef} className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <AdminAbsenceCalendar
-          refreshKey={refreshKey}
-          onDateSelect={handleDateSelect}
+          selectedDate={selectedDate}
+          onDateSelect={setSelectedDate}
         />
         <AdminAbsenceDetails
-          selectedDate={selectedDate}
-          absences={selectedAbsences}
           currentAdmin={currentAdmin}
-          onStatusUpdate={handleStatusUpdate}
-          refreshKey={refreshKey}
+          selectedDate={selectedDate}
         />
       </div>
 
       <div ref={workersRef}>
-        <AdminAbsenceWorkerList users={users} isLoading={isLoadingUsers} />
+        <AdminAbsenceWorkerList />
       </div>
 
       <div ref={holidaysRef}>

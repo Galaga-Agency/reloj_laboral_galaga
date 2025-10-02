@@ -1,5 +1,7 @@
 import { useState } from "react";
 import type { Usuario } from "@/types";
+import { AbsenceProvider } from "@/contexts/AbsenceContext";
+import { TeleworkingProvider } from "@/contexts/TeleworkingContext";
 import { DashboardTabs } from "@/components/DashboardTabs";
 import { DashboardHeader } from "@/components/DashboardHeader";
 import { useTimeRecords } from "@/hooks/useTimeRecords";
@@ -73,52 +75,56 @@ export function DashboardPage({ usuario, onLogout }: DashboardPageProps) {
   const { overtimeData } = useOvertimeCalculations(usuario.id);
 
   return (
-    <div className="min-h-screen flex flex-col bg-gradient-to-br from-azul-profundo via-[#123243] to-teal pb-16">
-      <div className="dashboard-header">
-        <DashboardHeader
-          usuario={usuario}
-          estadoActual={estadoActual}
-          onLogout={onLogout}
-        />
-      </div>
-
-      <OvertimeAlert overtimeData={overtimeData} />
-
-      <div className="dashboard-tabs">
-        <DashboardTabs
-          tabs={tabs}
-          activeTab={vistaActual}
-          onTabChange={(tabId) => setVistaActual(tabId as VistaNavegacion)}
-        />
-      </div>
-
-      <main className="flex-1 w-full px-4 py-8">
-        <div className="flex justify-center">
-          <div className="w-full">
-            {vistaActual === "reloj" && (
-              <RelojPrincipal
-                usuario={usuario}
-                estadoActual={estadoActual}
-                onStatusChange={refetch}
-              />
-            )}
-            {vistaActual === "agenda" && <MiAgendaView usuario={usuario} />}
-            {vistaActual === "historial" && (
-              <HistorialTrabajo
-                usuarioId={usuario.id}
-                onRefresh={refetch}
-                currentUser={usuario}
-              />
-            )}
-            {vistaActual === "configuracion" && (
-              <WorkSettings usuario={usuario} registros={registros} />
-            )}
-            {vistaActual === "admin" && usuario.isAdmin && (
-              <AdminPanel currentUser={usuario} />
-            )}
+    <AbsenceProvider includeScheduledDaysOff={true}>
+      <TeleworkingProvider>
+        <div className="min-h-screen flex flex-col bg-gradient-to-br from-azul-profundo via-[#123243] to-teal pb-16">
+          <div className="dashboard-header">
+            <DashboardHeader
+              usuario={usuario}
+              estadoActual={estadoActual}
+              onLogout={onLogout}
+            />
           </div>
+
+          <OvertimeAlert overtimeData={overtimeData} />
+
+          <div className="dashboard-tabs">
+            <DashboardTabs
+              tabs={tabs}
+              activeTab={vistaActual}
+              onTabChange={(tabId) => setVistaActual(tabId as VistaNavegacion)}
+            />
+          </div>
+
+          <main className="flex-1 w-full px-4 py-8">
+            <div className="flex justify-center">
+              <div className="w-full">
+                {vistaActual === "reloj" && (
+                  <RelojPrincipal
+                    usuario={usuario}
+                    estadoActual={estadoActual}
+                    onStatusChange={refetch}
+                  />
+                )}
+                {vistaActual === "agenda" && <MiAgendaView usuario={usuario} />}
+                {vistaActual === "historial" && (
+                  <HistorialTrabajo
+                    usuarioId={usuario.id}
+                    onRefresh={refetch}
+                    currentUser={usuario}
+                  />
+                )}
+                {vistaActual === "configuracion" && (
+                  <WorkSettings usuario={usuario} registros={registros} />
+                )}
+                {vistaActual === "admin" && usuario.isAdmin && (
+                  <AdminPanel currentUser={usuario} />
+                )}
+              </div>
+            </div>
+          </main>
         </div>
-      </main>
-    </div>
+      </TeleworkingProvider>
+    </AbsenceProvider>
   );
 }

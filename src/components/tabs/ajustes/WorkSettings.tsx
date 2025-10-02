@@ -4,8 +4,8 @@ import { AdvancedWorkSettings } from "@/components/tabs/ajustes/AdvancedWorkSett
 import { FiSave, FiCheck, FiX } from "react-icons/fi";
 import { RegistroTiempo, Usuario, Absence } from "@/types";
 import { supabase } from "@/lib/supabase";
-import { PasswordChangeBlock } from "@/components/PasswordChangeBlock";
 import SecondaryButton from "@/components/ui/SecondaryButton";
+import { PasswordChangeBlock } from "./PasswordChangeBlock";
 
 interface WorkSettingsProps {
   usuario: Usuario;

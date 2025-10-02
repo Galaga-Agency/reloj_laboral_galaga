@@ -33,9 +33,9 @@ export function TeleworkingCalendar({
   const { schedules, refreshSchedules, isLoading } = useTeleworking();
 
   useEffect(() => {
-    const year = currentMonth.getFullYear();
-    const month = currentMonth.getMonth() + 1;
-    refreshSchedules(year, month);
+    const monthStart = startOfMonth(currentMonth);
+    const monthEnd = endOfMonth(currentMonth);
+    refreshSchedules(monthStart, monthEnd);
   }, [currentMonth, refreshSchedules]);
 
   const monthStart = startOfMonth(currentMonth);

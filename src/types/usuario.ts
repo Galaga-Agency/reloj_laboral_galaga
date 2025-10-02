@@ -25,7 +25,7 @@ export interface Usuario {
   hora_inicio_descanso?: string;
   hora_fin_descanso?: string;
   duracion_descanso_min?: number | null;
-  duracion_descanso_max?: number | null;
+  duracion_descanso_max?: number | 45;
 }
 
 export interface OfficialUser {

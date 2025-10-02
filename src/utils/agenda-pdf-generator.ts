@@ -3,6 +3,7 @@ import { format, differenceInDays, addDays } from "date-fns";
 import { es } from "date-fns/locale";
 import type { Usuario, Absence } from "@/types";
 import type { TeleworkingSchedule } from "@/types/teleworking";
+import { AbsenceStatisticsCalculator } from "./absence-statistics";
 
 interface AgendaReportData {
   usuario: Usuario;
@@ -234,7 +235,6 @@ export class AgendaPDFGenerator {
       doc.setFillColor(254, 243, 199);
       doc.rect(this.MARGIN, y, 180, 16, "F");
       doc.setDrawColor(245, 158, 11);
-      doc.setLineWidth(0.3);
       doc.rect(this.MARGIN, y, 180, 16, "S");
 
       doc.setFont("helvetica", "bold");
@@ -292,15 +292,12 @@ export class AgendaPDFGenerator {
     doc.setTextColor(0, 0, 0);
     y += 15;
 
-    // ✅ Flatten all fechas across all absences
     const allDates: { date: Date; absence: Absence }[] = absences.flatMap((a) =>
       a.fechas.map((d) => ({ date: d, absence: a }))
     );
 
-    // ✅ Sort by date
     allDates.sort((a, b) => a.date.getTime() - b.date.getTime());
 
-    // ✅ Merge consecutive days
     const ranges: {
       start: Date;
       end: Date;
@@ -343,7 +340,6 @@ export class AgendaPDFGenerator {
       absence: currentAbs!,
     });
 
-    // ✅ Render each range as a block
     for (const range of ranges) {
       const heightNeeded = range.count === 1 ? 25 : 30;
       if (y + heightNeeded > this.PAGE_HEIGHT - this.MARGIN) {
@@ -380,9 +376,6 @@ export class AgendaPDFGenerator {
         doc.text(`(${range.count} días consecutivos)`, this.MARGIN + 3, y + 11);
       }
 
-      doc.setFont("helvetica", "normal");
-      doc.setFontSize(9);
-
       const tipo = range.absence.tipoAusencia
         .split("_")
         .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
@@ -390,8 +383,10 @@ export class AgendaPDFGenerator {
 
       const baseY = range.count === 1 ? y + 11 : y + 16;
       doc.text(`Tipo: ${tipo}`, this.MARGIN + 3, baseY);
-      doc.text(`Motivo: ${range.absence.razon}`, this.MARGIN + 3, baseY + 5);
-
+      const formattedReason = AbsenceStatisticsCalculator.getReasonLabel(
+        range.absence.razon
+      );
+      doc.text(`Motivo: ${formattedReason}`, this.MARGIN + 3, baseY + 5);
       if (range.absence.horaInicio && range.absence.horaFin) {
         doc.text(
           `Horario: ${range.absence.horaInicio} - ${range.absence.horaFin}`,
@@ -447,25 +442,32 @@ export class AgendaPDFGenerator {
     const allDates = remoteSchedules.map((s) => ({
       date: s.fecha,
       notes: s.notes || "",
+      estado: s.estado,
     }));
 
     // ✅ Sort by date
     allDates.sort((a, b) => a.date.getTime() - b.date.getTime());
 
-    // ✅ Merge consecutive dates
-    const ranges: { start: Date; end: Date; count: number; notes: string[] }[] =
-      [];
+    // ✅ Merge consecutive dates with same estado
+    const ranges: {
+      start: Date;
+      end: Date;
+      count: number;
+      notes: string[];
+      estado: string;
+    }[] = [];
     let currentStart = allDates[0].date;
     let currentEnd = allDates[0].date;
     let currentCount = 1;
     let currentNotes: string[] = allDates[0].notes ? [allDates[0].notes] : [];
+    let currentEstado = allDates[0].estado;
 
     for (let i = 1; i < allDates.length; i++) {
       const prev = allDates[i - 1].date;
       const curr = allDates[i].date;
       const diff = (curr.getTime() - prev.getTime()) / (1000 * 60 * 60 * 24);
 
-      if (diff === 1) {
+      if (diff === 1 && allDates[i].estado === currentEstado) {
         currentEnd = curr;
         currentCount++;
         if (allDates[i].notes) currentNotes.push(allDates[i].notes);
@@ -475,11 +477,13 @@ export class AgendaPDFGenerator {
           end: currentEnd,
           count: currentCount,
           notes: currentNotes,
+          estado: currentEstado,
         });
         currentStart = curr;
         currentEnd = curr;
         currentCount = 1;
         currentNotes = allDates[i].notes ? [allDates[i].notes] : [];
+        currentEstado = allDates[i].estado;
       }
     }
     ranges.push({
@@ -487,9 +491,9 @@ export class AgendaPDFGenerator {
       end: currentEnd,
       count: currentCount,
       notes: currentNotes,
+      estado: currentEstado,
     });
 
-    // ✅ Render merged ranges
     for (const range of ranges) {
       if (y + 20 > this.PAGE_HEIGHT - this.MARGIN) {
         doc.addPage();
@@ -504,6 +508,7 @@ export class AgendaPDFGenerator {
       doc.setFont("helvetica", "bold");
       doc.setFontSize(10);
 
+      // Header date(s)
       if (range.count === 1) {
         doc.text(
           format(range.start, "dd/MM/yyyy - EEEE", { locale: es }),
@@ -525,17 +530,29 @@ export class AgendaPDFGenerator {
         doc.text(`(${range.count} días consecutivos)`, this.MARGIN + 3, y + 11);
       }
 
-      // Optional notes
+      // Notes (optional)
       if (range.notes.length > 0) {
         doc.setFont("helvetica", "italic");
         doc.setFontSize(9);
-        doc.text(
-          `Notas: ${range.notes.join("; ")}`,
-          this.MARGIN + 100,
-          range.count === 1 ? y + 11 : y + 16
-        );
+        doc.text(`Notas: ${range.notes.join("; ")}`, this.MARGIN + 3, y + 15);
         doc.setFont("helvetica", "normal");
       }
+
+      // Estado (aligned with header row, not bottom)
+      const estadoColor: [number, number, number] =
+        range.estado === "aprobada"
+          ? [34, 197, 94]
+          : range.estado === "pendiente"
+          ? [234, 179, 8]
+          : [239, 68, 68];
+
+      doc.setTextColor(...estadoColor);
+      doc.text(
+        `Estado: ${range.estado.toUpperCase()}`,
+        this.MARGIN + 100,
+        y + 6 // ✅ aligned to header line
+      );
+      doc.setTextColor(0, 0, 0);
 
       y += 19;
     }

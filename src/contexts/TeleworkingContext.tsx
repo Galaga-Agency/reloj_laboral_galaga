@@ -11,12 +11,13 @@ import type {
   TeleworkingSchedule,
   TeleworkingLocation,
 } from "@/types/teleworking";
+import { startOfMonth, endOfMonth } from "date-fns";
 
 interface TeleworkingContextType {
   schedules: TeleworkingSchedule[];
   isLoading: boolean;
   error: string | null;
-  refreshSchedules: (year: number, month: number) => Promise<void>;
+  refreshSchedules: (start: Date, end: Date) => Promise<void>;
   createOrUpdateSchedule: (
     usuarioId: string,
     fecha: Date,
@@ -25,6 +26,8 @@ interface TeleworkingContextType {
   ) => Promise<void>;
   deleteSchedule: (scheduleId: string) => Promise<void>;
   bulkCreateSchedules: (schedules: any[]) => Promise<void>;
+  approveSchedule: (scheduleId: string) => Promise<void>;
+  rejectSchedule: (scheduleId: string) => Promise<void>;
 }
 
 const TeleworkingContext = createContext<TeleworkingContextType | undefined>(
@@ -42,25 +45,23 @@ export function useTeleworking() {
 interface TeleworkingProviderProps {
   children: ReactNode;
   initialYear?: number;
-  initialMonth?: number;
 }
 
 export function TeleworkingProvider({
   children,
   initialYear = new Date().getFullYear(),
-  initialMonth = new Date().getMonth() + 1,
 }: TeleworkingProviderProps) {
   const { usuario } = useAuth();
   const [schedules, setSchedules] = useState<TeleworkingSchedule[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const refreshSchedules = async (year: number, month: number) => {
+  const refreshSchedules = async (start: Date, end: Date) => {
     setIsLoading(true);
     setError(null);
 
     try {
-      const data = await TeleworkingService.getSchedulesForMonth(year, month);
+      const data = await TeleworkingService.getSchedulesInRange(start, end);
       setSchedules(data);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Error loading schedules");
@@ -70,8 +71,10 @@ export function TeleworkingProvider({
   };
 
   useEffect(() => {
-    refreshSchedules(initialYear, initialMonth);
-  }, [initialYear, initialMonth]);
+    const start = new Date(initialYear, 0, 1);
+    const end = new Date(initialYear, 11, 31);
+    refreshSchedules(start, end);
+  }, [initialYear]);
 
   const createOrUpdateSchedule = async (
     usuarioId: string,
@@ -86,23 +89,32 @@ export function TeleworkingProvider({
       usuario!,
       notes
     );
-    await refreshSchedules(fecha.getFullYear(), fecha.getMonth() + 1);
+    await refreshSchedules(startOfMonth(fecha), endOfMonth(fecha));
   };
 
   const deleteSchedule = async (scheduleId: string) => {
     await TeleworkingService.deleteSchedule(scheduleId);
     const currentDate = new Date();
-    await refreshSchedules(
-      currentDate.getFullYear(),
-      currentDate.getMonth() + 1
-    );
+    await refreshSchedules(startOfMonth(currentDate), endOfMonth(currentDate));
+  };
+
+  const approveSchedule = async (scheduleId: string) => {
+    await TeleworkingService.approveSchedule(scheduleId, usuario!);
+    const currentDate = new Date();
+    await refreshSchedules(startOfMonth(currentDate), endOfMonth(currentDate));
+  };
+
+  const rejectSchedule = async (scheduleId: string) => {
+    await TeleworkingService.rejectSchedule(scheduleId);
+    const currentDate = new Date();
+    await refreshSchedules(startOfMonth(currentDate), endOfMonth(currentDate));
   };
 
   const bulkCreateSchedules = async (schedules: any[]) => {
     await TeleworkingService.bulkCreateSchedules(schedules, usuario!);
     if (schedules.length > 0) {
       const firstDate = schedules[0].fecha;
-      await refreshSchedules(firstDate.getFullYear(), firstDate.getMonth() + 1);
+      await refreshSchedules(startOfMonth(firstDate), endOfMonth(firstDate));
     }
   };
 
@@ -112,6 +124,8 @@ export function TeleworkingProvider({
         schedules,
         isLoading,
         error,
+        approveSchedule,
+        rejectSchedule,
         refreshSchedules,
         createOrUpdateSchedule,
         deleteSchedule,

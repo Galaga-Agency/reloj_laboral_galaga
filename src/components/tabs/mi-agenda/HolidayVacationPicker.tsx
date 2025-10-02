@@ -60,7 +60,9 @@ export function HolidayVacationPicker({
       },
     };
 
-    const config = statusConfig[status as keyof typeof statusConfig] || statusConfig.pendiente;
+    const config =
+      statusConfig[status as keyof typeof statusConfig] ||
+      statusConfig.pendiente;
 
     return (
       <span
@@ -73,7 +75,13 @@ export function HolidayVacationPicker({
 
   const handleBulkSelect = async (dates: string[]) => {
     try {
-      const fechas = dates.map((d) => new Date(d + "T00:00:00"));
+      console.log("🔍 Dates received from calendar:", dates);
+      console.log("🔍 Number of dates:", dates.length);
+
+      const fechas = dates.map((d) => {
+        const [year, month, day] = d.split("-").map(Number);
+        return new Date(year, month - 1, day, 12, 0, 0);
+      });
 
       await AbsenceService.createAbsence({
         usuarioId: currentUserId,
@@ -87,8 +95,8 @@ export function HolidayVacationPicker({
         isAdmin: currentUser.isAdmin,
       });
 
-      if (onRefresh) await onRefresh();
       setShowCalendar(false);
+      if (onRefresh) await onRefresh();
     } catch (error) {
       console.error("Error creating days off block:", error);
     }
@@ -125,6 +133,10 @@ export function HolidayVacationPicker({
       setTimeout(() => setIsRefreshing(false), 500);
     }
   };
+
+  console.log("🔍 daysOff:", daysOff);
+  console.log("🔍 selectedDates:", selectedDates);
+  console.log("🔍 dateRanges:", dateRanges);
 
   return (
     <div className="bg-white/5 backdrop-blur-sm rounded-2xl shadow-lg p-6 border border-white/10 relative">
@@ -188,7 +200,7 @@ export function HolidayVacationPicker({
           <div className="flex flex-col gap-3">
             {dateRanges.map((range, index) => {
               const absence = getAbsenceForDate(range.start);
-              
+
               return (
                 <div
                   key={`${range.start}-${range.end}-${index}`}
@@ -218,9 +230,13 @@ export function HolidayVacationPicker({
                             locale: es,
                           })}{" "}
                           -{" "}
-                          {format(parseISO(range.end), "d 'de' MMMM 'de' yyyy", {
-                            locale: es,
-                          })}
+                          {format(
+                            parseISO(range.end),
+                            "d 'de' MMMM 'de' yyyy",
+                            {
+                              locale: es,
+                            }
+                          )}
                         </span>
                         <span className="text-xs text-white/60">
                           {range.count} días consecutivos
@@ -243,7 +259,9 @@ export function HolidayVacationPicker({
                       }
                     }}
                     className="text-red-400 hover:text-red-300 p-1 cursor-pointer ml-3"
-                    title={range.count === 1 ? "Eliminar día" : "Eliminar rango"}
+                    title={
+                      range.count === 1 ? "Eliminar día" : "Eliminar rango"
+                    }
                   >
                     <FiTrash2 className="w-4 h-4" />
                   </button>

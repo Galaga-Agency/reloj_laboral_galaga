@@ -25,7 +25,6 @@ export function PasswordUpdatePage({ usuario }: PasswordUpdatePageProps) {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // Entrance animations (classnames-based)
   useGSAPAnimations({ animations: [initEntranceAnimation], delay: 100 });
 
   const {
@@ -56,7 +55,6 @@ export function PasswordUpdatePage({ usuario }: PasswordUpdatePageProps) {
   return (
     <div className="min-h-screen flex items-center justify-center px-4">
       <div className="w-full max-w-md">
-        {/* Header block */}
         <div className="login-logo text-center pb-8 fade-down opacity-0">
           <div className="inline-flex items-center justify-center w-20 h-20 bg-teal rounded-2xl shadow-2xl">
             <FiLock className="w-8 h-8 text-blanco" />
@@ -69,7 +67,6 @@ export function PasswordUpdatePage({ usuario }: PasswordUpdatePageProps) {
           </p>
         </div>
 
-        {/* Form card */}
         <div className="login-form bg-blanco/95 backdrop-blur-sm rounded-2xl shadow-2xl p-8 fade-up opacity-0">
           <h2 className="text-2xl font-bold text-azul-profundo pb-4 text-center">
             Primera conexión
@@ -83,7 +80,7 @@ export function PasswordUpdatePage({ usuario }: PasswordUpdatePageProps) {
           </div>
 
           {error && (
-            <div className="pb-6 p-4 bg-inactivo/10 border border-inactivo/30 rounded-lg fade-up opacity-0">
+            <div className="mt-6 p-4 bg-inactivo/10 border border-inactivo/30 rounded-lg">
               <p className="text-sm text-inactivo font-medium">{error}</p>
             </div>
           )}
@@ -95,6 +92,7 @@ export function PasswordUpdatePage({ usuario }: PasswordUpdatePageProps) {
             <CustomInput
               label="Nueva contraseña"
               type="password"
+              variant="lightBg"
               {...register("newPassword", {
                 required: "La nueva contraseña es obligatoria",
                 minLength: {
@@ -115,6 +113,7 @@ export function PasswordUpdatePage({ usuario }: PasswordUpdatePageProps) {
             <CustomInput
               label="Confirmar contraseña"
               type="password"
+              variant="lightBg"
               {...register("confirmPassword", {
                 required: "Debes confirmar la contraseña",
                 validate: (value) =>

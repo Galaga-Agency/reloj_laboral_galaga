@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect } from "react";
+import { createPortal } from "react-dom";
 import { FiChevronDown, FiCheck } from "react-icons/fi";
 
 interface DropdownOption {
@@ -26,7 +27,13 @@ export function CustomDropdown({
   variant = "lightBg",
 }: CustomDropdownProps) {
   const [isOpen, setIsOpen] = useState(false);
+  const [dropdownPosition, setDropdownPosition] = useState({
+    top: 0,
+    left: 0,
+    width: 0,
+  });
   const dropdownRef = useRef<HTMLDivElement>(null);
+  const buttonRef = useRef<HTMLButtonElement>(null);
 
   const selectedOption = options.find((option) => option.value === value);
 
@@ -34,7 +41,9 @@ export function CustomDropdown({
     const handleClickOutside = (event: MouseEvent) => {
       if (
         dropdownRef.current &&
-        !dropdownRef.current.contains(event.target as Node)
+        !dropdownRef.current.contains(event.target as Node) &&
+        buttonRef.current &&
+        !buttonRef.current.contains(event.target as Node)
       ) {
         setIsOpen(false);
       }
@@ -46,6 +55,30 @@ export function CustomDropdown({
 
     return () => {
       document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, [isOpen]);
+
+  useEffect(() => {
+    const updatePosition = () => {
+      if (buttonRef.current) {
+        const rect = buttonRef.current.getBoundingClientRect();
+        setDropdownPosition({
+          top: rect.bottom + 8,
+          left: rect.left,
+          width: rect.width,
+        });
+      }
+    };
+
+    if (isOpen) {
+      updatePosition();
+      window.addEventListener("scroll", updatePosition, true);
+      window.addEventListener("resize", updatePosition);
+    }
+
+    return () => {
+      window.removeEventListener("scroll", updatePosition, true);
+      window.removeEventListener("resize", updatePosition);
     };
   }, [isOpen]);
 
@@ -91,9 +124,69 @@ export function CustomDropdown({
     }
   };
 
+  const dropdownMenu = isOpen ? (
+    <>
+      <div
+        className="fixed inset-0 z-[9998]"
+        onClick={() => setIsOpen(false)}
+      />
+
+      <div
+        ref={dropdownRef}
+        className="fixed z-[9999]"
+        style={{
+          top: `${dropdownPosition.top}px`,
+          left: `${dropdownPosition.left}px`,
+          width: `${dropdownPosition.width}px`,
+        }}
+      >
+        <div
+          className={`
+          backdrop-blur-sm border border-hielo/30 rounded-xl shadow-2xl overflow-hidden
+          ${variant === "darkBg" ? "bg-blanco/95" : "bg-blanco"}
+        `}
+        >
+          <ul className="py-2 max-h-60 overflow-y-auto" role="listbox">
+            {options.map((option) => (
+              <li
+                key={option.value}
+                role="option"
+                aria-selected={option.value === value}
+              >
+                <button
+                  type="button"
+                  onClick={() => handleSelect(option.value)}
+                  className={`
+                    w-full px-4 py-3 text-left flex items-center justify-between
+                    transition-colors duration-150 cursor-pointer
+                    ${
+                      option.value === value
+                        ? variant === "darkBg"
+                          ? "bg-teal/20 text-teal font-medium"
+                          : "bg-teal/10 text-teal font-medium"
+                        : variant === "darkBg"
+                        ? "text-teal/90 hover:bg-teal/10"
+                        : "text-azul-profundo hover:bg-hielo/20"
+                    }
+                  `}
+                >
+                  <span>{option.label}</span>
+                  {option.value === value && (
+                    <FiCheck className="w-4 h-4 text-teal" />
+                  )}
+                </button>
+              </li>
+            ))}
+          </ul>
+        </div>
+      </div>
+    </>
+  ) : null;
+
   return (
-    <div className={`relative ${className}`} ref={dropdownRef}>
+    <div className={`relative ${className}`}>
       <button
+        ref={buttonRef}
         type="button"
         onClick={() => !disabled && setIsOpen(!isOpen)}
         onKeyDown={handleKeyDown}
@@ -150,59 +243,8 @@ export function CustomDropdown({
         />
       </button>
 
-      {isOpen && (
-        <>
-          <div
-            className="fixed inset-0"
-            onClick={() => setIsOpen(false)}
-          />
-
-          <div className="absolute top-full left-0 right-0 mt-2 z-[999]">
-            <div
-              className={`
-              backdrop-blur-sm border border-hielo/30 rounded-xl shadow-2xl overflow-hidden
-              ${variant === "darkBg" ? "bg-blanco/95" : "bg-blanco"}
-            `}
-            >
-              <ul
-                className="py-2 max-h-60 overflow-y-auto z-[999]"
-                role="listbox"
-              >
-                {options.map((option) => (
-                  <li
-                    key={option.value}
-                    role="option"
-                    aria-selected={option.value === value}
-                  >
-                    <button
-                      type="button"
-                      onClick={() => handleSelect(option.value)}
-                      className={`
-                        w-full px-4 py-3 text-left flex items-center justify-between
-                        transition-colors duration-150 cursor-pointer
-                        ${
-                          option.value === value
-                            ? variant === "darkBg"
-                              ? "bg-teal/20 text-teal font-medium"
-                              : "bg-teal/10 text-teal font-medium"
-                            : variant === "darkBg"
-                            ? "text-teal/90 hover:bg-teal/10"
-                            : "text-azul-profundo hover:bg-hielo/20"
-                        }
-                      `}
-                    >
-                      <span>{option.label}</span>
-                      {option.value === value && (
-                        <FiCheck className="w-4 h-4 text-teal" />
-                      )}
-                    </button>
-                  </li>
-                ))}
-              </ul>
-            </div>
-          </div>
-        </>
-      )}
+      {typeof document !== "undefined" &&
+        createPortal(dropdownMenu, document.body)}
     </div>
   );
 }

@@ -33,7 +33,7 @@ export const useUserRole = () => {
     };
 
     fetchUserRole();
-  }, [user?.id, supabase]); // Changed this line - use user?.id instead of user
+  }, [user?.id, supabase]);
 
   return {
     role,

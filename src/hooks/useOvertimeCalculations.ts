@@ -62,17 +62,11 @@ export function useOvertimeCalculations(userId: string) {
 
     const todayHours = getHoursForDate(todayStr, registros);
 
-    console.log("=== OVERTIME CALCULATION ===");
-    console.log(`Today: ${todayHours.toFixed(2)}h`);
-    console.log(`This week: ${weeklyHours.toFixed(2)}h`);
-    console.log(`This month: ${monthlyHours.toFixed(2)}h`);
-
     const dailyOvertime = Math.max(0, todayHours - 8);
     const weeklyOvertime = Math.max(0, weeklyHours - 40);
     const monthlyOvertime = Math.max(0, monthlyHours - 40 * 4.33);
 
     if (dailyOvertime === 0 && weeklyOvertime === 0 && monthlyOvertime === 0) {
-      console.log("No overtime in any period - hiding alert");
       return null;
     }
 

@@ -29,12 +29,6 @@ export class AdminService {
       .select("*")
       .order("nombre", { ascending: true });
 
-    console.log("getAllUsers query result:", {
-      data,
-      error,
-      count: data?.length,
-    });
-
     if (error) {
       console.error("Error in getAllUsers:", error);
       throw new Error(`Error fetching users: ${error.message}`);
@@ -60,7 +54,6 @@ export class AdminService {
       include_lunch_break: user.include_lunch_break ?? false,
     }));
 
-    console.log("Mapped users:", mappedUsers);
     return mappedUsers;
   }
 

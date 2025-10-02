@@ -71,6 +71,16 @@ export class TeleworkingService {
     return { office, remote, unscheduled };
   }
 
+  static async getSchedulesInRange(start: Date, end: Date) {
+    const response = await fetch(
+      `/api/teleworking?s=${start.toISOString()}&e=${end.toISOString()}`
+    );
+    if (!response.ok) {
+      throw new Error("Error fetching teleworking schedules");
+    }
+    return response.json();
+  }
+
   static async getSchedulesForMonth(
     year: number,
     month: number
@@ -107,12 +117,35 @@ export class TeleworkingService {
         created_by: createdBy.id,
         created_by_name: createdBy.nombre,
         notes: notes || null,
+        estado: createdBy.isAdmin ? "aprobada" : "pendiente",
+        aprobado_por: createdBy.isAdmin ? createdBy.id : null,
+        fecha_aprobacion: createdBy.isAdmin ? new Date().toISOString() : null,
         updated_at: new Date().toISOString(),
       },
-      {
-        onConflict: "usuario_id,fecha",
-      }
+      { onConflict: "usuario_id,fecha" }
     );
+
+    if (error) throw error;
+  }
+
+  static async approveSchedule(scheduleId: string, admin: Usuario) {
+    const { error } = await supabase
+      .from("teleworking_schedules")
+      .update({
+        estado: "aprobada",
+        aprobado_por: admin.id,
+        fecha_aprobacion: new Date().toISOString(),
+      })
+      .eq("id", scheduleId);
+
+    if (error) throw error;
+  }
+
+  static async rejectSchedule(scheduleId: string) {
+    const { error } = await supabase
+      .from("teleworking_schedules")
+      .delete()
+      .eq("id", scheduleId);
 
     if (error) throw error;
   }
@@ -140,6 +173,9 @@ export class TeleworkingService {
       location: s.location,
       created_by: createdBy.id,
       created_by_name: createdBy.nombre,
+      estado: createdBy.isAdmin ? "aprobada" : "pendiente",
+      aprobado_por: createdBy.isAdmin ? createdBy.id : null,
+      fecha_aprobacion: createdBy.isAdmin ? new Date().toISOString() : null,
     }));
 
     console.log("[TeleworkingService] bulkCreateSchedules input:", schedules);
@@ -166,8 +202,13 @@ export class TeleworkingService {
       createdBy: data.created_by,
       createdByName: data.created_by_name,
       notes: data.notes,
-      createdAt: new Date(data.created_at),
-      updatedAt: new Date(data.updated_at),
+      estado: data.estado as "pendiente" | "aprobada" | "rechazada",
+      aprobadoPor: data.aprobado_por ?? null,
+      fechaAprobacion: data.fecha_aprobacion
+        ? new Date(data.fecha_aprobacion)
+        : null,
+      createdAt: data.created_at ? new Date(data.created_at) : new Date(),
+      updatedAt: data.updated_at ? new Date(data.updated_at) : new Date(),
     };
   }
 }

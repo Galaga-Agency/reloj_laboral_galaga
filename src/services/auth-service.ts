@@ -62,8 +62,8 @@ export class AuthService {
       hora_salida_viernes_max: userRecord.hora_salida_viernes_max,
       hora_inicio_descanso: userRecord.hora_inicio_descanso,
       hora_fin_descanso: userRecord.hora_fin_descanso,
-      duracion_descanso_min: userRecord.duracion_descanso_min,
-      duracion_descanso_max: userRecord.duracion_descanso_max,
+      duracion_descanso_min: userRecord.duracion_descanso_min || 20,
+      duracion_descanso_max: userRecord.duracion_descanso_max || 45,
     };
   }
 
@@ -73,6 +73,14 @@ export class AuthService {
     });
 
     if (error) {
+      if (
+        error.message ===
+        "New password should be different from the old password."
+      ) {
+        throw new Error(
+          "La nueva contraseña debe ser diferente de la contraseña actual"
+        );
+      }
       throw new Error(`Error al actualizar contraseña: ${error.message}`);
     }
 
@@ -95,14 +103,14 @@ export class AuthService {
   }
 
   static async getCurrentUser(): Promise<Usuario | null> {
-    console.log("🔍 getCurrentUser() START");
+    console.log("getCurrentUser() START");
     try {
       const {
         data: { user },
         error: userError,
       } = await supabase.auth.getUser();
 
-      console.log("🔍 supabase.auth.getUser() result:", {
+      console.log("supabase.auth.getUser() result:", {
         hasUser: !!user,
         userId: user?.id,
         userEmail: user?.email,
@@ -111,18 +119,16 @@ export class AuthService {
 
       if (userError) {
         console.error(
-          "🔍 Error getting user from supabase.auth.getUser():",
+          "Error getting user from supabase.auth.getUser():",
           userError
         );
         return null;
       }
 
       if (!user) {
-        console.log("🔍 No user returned from supabase.auth.getUser()");
+        console.log("No user returned from supabase.auth.getUser()");
         return null;
       }
-
-      console.log("🔍 Fetching user record from usuarios table for ID:", user.id);
 
       const { data: userRecord, error } = await supabase
         .from("usuarios")
@@ -130,28 +136,19 @@ export class AuthService {
         .eq("id", user.id)
         .single();
 
-      console.log("🔍 usuarios table query result:", {
-        hasRecord: !!userRecord,
-        record: userRecord,
-        error: error,
-      });
-
       if (error) {
         if (error.code === "PGRST116") {
-          console.log("🔍 User record not found in usuarios table (PGRST116)");
+          console.log("User record not found in usuarios table (PGRST116)");
           return null;
         }
-        console.error("🔍 Error fetching user record:", error);
         throw new Error(`Error al obtener datos del usuario: ${error.message}`);
       }
 
       if (userRecord.is_active === false) {
-        console.log("🔍 User is inactive, signing them out");
+        console.log("User is inactive, signing them out");
         await supabase.auth.signOut();
         return null;
       }
-
-      console.log("🔍 getCurrentUser() returning user:", userRecord.email);
 
       return {
         id: userRecord.id,
@@ -184,7 +181,7 @@ export class AuthService {
         duracion_descanso_max: userRecord.duracion_descanso_max,
       };
     } catch (error) {
-      console.error("🔍 Exception in getCurrentUser():", error);
+      console.error("Exception in getCurrentUser():", error);
       return null;
     }
   }

@@ -76,7 +76,11 @@ export function getDateRangeFromPreset(
       const threeMonthsAgo = subMonths(now, 3);
       return { start: startOfMonth(threeMonthsAgo), end: endOfMonth(now) };
     case "current_year":
-      return { start: startOfYear(now), end: endOfMonth(now) };
+      return {
+        start: startOfYear(now),
+        end: new Date(now.getFullYear(), 11, 31, 23, 59, 59),
+      };
+
     case "custom":
       if (customRange?.start && customRange?.end) {
         return {
@@ -132,14 +136,17 @@ export class AbsenceStatisticsCalculator {
       };
     }
 
+    // expand absences into days
     const expandedAbsences = absences.flatMap((a) =>
       a.fechas.map((fecha) => ({ ...a, fecha }))
     );
 
+    // detect dias libres
     const scheduledDaysOff = expandedAbsences.filter(
       (a: any) => a.tipoAusencia === "dia_libre"
     );
 
+    // skip weekends
     const validAbsences = expandedAbsences.filter((a: any) => {
       const day = new Date(a.fecha).getDay();
       return day !== 0 && day !== 6;
@@ -161,6 +168,7 @@ export class AbsenceStatisticsCalculator {
       };
     }
 
+    // adjust durations
     const adjustedAbsences = validAbsences.map((a: any) => {
       if (a.tipoAusencia === "ausencia_completa") {
         const dailyHours = userHoursMap[a.usuarioId] || 8;
@@ -169,10 +177,12 @@ export class AbsenceStatisticsCalculator {
       return a;
     });
 
+    // exclude dia_libre for "real absences"
     const realAbsencesOnly = adjustedAbsences.filter(
       (a: any) => a.tipoAusencia !== "dia_libre"
     );
 
+    // totals
     const totalMinutes = realAbsencesOnly.reduce(
       (sum: number, a: any) => sum + a.duracionMinutos,
       0
@@ -183,6 +193,7 @@ export class AbsenceStatisticsCalculator {
       (a: any) => a.tipoAusencia === "ausencia_completa"
     ).length;
 
+    // group reasons
     const reasonMap = new Map<string, { count: number; minutes: number }>();
     adjustedAbsences.forEach((absence: any) => {
       const current = reasonMap.get(absence.razon) || { count: 0, minutes: 0 };
@@ -205,6 +216,7 @@ export class AbsenceStatisticsCalculator {
       }))
       .sort((a, b) => b.count - a.count);
 
+    // group types
     const typeMap = new Map<string, { count: number; minutes: number }>();
     adjustedAbsences.forEach((absence: any) => {
       const current = typeMap.get(absence.tipoAusencia) || {
@@ -229,22 +241,31 @@ export class AbsenceStatisticsCalculator {
       }))
       .sort((a, b) => b.count - a.count);
 
+    // ✅ FIX: count absences by ID, not by expanded days
+    const approvedCount = new Set(
+      absences.filter((a: any) => a.estado === "aprobada").map((a: any) => a.id)
+    ).size;
+    const rejectedCount = new Set(
+      absences
+        .filter((a: any) => a.estado === "rechazada")
+        .map((a: any) => a.id)
+    ).size;
+    const pendingCount = new Set(
+      absences
+        .filter((a: any) => a.estado === "pendiente")
+        .map((a: any) => a.id)
+    ).size;
+
     return {
-      totalAbsences: realAbsencesOnly.length,
+      totalAbsences: new Set(absences.map((a: any) => a.id)).size,
       totalHoursMissed: Math.round(totalHours * 10) / 10,
       totalDaysMissed: fullDayAbsences,
       affectedUsers: uniqueUsers.size,
       reasonStats,
       typeStats,
-      pendingCount: realAbsencesOnly.filter(
-        (a: any) => a.estado === "pendiente"
-      ).length,
-      approvedCount: realAbsencesOnly.filter(
-        (a: any) => a.estado === "aprobada"
-      ).length,
-      rejectedCount: realAbsencesOnly.filter(
-        (a: any) => a.estado === "rechazada"
-      ).length,
+      pendingCount,
+      approvedCount,
+      rejectedCount,
       scheduledDaysOffCount: scheduledDaysOff.length,
       averageAbsenceDuration:
         realAbsencesOnly.length > 0
@@ -256,6 +277,7 @@ export class AbsenceStatisticsCalculator {
   static getReasonLabel(razon: string): string {
     const labels: Record<string, string> = {
       tardanza_trafico: "Tardanza - Tráfico",
+      Tardanza_trafico: "Tardanza Trafico",
       tardanza_transporte: "Tardanza - Transporte",
       tardanza_personal: "Tardanza - Motivo Personal",
       tardanza: "Tardanza",

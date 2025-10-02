@@ -1,5 +1,5 @@
 import { forwardRef, useState, useEffect } from "react";
-import { FiClock } from "react-icons/fi";
+import { FiClock, FiEye, FiEyeOff } from "react-icons/fi";
 
 interface CustomInputProps extends React.InputHTMLAttributes<HTMLInputElement> {
   label?: string;
@@ -28,8 +28,10 @@ export const CustomInput = forwardRef<HTMLInputElement, CustomInputProps>(
     const [showTimePicker, setShowTimePicker] = useState(false);
     const [internalValue, setInternalValue] = useState((value as string) || "");
     const [selectedHour, setSelectedHour] = useState<number | null>(null);
+    const [showPassword, setShowPassword] = useState(false);
 
     const isTimeType = type === "time";
+    const isPasswordType = type === "password";
 
     useEffect(() => {
       if (isTimeType && value) {
@@ -66,6 +68,12 @@ export const CustomInput = forwardRef<HTMLInputElement, CustomInputProps>(
       setSelectedHour(null);
     };
 
+    const getInputType = () => {
+      if (isTimeType) return "text";
+      if (isPasswordType) return showPassword ? "text" : "password";
+      return type;
+    };
+
     return (
       <div className={`flex flex-col gap-2 ${containerClassName}`}>
         {label && (
@@ -81,20 +89,18 @@ export const CustomInput = forwardRef<HTMLInputElement, CustomInputProps>(
         <div className="relative">
           <input
             ref={ref}
-            type={isTimeType ? "text" : type}
+            type={getInputType()}
             readOnly={isTimeType}
-            value={isTimeType ? internalValue : (value as string) || ""}
-            onChange={(e) => {
-              if (isTimeType) {
-                return;
-              }
-              onChange?.(e);
-            }}
+            {...(isTimeType && { value: internalValue })}
+            {...(isTimeType && { onChange: undefined })}
+            {...(!isTimeType && onChange && { onChange })}
+            {...(!isTimeType && value !== undefined && { value })}
             onClick={() => isTimeType && setShowTimePicker((p) => !p)}
             className={`
               w-full px-4 py-3 
               border rounded-xl
-              ${isTimeType ? "cursor-pointer pr-10" : ""}
+              ${isTimeType || isPasswordType ? "pr-10" : ""}
+              ${isTimeType ? "cursor-pointer" : ""}
               transition-all duration-200
               focus:ring-1 focus:outline-none
               ${
@@ -121,6 +127,20 @@ export const CustomInput = forwardRef<HTMLInputElement, CustomInputProps>(
               className={`absolute right-3 top-1/2 -translate-y-1/2 ${iconColor}`}
             >
               <FiClock className="w-5 h-5" />
+            </button>
+          )}
+
+          {isPasswordType && (
+            <button
+              type="button"
+              onClick={() => setShowPassword((p) => !p)}
+              className={`absolute right-3 top-1/2 -translate-y-1/2 ${iconColor}`}
+            >
+              {showPassword ? (
+                <FiEyeOff className="w-5 h-5" />
+              ) : (
+                <FiEye className="w-5 h-5" />
+              )}
             </button>
           )}
 

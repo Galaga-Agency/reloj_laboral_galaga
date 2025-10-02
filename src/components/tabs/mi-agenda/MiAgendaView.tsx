@@ -14,6 +14,7 @@ import { AgendaCalendar } from "@/components/tabs/mi-agenda/AgendaCalendar";
 import { HolidayVacationPicker } from "@/components/tabs/mi-agenda/HolidayVacationPicker";
 import { AgendaReportGenerator } from "./AgendaReportGenerator";
 import { Toast } from "@/components/ui/Toast";
+import { NotificationCenter } from "./NotificationCenter";
 
 interface MiAgendaViewProps {
   usuario: Usuario;
@@ -31,7 +32,6 @@ export function MiAgendaView({ usuario }: MiAgendaViewProps) {
   const [daysOff, setDaysOff] = useState<Absence[]>([]);
   const [isLoading, setIsLoading] = useState(false);
 
-  // Toast state
   const [toast, setToast] = useState<{
     type: "success" | "error" | "warning";
     message: string;
@@ -109,6 +109,16 @@ export function MiAgendaView({ usuario }: MiAgendaViewProps) {
     }
   };
 
+  const handleDismissTelework = async (id: string) => {
+    await TeleworkingService.deleteSchedule(id);
+    await loadUserData();
+  };
+
+  const handleDismissAbsence = async (id: string) => {
+    await AbsenceService.deleteAbsence(id);
+    await loadUserData();
+  };
+
   const monthStart = startOfMonth(currentMonth);
   const monthEnd = endOfMonth(currentMonth);
   const monthDaysOff = daysOff.filter((d) =>
@@ -146,13 +156,21 @@ export function MiAgendaView({ usuario }: MiAgendaViewProps) {
           </div>
         </div>
 
-        <div className="pt-6">
+        <div className="pt-6 relative z-10">
           <AgendaStats
             absences={allAbsencesForCalendar}
             teleworkSchedules={teleworkSchedules}
           />
         </div>
       </div>
+
+      <NotificationCenter
+        usuario={usuario}
+        teleworkSchedules={teleworkSchedules}
+        absences={absences}
+        onDismissTelework={handleDismissTelework}
+        onDismissAbsence={handleDismissAbsence}
+      />
 
       <HolidayVacationPicker
         daysOff={daysOff}

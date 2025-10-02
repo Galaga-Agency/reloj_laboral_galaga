@@ -41,7 +41,7 @@ export function AbsenceProvider({
   children,
   startDate,
   endDate,
-  includeScheduledDaysOff = false,
+  includeScheduledDaysOff = true,
 }: AbsenceProviderProps) {
   const { usuario } = useAuth();
   const [absences, setAbsences] = useState<Absence[]>([]);
@@ -51,22 +51,30 @@ export function AbsenceProvider({
   const refreshAbsences = async (start?: Date, end?: Date) => {
     if (!usuario) return;
 
+    const rangeStart = start || startDate || new Date(2000, 0, 1);
+    const rangeEnd = end || endDate || new Date(2099, 11, 31);
+
     setIsLoading(true);
     setError(null);
 
     try {
       const data = usuario.isAdmin
         ? await AbsenceService.getAllAbsences(
-            start || startDate,
-            end || endDate,
+            rangeStart,
+            rangeEnd,
             includeScheduledDaysOff
           )
         : await AbsenceService.getAbsencesByUser(
             usuario.id,
-            start || startDate,
-            end || endDate,
+            rangeStart,
+            rangeEnd,
             includeScheduledDaysOff
           );
+
+      console.log("[AbsenceProvider] fetched absences:", data);
+      console.log("[AbsenceProvider] unique tipos:", [
+        ...new Set(data.map((a: any) => a.tipo_ausencia || a.tipoAusencia)),
+      ]);
 
       setAbsences(data);
     } catch (err) {

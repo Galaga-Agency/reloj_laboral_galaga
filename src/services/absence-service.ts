@@ -4,6 +4,9 @@ import { differenceInMinutes, parse, format } from "date-fns";
 import { AbsencePDFGenerator } from "@/utils/absence-pdf-generator";
 
 export class AbsenceService {
+  private static readonly BLOCKED_USER_ID =
+    "3d2225b9-c68f-4dff-80e0-6ba859b29f71";
+
   private static async getUserDailyHours(userId: string): Promise<number> {
     const { data, error } = await supabase
       .from("usuarios")
@@ -27,6 +30,10 @@ export class AbsenceService {
     createdBy: string;
     isAdmin: boolean;
   }): Promise<Absence> {
+    if (data.usuarioId === this.BLOCKED_USER_ID) {
+      throw new Error("No se pueden crear ausencias para este usuario");
+    }
+
     let duracionMinutos: number;
 
     if (data.tipoAusencia === "ausencia_completa") {
@@ -72,6 +79,10 @@ export class AbsenceService {
     comentarios?: string;
     createdBy: string;
   }): Promise<Absence> {
+    if (data.usuarioId === this.BLOCKED_USER_ID) {
+      throw new Error("No se pueden crear ausencias para este usuario");
+    }
+
     const { data: result, error } = await supabase
       .from("ausencias")
       .insert({
@@ -149,15 +160,7 @@ export class AbsenceService {
       throw new Error(`Error fetching all absences: ${error.message}`);
     }
 
-    const allAbsences = (data || []).map(this.mapToAbsence);
-
-    return allAbsences.filter((a) =>
-      a.fechas.some((f) => {
-        if (startDate && f < startDate) return false;
-        if (endDate && f > endDate) return false;
-        return true;
-      })
-    );
+    return (data || []).map(this.mapToAbsence);
   }
 
   static async updateAbsenceStatus(
@@ -275,7 +278,8 @@ export class AbsenceService {
       const { data: users, error: usersError } = await supabase
         .from("usuarios")
         .select("id, horas_diarias")
-        .eq("is_active", true);
+        .eq("is_active", true)
+        .neq("id", this.BLOCKED_USER_ID);
 
       if (usersError) {
         return { success: false, count: 0, error: usersError.message };
@@ -381,7 +385,7 @@ export class AbsenceService {
 
   static getAbsenceReasons(): Array<{ value: string; label: string }> {
     return [
-      { value: "tardanza_trafico", label: "Tardanza - Tráfico" },
+      { value: "Tardanza_trafico", label: "Tardanza - Tráfico" },
       {
         value: "tardanza_transporte",
         label: "Tardanza - Problema de transporte",
@@ -435,7 +439,10 @@ export class AbsenceService {
     return {
       id: row.id,
       usuarioId: row.usuario_id,
-      fechas: (row.fechas || []).map((f: string) => new Date(f)),
+      fechas: (row.fechas || []).map((f: string) => {
+        const [year, month, day] = f.split("-").map(Number);
+        return new Date(year, month - 1, day);
+      }),
       tipoAusencia: row.tipo_ausencia,
       horaInicio: row.hora_inicio,
       horaFin: row.hora_fin,
@@ -454,7 +461,12 @@ export class AbsenceService {
       createdBy: row.created_by,
       editedBy: row.edited_by,
       editedAt: row.edited_at ? new Date(row.edited_at) : undefined,
-      editedFecha: row.edited_fecha ? new Date(row.edited_fecha) : undefined,
+      editedFecha: row.edited_fecha
+        ? (() => {
+            const [year, month, day] = row.edited_fecha.split("-").map(Number);
+            return new Date(year, month - 1, day);
+          })()
+        : undefined,
       editedHoraInicio: row.edited_hora_inicio,
       editedHoraFin: row.edited_hora_fin,
       editedRazon: row.edited_razon,

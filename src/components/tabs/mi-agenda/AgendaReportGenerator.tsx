@@ -212,7 +212,7 @@ export function AgendaReportGenerator({
         <div
           className={`p-4 rounded-lg mb-6 ${
             message.type === "success"
-              ? "bg-teal/20 border border-teal/40 text-teal"
+              ? "bg-green-500/20 border border-green-500/40 text-green-500"
               : "bg-red-500/20 border border-red-500/40 text-red-400"
           }`}
         >

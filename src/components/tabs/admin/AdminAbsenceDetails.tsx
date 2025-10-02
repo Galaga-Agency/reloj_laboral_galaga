@@ -148,7 +148,11 @@ export function AdminAbsenceDetails({
 
               <div className="mb-4">
                 <p className="text-white/60 text-xs mb-1">Motivo</p>
-                <p className="text-white text-sm">{absence.razon}</p>
+                <p className="text-white text-sm">
+                  {AbsenceStatisticsCalculator.getReasonLabel(
+                    absence.razon
+                  )}
+                </p>
               </div>
 
               {absence.comentarios && (

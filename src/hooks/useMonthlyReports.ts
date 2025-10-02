@@ -35,8 +35,6 @@ export function useMonthlyReports(
       setIsLoading(true);
       setError(null);
 
-      await MonthlyReportsService.generateMissingReportsForUser(usuario);
-
       const status = await MonthlyReportsService.getCurrentMonthReportStatus(
         usuario.id
       );

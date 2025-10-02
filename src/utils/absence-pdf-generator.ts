@@ -33,14 +33,14 @@ export class AbsencePDFGenerator {
     let y = this.MARGIN;
 
     y = this.addReportHeader(doc, usuario, startDate, endDate, y);
-    y = this.addReportSummary(doc, realAbsences, scheduledDaysOff, y);
+    y = this.addReportSummary(doc, absences, realAbsences, scheduledDaysOff, y);
 
     if (scheduledDaysOff.length > 0) {
       y = this.addScheduledDaysOffSection(doc, scheduledDaysOff, y);
     }
 
-    if (realAbsences.length > 0) {
-      y = this.addAbsencesTable(doc, realAbsences, y);
+    if (absences.length > 0) {
+      y = this.addAbsencesTable(doc, absences, y);
     }
 
     this.addFooters(doc);
@@ -73,6 +73,7 @@ export class AbsencePDFGenerator {
       realAbsences,
       userHoursMap
     );
+    (stats as any).rawAbsences = [...realAbsences, ...scheduledDaysOff];
 
     const doc = new jsPDF();
     let y = this.MARGIN;
@@ -81,7 +82,7 @@ export class AbsencePDFGenerator {
     y = this.addCompanyReportSummary(doc, stats, scheduledDaysOff.length, y);
     y = this.addCompanyReasonStatistics(doc, stats, y);
     y = this.addCompanyTypeStatistics(doc, stats, y);
-    y = this.addCompanyAbsencesByUser(doc, realAbsences, users, y);
+    y = this.addCompanyAbsencesByUser(doc, absences, users, y);
 
     this.addFooters(doc);
     doc.save(this.generateCompanyReportFilename(startDate, endDate));
@@ -127,23 +128,30 @@ export class AbsencePDFGenerator {
 
   private static addReportSummary(
     doc: jsPDF,
+    allAbsences: Absence[],
     realAbsences: Absence[],
     scheduledDaysOff: Absence[],
     y: number
   ): number {
-    const totalMinutes = realAbsences.reduce(
+    const uniqueRealAbsencesArr = Array.from(
+      new Map(realAbsences.map((a) => [a.id, a])).values()
+    );
+
+    const totalAbsences = uniqueRealAbsencesArr.length;
+    const totalMinutes = uniqueRealAbsencesArr.reduce(
       (sum, a) => sum + a.duracionMinutos,
       0
     );
     const totalHours = Math.round((totalMinutes / 60) * 10) / 10;
-    const pendingCount = realAbsences.filter(
-      (a) => a.estado === "pendiente"
-    ).length;
-    const approvedCount = realAbsences.filter(
+
+    const approvedCount = uniqueRealAbsencesArr.filter(
       (a) => a.estado === "aprobada"
     ).length;
-    const rejectedCount = realAbsences.filter(
+    const rejectedCount = uniqueRealAbsencesArr.filter(
       (a) => a.estado === "rechazada"
+    ).length;
+    const pendingCount = uniqueRealAbsencesArr.filter(
+      (a) => a.estado === "pendiente"
     ).length;
 
     doc.setFillColor(240, 240, 240);
@@ -157,7 +165,7 @@ export class AbsencePDFGenerator {
 
     doc.setFont("helvetica", "normal");
     doc.setFontSize(10);
-    doc.text(`Total ausencias: ${realAbsences.length}`, 20, y + 15);
+    doc.text(`Total ausencias: ${totalAbsences}`, 20, y + 15);
     doc.text(`Horas totales perdidas: ${totalHours}h`, 75, y + 15);
     doc.text(`Pendientes: ${pendingCount}`, 20, y + 22);
     doc.text(`Aprobadas: ${approvedCount}`, 75, y + 22);
@@ -172,6 +180,8 @@ export class AbsencePDFGenerator {
     scheduledDaysOff: Absence[],
     y: number
   ): number {
+    if (scheduledDaysOff.length === 0) return y;
+
     if (y + 40 > 282) {
       doc.addPage();
       y = this.MARGIN;
@@ -188,28 +198,38 @@ export class AbsencePDFGenerator {
 
     y += 12;
 
-    const allDates = scheduledDaysOff.flatMap((a) => a.fechas);
-    const sortedDays = allDates.sort((a, b) => a.getTime() - b.getTime());
-
-    sortedDays.forEach((day, index) => {
+    scheduledDaysOff.forEach((absence, index) => {
       if (y + 8 > 282) {
         doc.addPage();
         y = this.MARGIN;
       }
-
       if (index % 2 === 0) {
         doc.setFillColor(245, 250, 255);
         doc.rect(this.MARGIN, y, 180, 6, "F");
       }
-
       doc.setFont("helvetica", "normal");
       doc.setFontSize(9);
+
+      const dateText =
+        absence.fechas.length > 1
+          ? `${format(absence.fechas[0], "dd/MM/yyyy", {
+              locale: es,
+            })} - ${format(
+              absence.fechas[absence.fechas.length - 1],
+              "dd/MM/yyyy",
+              { locale: es }
+            )} (${absence.fechas.length} días)`
+          : format(absence.fechas[0], "EEEE, dd 'de' MMMM yyyy", {
+              locale: es,
+            });
+
       doc.text(
-        format(day, "EEEE, dd 'de' MMMM yyyy", { locale: es }),
+        `${dateText} - ${absence.razon} - ${this.getEstadoShortLabel(
+          absence.estado
+        )}`,
         17,
         y + 4
       );
-
       y += 6;
     });
 
@@ -258,7 +278,6 @@ export class AbsencePDFGenerator {
         doc.addPage();
         y = this.MARGIN;
       }
-
       if (i % 2 === 0) {
         doc.setFillColor(250, 250, 250);
         doc.rect(this.MARGIN, y, 180, 8, "F");
@@ -273,22 +292,22 @@ export class AbsencePDFGenerator {
 
       x = 17;
       doc.text(format(absence.fecha, "dd/MM/yyyy", { locale: es }), x, y + 5.5);
-
       x += 30;
-      const tipoLabel = this.getAbsenceTypeShortLabel(absence.tipoAusencia);
-      doc.text(tipoLabel, x, y + 5.5);
-
+      doc.text(this.getAbsenceTypeShortLabel(absence.tipoAusencia), x, y + 5.5);
       x += 45;
       doc.text(`${absence.horaInicio} - ${absence.horaFin}`, x, y + 5.5);
-
       x += 35;
-      const hours = Math.floor(absence.duracionMinutos / 60);
-      const minutes = absence.duracionMinutos % 60;
-      doc.text(`${hours}h ${minutes}m`, x, y + 5.5);
+
+      if (absence.tipoAusencia === "dia_libre") {
+        doc.text("-", x, y + 5.5);
+      } else {
+        const hours = Math.floor(absence.duracionMinutos / 60);
+        const minutes = absence.duracionMinutos % 60;
+        doc.text(`${hours}h ${minutes}m`, x, y + 5.5);
+      }
 
       x += 30;
-      const estadoLabel = this.getEstadoShortLabel(absence.estado);
-      doc.text(estadoLabel, x, y + 5.5);
+      doc.text(this.getEstadoShortLabel(absence.estado), x, y + 5.5);
 
       y += 8;
     }
@@ -346,7 +365,12 @@ export class AbsencePDFGenerator {
 
     doc.setFont("helvetica", "normal");
     doc.setFontSize(10);
-    doc.text(`Total de ausencias: ${stats.totalAbsences}`, 20, y + 15);
+
+    const uniqueAbsencesArr = Array.from(
+      new Map((stats as any).rawAbsences.map((a: any) => [a.id, a])).values()
+    );
+
+    doc.text(`Total de ausencias: ${uniqueAbsencesArr.length}`, 20, y + 15);
     doc.text(`Empleados afectados: ${stats.affectedUsers}`, 75, y + 15);
     doc.text(`Horas perdidas: ${stats.totalHoursMissed}h`, 135, y + 15);
 
@@ -359,9 +383,19 @@ export class AbsencePDFGenerator {
       y + 22
     );
 
-    doc.text(`Pendientes: ${stats.pendingCount}`, 20, y + 29);
-    doc.text(`Aprobadas: ${stats.approvedCount}`, 75, y + 29);
-    doc.text(`Rechazadas: ${stats.rejectedCount}`, 135, y + 29);
+    const approvedCount = uniqueAbsencesArr.filter(
+      (a: any) => a.estado === "aprobada"
+    ).length;
+    const rejectedCount = uniqueAbsencesArr.filter(
+      (a: any) => a.estado === "rechazada"
+    ).length;
+    const pendingCount = uniqueAbsencesArr.filter(
+      (a: any) => a.estado === "pendiente"
+    ).length;
+
+    doc.text(`Pendientes: ${pendingCount}`, 20, y + 29);
+    doc.text(`Aprobadas: ${approvedCount}`, 75, y + 29);
+    doc.text(`Rechazadas: ${rejectedCount}`, 135, y + 29);
 
     doc.text(`Días libres programados: ${scheduledDaysOffCount}`, 20, y + 36);
 
@@ -409,12 +443,10 @@ export class AbsencePDFGenerator {
         doc.addPage();
         y = this.MARGIN;
       }
-
       if (index % 2 === 0) {
         doc.setFillColor(250, 250, 250);
         doc.rect(this.MARGIN, y, 180, 8, "F");
       }
-
       doc.setFont("helvetica", "normal");
       doc.setFontSize(9);
 
@@ -480,7 +512,6 @@ export class AbsencePDFGenerator {
         doc.addPage();
         y = this.MARGIN;
       }
-
       if (index % 2 === 0) {
         doc.setFillColor(250, 250, 250);
         doc.rect(this.MARGIN, y, 180, 8, "F");
@@ -564,11 +595,12 @@ export class AbsencePDFGenerator {
       }
 
       const user = users.find((u) => u.id === userId);
-      const totalMinutes = userAbsences.reduce(
-        (sum, a) => sum + a.duracionMinutos,
-        0
-      );
+
+      const totalMinutes = userAbsences
+        .filter((a) => a.tipoAusencia !== "dia_libre")
+        .reduce((sum, a) => sum + a.duracionMinutos, 0);
       const totalHours = Math.round((totalMinutes / 60) * 10) / 10;
+
       const pending = userAbsences.filter(
         (a) => a.estado === "pendiente"
       ).length;

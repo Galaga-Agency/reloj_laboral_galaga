@@ -46,11 +46,16 @@ export function AdminAbsenceStatistics() {
   );
 
   const stats = useMemo(() => {
-    const filteredAbsences = absences.filter((a) =>
-      a.fechas.some(
+    // keep all absences, but only keep the fechas inside the date range
+    const normalized = absences.map((a) => ({
+      ...a,
+      fechas: a.fechas.filter(
         (f) => new Date(f) >= dateRange.start && new Date(f) <= dateRange.end
-      )
-    );
+      ),
+    }));
+
+    // drop only the ones that have 0 fechas in range
+    const filteredAbsences = normalized.filter((a) => a.fechas.length > 0);
 
     if (filteredAbsences.length === 0) return null;
 
@@ -273,7 +278,7 @@ export function AdminAbsenceStatistics() {
             </div>
           </div>
 
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mt-6 pt-6 border-t border-white/20">
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 mt-6 pt-6 border-t border-white/20">
             <div className="text-center">
               <p className="text-yellow-400 font-bold text-lg">
                 {stats.pendingCount}
@@ -291,12 +296,6 @@ export function AdminAbsenceStatistics() {
                 {stats.rejectedCount}
               </p>
               <p className="text-white/60 text-xs">Rechazadas</p>
-            </div>
-            <div className="text-center">
-              <p className="text-white font-bold text-lg">
-                {stats.totalDaysMissed}
-              </p>
-              <p className="text-white/60 text-xs">Días Completos</p>
             </div>
           </div>
         </>

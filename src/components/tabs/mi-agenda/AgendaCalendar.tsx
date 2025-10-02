@@ -10,6 +10,7 @@ import {
 import { es } from "date-fns/locale";
 import type { Absence } from "@/types";
 import type { TeleworkingSchedule } from "@/types/teleworking";
+import { AbsenceStatisticsCalculator } from "@/utils/absence-statistics";
 
 interface AgendaCalendarProps {
   absences: Absence[];
@@ -195,7 +196,9 @@ export function AgendaCalendar({
                         : "Ausencia"}
                     </div>
                     <div className="text-white/60 text-xs md:text-sm mt-1">
-                      {absence.razon}
+                      {AbsenceStatisticsCalculator.getReasonLabel(
+                        absence.razon
+                      )}
                     </div>
                     {absence.tipoAusencia !== "dia_libre" && (
                       <div className="text-white/50 text-xs mt-1">
@@ -222,20 +225,29 @@ export function AgendaCalendar({
           {getTeleworkForDate(selectedDate).map((schedule) => (
             <div
               key={schedule.id}
-              className="p-2.5 md:p-3 bg-white/5 rounded-lg border border-white/10"
+              className="p-2.5 md:p-3 bg-white/5 rounded-lg border border-white/10 flex justify-between items-center"
             >
               <div className="flex items-center gap-2">
                 {schedule.location === "remote" ? (
-                  <FiHome className="w-3.5 h-3.5 md:w-4 md:h-4 text-blue-400" />
+                  <FiHome className="text-blue-400" />
                 ) : (
-                  <FiBriefcase className="w-3.5 h-3.5 md:w-4 md:h-4 text-green-400" />
+                  <FiBriefcase className="text-green-400" />
                 )}
-                <div>
-                  <div className="text-white font-medium text-sm md:text-base">
-                    {schedule.location === "remote" ? "Teletrabajo" : "Oficina"}
-                  </div>
+                <div className="text-white">
+                  {schedule.location === "remote" ? "Teletrabajo" : "Oficina"}
                 </div>
               </div>
+              <span
+                className={`px-2 py-1 rounded-full text-xs ${
+                  schedule.estado === "aprobada"
+                    ? "bg-green-500/20 text-green-400"
+                    : schedule.estado === "pendiente"
+                    ? "bg-yellow-500/20 text-yellow-400"
+                    : "bg-red-500/20 text-red-400"
+                }`}
+              >
+                {schedule.estado}
+              </span>
             </div>
           ))}
 

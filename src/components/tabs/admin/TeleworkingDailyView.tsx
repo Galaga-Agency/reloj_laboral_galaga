@@ -48,8 +48,8 @@ export function TeleworkingDailyView({
       await deleteSchedule(pendingDeleteId);
       await loadDailyView();
       await refreshSchedules(
-        selectedDate.getFullYear(),
-        selectedDate.getMonth() + 1
+        new Date(selectedDate.getFullYear(), 0, 1),
+        new Date(selectedDate.getFullYear(), 11, 31)
       );
     }
     setConfirmOpen(false);

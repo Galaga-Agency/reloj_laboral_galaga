@@ -30,7 +30,9 @@ export function AdminAbsenceWorkerList() {
   const [isLoadingUsers, setIsLoadingUsers] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedUser, setSelectedUser] = useState<Usuario | null>(null);
-  const [generatingReportFor, setGeneratingReportFor] = useState<string | null>(null);
+  const [generatingReportFor, setGeneratingReportFor] = useState<string | null>(
+    null
+  );
   const [generatingCompanyReport, setGeneratingCompanyReport] = useState(false);
   const [message, setMessage] = useState<{
     type: "success" | "error";
@@ -45,7 +47,7 @@ export function AdminAbsenceWorkerList() {
   const [showCalendar, setShowCalendar] = useState(false);
   const calendarTriggerRef = useRef<HTMLButtonElement>(null);
 
-  const { absences, isLoading } = useAbsences();
+  const { absences, isLoading, refreshAbsences } = useAbsences();
 
   const datePresets = [
     { value: "current_month", label: "Mes Actual" },
@@ -56,6 +58,9 @@ export function AdminAbsenceWorkerList() {
   ];
 
   const dateRange = getDateRangeFromPreset(selectedPreset, customDateRange);
+
+  console.log("[AdminAbsenceWorkerList] current dateRange:", dateRange);
+  console.log("[AdminAbsenceWorkerList] absences from context:", absences);
 
   useEffect(() => {
     loadUsers();
@@ -80,15 +85,20 @@ export function AdminAbsenceWorkerList() {
   );
 
   const userAbsences = selectedUser
-    ? absences.filter(
-        (a) =>
-          a.usuarioId === selectedUser.id &&
-          a.fechas.some(
-            (f) =>
-              new Date(f) >= dateRange.start && new Date(f) <= dateRange.end
-          )
-      )
+    ? absences.filter((a) => a.usuarioId === selectedUser.id)
     : [];
+
+  console.log("[DEBUG] ALL absences from context:", absences);
+  console.log(
+    "[DEBUG] absences with dia_libre:",
+    absences.filter((a) => a.tipoAusencia === "dia_libre")
+  );
+  console.log("[DEBUG] selectedUser:", selectedUser);
+  console.log("[DEBUG] userAbsences:", userAbsences);
+  console.log(
+    "[DEBUG] userAbsences with dia_libre:",
+    userAbsences.filter((a) => a.tipoAusencia === "dia_libre")
+  );
 
   const handleCalendarSelect = (dates: string[]) => {
     if (dates.length > 0) {
@@ -174,7 +184,11 @@ export function AdminAbsenceWorkerList() {
   const getUserAbsenceStats = () => {
     if (userAbsences.length === 0) return null;
 
-    const totalMinutes = userAbsences.reduce(
+    const realAbsences = userAbsences.filter(
+      (a) => a.tipoAusencia !== "dia_libre"
+    );
+
+    const totalMinutes = realAbsences.reduce(
       (sum, a) => sum + a.duracionMinutos,
       0
     );
@@ -410,18 +424,33 @@ export function AdminAbsenceWorkerList() {
                           <div className="flex items-start justify-between mb-3">
                             <div>
                               <p className="text-white font-medium">
-                                {format(
-                                  new Date(absence.fechas[0]),
-                                  "dd/MM/yyyy EEEE",
-                                  { locale: es }
-                                )}
+                                {absence.fechas.length > 1
+                                  ? `${format(
+                                      new Date(absence.fechas[0]),
+                                      "dd/MM/yyyy",
+                                      { locale: es }
+                                    )} - ${format(
+                                      new Date(
+                                        absence.fechas[
+                                          absence.fechas.length - 1
+                                        ]
+                                      ),
+                                      "dd/MM/yyyy",
+                                      { locale: es }
+                                    )} (${absence.fechas.length} días)`
+                                  : format(
+                                      new Date(absence.fechas[0]),
+                                      "dd/MM/yyyy EEEE",
+                                      { locale: es }
+                                    )}
                               </p>
                               <p className="text-white/60 text-sm">
                                 {AbsenceStatisticsCalculator.getTypeLabel(
                                   absence.tipoAusencia
                                 )}
                               </p>
-                            </div><span
+                            </div>
+                            <span
                               className={`px-3 py-1 rounded-full text-xs font-semibold border ${
                                 absence.estado === "pendiente"
                                   ? "bg-yellow-500/20 text-yellow-300 border-yellow-500/30"
@@ -443,18 +472,20 @@ export function AdminAbsenceWorkerList() {
                               {absence.horaInicio} - {absence.horaFin}
                             </span>
                           </div>
-                          <div className="pt-2 border-t border-white/10">
-                            <p className="text-white/60 text-xs mb-1">
-                              Motivo:
-                            </p>
-                            <p className="text-white text-sm">
-                              {absence.razon}
-                            </p>
-                          </div>
+                          {absence.tipoAusencia !== "dia_libre" && (
+                            <div className="pt-2 border-t border-white/10">
+                              <p className="text-white/60 text-xs mb-1">
+                                Motivo:
+                              </p>
+                              <p className="text-white text-sm">
+                                {absence.razon}
+                              </p>
+                            </div>
+                          )}
                           {absence.adjuntoUrl && (
                             <div className="pt-2 border-t border-white/10 mt-2">
-                              
-                              <a  href={absence.adjuntoUrl}
+                              <a
+                                href={absence.adjuntoUrl}
                                 target="_blank"
                                 rel="noopener noreferrer"
                                 className="flex items-center gap-2 text-white hover:text-white/80 text-sm transition-colors"

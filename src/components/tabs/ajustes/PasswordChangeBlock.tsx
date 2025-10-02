@@ -3,7 +3,7 @@ import { supabase } from "@/lib/supabase";
 import { CustomInput } from "@/components/ui/CustomInput";
 import { FiKey } from "react-icons/fi";
 import SecondaryButton from "@/components/ui/SecondaryButton";
-import PrimaryButton from "./ui/PrimaryButton";
+import PrimaryButton from "@/components/ui/PrimaryButton";
 
 interface PasswordChangeBlockProps {
   onMessage: (message: { type: "success" | "error"; text: string }) => void;

@@ -1,4 +1,5 @@
 export type TeleworkingLocation = "office" | "remote";
+export type TeleworkStatus = "pendiente" | "aprobada" | "rechazada";
 
 export interface TeleworkingSchedule {
   id: string;
@@ -7,9 +8,12 @@ export interface TeleworkingSchedule {
   location: TeleworkingLocation;
   createdBy: string;
   createdByName: string;
+  notes?: string | null;
+  estado: TeleworkStatus;
+  aprobadoPor?: string | null;
+  fechaAprobacion?: Date | null;
   createdAt: Date;
   updatedAt: Date;
-  notes?: string;
 }
 
 export interface DailyTeleworkingView {

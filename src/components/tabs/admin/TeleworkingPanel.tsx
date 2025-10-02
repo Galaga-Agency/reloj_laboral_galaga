@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useTeleworking } from "@/contexts/TeleworkingContext";
 import type { Usuario } from "@/types";
 import { format } from "date-fns";
@@ -7,6 +7,8 @@ import { FiCalendar } from "react-icons/fi";
 import { TeleworkingCalendar } from "./TeleworkingCalendar";
 import { TeleworkingDailyView } from "./TeleworkingDailyView";
 import { TeleworkingScheduleModal } from "../../modals/TeleworkingScheduleModal";
+import { PendingTeleworkRequests } from "./PendingTeleworkRequests";
+import { supabase } from "@/lib/supabase";
 
 interface TeleworkingPanelProps {
   currentAdmin: Usuario;
@@ -17,8 +19,32 @@ export function TeleworkingPanel({ currentAdmin }: TeleworkingPanelProps) {
   const [showScheduleModal, setShowScheduleModal] = useState(false);
   const [selectedUser, setSelectedUser] = useState<Usuario | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [allUsers, setAllUsers] = useState<Usuario[]>([]);
 
   const { refreshSchedules } = useTeleworking();
+
+  useEffect(() => {
+    loadUsers();
+    const now = new Date();
+    refreshSchedules(
+      new Date(now.getFullYear(), 0, 1),
+      new Date(now.getFullYear(), 11, 31)
+    );
+  }, []);
+
+  const loadUsers = async () => {
+    const { data, error } = await supabase
+      .from("usuarios")
+      .select("*")
+      .eq("is_active", true)
+      .order("nombre", { ascending: true });
+
+    if (error) {
+      console.error("Error loading users:", error);
+    } else {
+      setAllUsers(data || []);
+    }
+  };
 
   const handleScheduleUser = (user?: Usuario) => {
     setSelectedUser(user || null);
@@ -29,13 +55,20 @@ export function TeleworkingPanel({ currentAdmin }: TeleworkingPanelProps) {
     setShowScheduleModal(false);
     setSelectedUser(null);
     await refreshSchedules(
-      selectedDate.getFullYear(),
-      selectedDate.getMonth() + 1
+      new Date(selectedDate.getFullYear(), 0, 1),
+      new Date(selectedDate.getFullYear(), 11, 31)
     );
   };
 
   return (
     <div className="space-y-6">
+      {currentAdmin.isAdmin && (
+        <PendingTeleworkRequests
+          currentAdmin={currentAdmin}
+          allUsers={allUsers}
+        />
+      )}
+
       <div className="bg-white/10 backdrop-blur-md rounded-2xl p-6 border border-white/20">
         <div className="flex items-center justify-between mb-6">
           <div className="flex items-center gap-3">

@@ -11,15 +11,15 @@ import PrimaryButton from "@/components/ui/PrimaryButton";
 import SecondaryButton from "@/components/ui/SecondaryButton";
 import type { Usuario, RegistroTiempo } from "@/types";
 
-interface PendingChangesPanelProps {
+interface PendingRecordsChangesPanelProps {
   currentAdmin: Usuario;
   onChangesProcessed: () => void;
 }
 
-export function PendingChangesPanel({
+export function PendingRecordsChangesPanel({
   currentAdmin,
   onChangesProcessed,
-}: PendingChangesPanelProps) {
+}: PendingRecordsChangesPanelProps) {
   const [pendingChanges, setPendingChanges] = useState<TimeCorrection[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);

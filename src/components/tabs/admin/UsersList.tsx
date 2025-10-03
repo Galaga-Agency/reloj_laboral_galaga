@@ -1,13 +1,11 @@
 import { useState } from "react";
 import {
-  FiUsers,
   FiPlus,
   FiEdit2,
   FiTrash2,
   FiShield,
   FiUserCheck,
   FiUserX,
-  FiRefreshCw,
 } from "react-icons/fi";
 import type { Usuario } from "@/types";
 import PrimaryButton from "@/components/ui/PrimaryButton";
@@ -141,124 +139,121 @@ export function UsersList({
 
   return (
     <>
-      <div className="bg-white/10 backdrop-blur-md rounded-2xl p-6">
-        <div className="flex items-center justify-between pb-4">
-          <div className="flex items-center gap-2">
-            <FiUsers className="w-5 h-5 text-white" />
-            <h2 className="text-xl font-semibold text-white">Usuarios</h2>
-          </div>
-          <PrimaryButton onClick={handleCreateUser} size="sm">
-            <FiPlus className="w-4 h-4" />
-            <span className="hidden md:block">Crear Usuario</span>
-          </PrimaryButton>
+      <div className="flex items-center justify-between mb-4">
+        <div className="text-white/80 text-sm">
+          {users.length} usuario{users.length !== 1 ? "s" : ""} en total
         </div>
+        <PrimaryButton onClick={handleCreateUser} size="sm">
+          <FiPlus className="w-4 h-4" />
+          <span>Crear Usuario</span>
+        </PrimaryButton>
+      </div>
 
-        <div className="flex flex-col gap-3 max-h-96 overflow-y-auto">
-          {isLoading ? (
-            <div className="flex flex-col gap-4 items-center justify-center py-12">
-              <FiRefreshCw className="w-8 h-8 mx-auto animate-spin text-white/50" />
-              <div className="text-white">Cargando usuarios...</div>
-            </div>
-          ) : (
-            users.map((user) => (
-              <div
-                key={user.id}
-                className={`w-[120vw] md:w-full p-4 rounded-lg border cursor-pointer transition-all duration-200 ${
-                  !user.isActive
-                    ? "opacity-50 bg-gray-500/10 border-gray-500/20 blur-[0.5px]"
-                    : selectedUser?.id === user.id
-                    ? "bg-white/20 border-white/30"
-                    : "bg-white/5 border-white/10 hover:bg-white/10"
-                }`}
-                onClick={() => onUserSelect(user)}
-              >
-                <div className="flex items-center justify-between">
-                  <div>
-                    <div className="flex items-center gap-2">
-                      <span
-                        className={`font-medium ${
-                          !user.isActive
-                            ? "text-white/60 line-through"
-                            : "text-white"
-                        }`}
-                      >
-                        {user.nombre}
-                      </span>
-                      {user.isAdmin && (
-                        <FiShield
-                          className="w-4 h-4 text-yellow-400 flex-shrink-0"
-                          title="Administrador"
-                        />
-                      )}
-                      {!user.isActive && (
-                        <span className="text-xs bg-gray-500/20 text-gray-300 px-2 py-1 rounded-full">
-                          Inactivo
-                        </span>
-                      )}
-                    </div>
-                    <div
-                      className={`text-sm ${
-                        !user.isActive ? "text-white/50" : "text-white/70"
-                      }`}
-                    >
-                      {user.email}
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        handleToggleUserStatus(user);
-                      }}
-                      disabled={user.id === currentUser.id}
-                      className={`p-1 rounded transition-colors ${
-                        user.id === currentUser.id
-                          ? "text-gray-400 cursor-not-allowed"
-                          : user.isActive
-                          ? "p-1 text-white hover:text-white/70 hover:bg-blue-500/10 rounded cursor-pointer"
-                          : "p-1 text-white hover:text-white/70 hover:bg-blue-500/10 rounded cursor-pointer"
-                      }`}
-                      title={
-                        user.isActive ? "Desactivar usuario" : "Activar usuario"
-                      }
-                    >
-                      {user.isActive ? (
-                        <FiUserCheck className="w-4 h-4" />
-                      ) : (
-                        <FiUserX className="w-4 h-4" />
-                      )}
-                    </button>
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        handleEditUser(user);
-                      }}
-                      className="p-1 text-white hover:text-white/70 hover:bg-blue-500/10 rounded cursor-pointer"
-                      title="Editar usuario"
-                    >
-                      <FiEdit2 className="w-4 h-4" />
-                    </button>
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        handleDeleteUser(user.id, user.nombre);
-                      }}
-                      disabled={user.id === currentUser.id}
-                      className={`p-1 rounded transition-colors ${
-                        user.id === currentUser.id
-                          ? "text-gray-400 cursor-not-allowed"
-                          : "text-red-400 cursor-pointer hover:text-red-300 hover:bg-red-500/10"
-                      }`}
-                      title="Eliminar usuario"
-                    >
-                      <FiTrash2 className="w-4 h-4" />
-                    </button>
-                  </div>
+      <div className="flex flex-col gap-3 max-h-[600px] overflow-y-auto">
+        {users.map((user) => (
+          <div
+            key={user.id}
+            className={`group w-[120vw] md:w-full p-4 rounded-xl border transition-all duration-200 ${
+              !user.isActive
+                ? "opacity-60 bg-gray-500/10 border-gray-500/20"
+                : "bg-white/5 border-white/10 hover:bg-white/10 hover:border-white/20"
+            }`}
+          >
+            <div className="flex items-start justify-between gap-4">
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-2 mb-1">
+                  <span
+                    className={`font-semibold text-base truncate ${
+                      !user.isActive
+                        ? "text-white/50 line-through"
+                        : "text-white"
+                    }`}
+                  >
+                    {user.nombre}
+                  </span>
+                  {user.isAdmin && (
+                    <FiShield
+                      className="w-4 h-4 text-yellow-400 flex-shrink-0"
+                      title="Administrador"
+                    />
+                  )}
+                  {!user.isActive && (
+                    <span className="text-xs bg-red-500/20 text-red-300 px-2 py-0.5 rounded font-medium">
+                      Inactivo
+                    </span>
+                  )}
+                </div>
+                <div
+                  className={`text-sm truncate ${
+                    !user.isActive ? "text-white/40" : "text-white/60"
+                  }`}
+                >
+                  {user.email}
                 </div>
               </div>
-            ))
-          )}
-        </div>
+
+              <div className="flex items-center gap-1 flex-shrink-0">
+                <button
+                  onClick={() => handleToggleUserStatus(user)}
+                  disabled={user.id === currentUser.id}
+                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all whitespace-nowrap ${
+                    user.id === currentUser.id
+                      ? "bg-white/5 text-white/30 cursor-not-allowed"
+                      : user.isActive
+                      ? "text-orange-300 hover:bg-orange-500/10"
+                      : "text-green-300 hover:bg-green-500/10"
+                  }`}
+                  title={
+                    user.id === currentUser.id
+                      ? "No puedes modificar tu propia cuenta"
+                      : user.isActive
+                      ? "Desactivar usuario"
+                      : "Activar usuario"
+                  }
+                >
+                  {user.isActive ? (
+                    <>
+                      <FiUserX className="w-3.5 h-3.5" />
+                      <span className="hidden sm:inline">Desactivar</span>
+                    </>
+                  ) : (
+                    <>
+                      <FiUserCheck className="w-3.5 h-3.5" />
+                      <span className="hidden sm:inline">Activar</span>
+                    </>
+                  )}
+                </button>
+
+                <button
+                  onClick={() => handleEditUser(user)}
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium text-blue-300 hover:bg-blue-500/10 transition-all whitespace-nowrap"
+                  title="Editar usuario"
+                >
+                  <FiEdit2 className="w-3.5 h-3.5" />
+                  <span className="hidden sm:inline">Editar</span>
+                </button>
+
+                <button
+                  onClick={() => handleDeleteUser(user.id, user.nombre)}
+                  disabled={user.id === currentUser.id}
+                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all whitespace-nowrap ${
+                    user.id === currentUser.id
+                      ? "bg-white/5 text-white/30 cursor-not-allowed"
+                      : "text-red-300 hover:bg-red-500/10"
+                  }`}
+                  title={
+                    user.id === currentUser.id
+                      ? "No puedes eliminar tu propia cuenta"
+                      : "Eliminar usuario"
+                  }
+                >
+                  <FiTrash2 className="w-3.5 h-3.5" />
+                  <span className="hidden sm:inline">Eliminar</span>
+                </button>
+              </div>
+            </div>
+          </div>
+        ))}
       </div>
 
       <UserFormModal

@@ -72,13 +72,16 @@ export class TeleworkingService {
   }
 
   static async getSchedulesInRange(start: Date, end: Date) {
-    const response = await fetch(
-      `/api/teleworking?s=${start.toISOString()}&e=${end.toISOString()}`
-    );
-    if (!response.ok) {
-      throw new Error("Error fetching teleworking schedules");
-    }
-    return response.json();
+    const { data, error } = await supabase
+      .from("teleworking_schedules")
+      .select("*")
+      .gte("fecha", format(start, "yyyy-MM-dd"))
+      .lte("fecha", format(end, "yyyy-MM-dd"))
+      .order("fecha", { ascending: true });
+
+    if (error) throw error;
+
+    return (data || []).map(this.mapToSchedule);
   }
 
   static async getSchedulesForMonth(

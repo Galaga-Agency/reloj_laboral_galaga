@@ -10,6 +10,7 @@ import {
   type TimeCorrection,
 } from "@/services/time-corrections-service";
 import type { TimeRange } from "@/services/admin-service";
+import { createPortal } from "react-dom";
 
 interface UserRecordsListProps {
   selectedUser: Usuario | null;
@@ -110,7 +111,7 @@ export function UserRecordsList({
 
   return (
     <>
-      <div className="bg-white/10 backdrop-blur-md rounded-2xl p-6">
+      <div className=" backdrop-blur-md rounded-2xl p-6">
         <div className="flex flex-col md:flex-row md:items-center gap-4 justify-between pb-4">
           <div className="flex items-center gap-2">
             <FiClock className="w-5 h-5 text-white flex-shrink-0" />
@@ -272,17 +273,21 @@ export function UserRecordsList({
         )}
       </div>
 
-      <TimeRecordCorrectionModal
-        isOpen={showCorrectionModal}
-        onClose={() => {
-          setShowCorrectionModal(false);
-          setSelectedRecord(null);
-        }}
-        record={selectedRecord}
-        user={selectedUser}
-        currentUser={currentAdmin}
-        onSuccess={handleCorrectionSuccess}
-      />
+      {showCorrectionModal &&
+        createPortal(
+          <TimeRecordCorrectionModal
+            isOpen={showCorrectionModal}
+            onClose={() => {
+              setShowCorrectionModal(false);
+              setSelectedRecord(null);
+            }}
+            record={selectedRecord}
+            user={selectedUser}
+            currentUser={currentAdmin}
+            onSuccess={handleCorrectionSuccess}
+          />,
+          document.body
+        )}
     </>
   );
 }

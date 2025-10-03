@@ -1,7 +1,5 @@
-"use client";
-
-import { useState, useEffect } from "react";
-import { supabase } from "@/lib/supabase";
+import { useMemo, useState } from "react";
+import { useTeleworking } from "@/contexts/TeleworkingContext";
 import type { TeleworkingSchedule } from "@/types/teleworking";
 import type { Usuario } from "@/types";
 import { format, isEqual, addDays } from "date-fns";
@@ -12,6 +10,7 @@ import { ConfirmModal } from "@/components/modals/ConfirmModal";
 interface PendingTeleworkRequestsProps {
   currentAdmin: Usuario;
   allUsers: Usuario[];
+  onRequestsChanged?: () => Promise<void>;
 }
 
 interface GroupedRequest {
@@ -28,78 +27,33 @@ interface GroupedRequest {
 export function PendingTeleworkRequests({
   currentAdmin,
   allUsers,
+  onRequestsChanged,
 }: PendingTeleworkRequestsProps) {
-  const [pendingRequests, setPendingRequests] = useState<GroupedRequest[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+  const {
+    schedules: allSchedules,
+    approveSchedule,
+    rejectSchedule,
+  } = useTeleworking();
   const [confirmAction, setConfirmAction] = useState<{
     type: "approve" | "reject";
     ids: string[];
   } | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
 
-  const loadPendingRequests = async () => {
-    setIsLoading(true);
-    try {
-      const { data, error } = await supabase
-        .from("teleworking_schedules")
-        .select("*")
-        .eq("estado", "pendiente")
-        .order("fecha", { ascending: true });
-
-      if (error) throw error;
-
-      const schedules: TeleworkingSchedule[] = (data || []).map((d: any) => ({
-        id: d.id,
-        usuarioId: d.usuario_id,
-        fecha: new Date(d.fecha),
-        location: d.location,
-        createdBy: d.created_by,
-        createdByName: d.created_by_name,
-        notes: d.notes,
-        estado: d.estado,
-        aprobadoPor: d.aprobado_por ?? null,
-        fechaAprobacion: d.fecha_aprobacion
-          ? new Date(d.fecha_aprobacion)
-          : null,
-        createdAt: d.created_at ? new Date(d.created_at) : new Date(),
-        updatedAt: d.updated_at ? new Date(d.updated_at) : new Date(),
-      }));
-
-      const grouped = groupConsecutiveRequests(schedules, allUsers);
-      setPendingRequests(grouped);
-    } catch (error) {
-      console.error("Error loading pending requests:", error);
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    loadPendingRequests();
-
-    const interval = setInterval(() => {
-      loadPendingRequests();
-    }, 120000);
-
-    return () => clearInterval(interval);
-  }, [allUsers]);
+  const pendingRequests = useMemo(() => {
+    const pending = allSchedules.filter((s) => s.estado === "pendiente");
+    return groupConsecutiveRequests(pending, allUsers);
+  }, [allSchedules, allUsers]);
 
   const handleApprove = async (ids: string[]) => {
     setIsProcessing(true);
     try {
       for (const id of ids) {
-        const { error } = await supabase
-          .from("teleworking_schedules")
-          .update({
-            estado: "aprobada",
-            aprobado_por: currentAdmin.id,
-            fecha_aprobacion: new Date().toISOString(),
-          })
-          .eq("id", id);
-
-        if (error) throw error;
+        await approveSchedule(id);
       }
-      await loadPendingRequests();
+      if (onRequestsChanged) {
+        await onRequestsChanged();
+      }
     } catch (error) {
       console.error("Error approving schedule:", error);
     } finally {
@@ -112,14 +66,11 @@ export function PendingTeleworkRequests({
     setIsProcessing(true);
     try {
       for (const id of ids) {
-        const { error } = await supabase
-          .from("teleworking_schedules")
-          .delete()
-          .eq("id", id);
-
-        if (error) throw error;
+        await rejectSchedule(id);
       }
-      await loadPendingRequests();
+      if (onRequestsChanged) {
+        await onRequestsChanged();
+      }
     } catch (error) {
       console.error("Error rejecting schedule:", error);
     } finally {
@@ -127,19 +78,6 @@ export function PendingTeleworkRequests({
       setConfirmAction(null);
     }
   };
-
-  if (isLoading) {
-    return (
-      <div className="bg-white/10 backdrop-blur-md rounded-2xl p-6 border border-white/20">
-        <h3 className="text-lg font-bold text-white mb-4">
-          Solicitudes Pendientes
-        </h3>
-        <p className="text-white/50 text-sm text-center py-8">
-          Cargando solicitudes...
-        </p>
-      </div>
-    );
-  }
 
   if (pendingRequests.length === 0) {
     return (

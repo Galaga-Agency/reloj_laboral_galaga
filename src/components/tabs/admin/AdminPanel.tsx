@@ -1,16 +1,15 @@
-import { useState, useEffect } from "react";
-import { AdminService, type TimeRange } from "@/services/admin-service";
-import type { Usuario, RegistroTiempo } from "@/types";
-import { UsersList } from "@/components/tabs/admin/UsersList";
-import { UserRecordsList } from "@/components/tabs/admin/UserRecordsList";
+import { useState, useEffect, useMemo, useCallback } from "react";
+import { AdminService } from "@/services/admin-service";
+import type { Usuario } from "@/types";
 import { AdminSystemDocumentation } from "./AdminSystemDocs";
-import { AdminUserReports } from "@/components/tabs/admin/AdminUserReports";
 import { AdminAbsencesPanel } from "@/components/tabs/admin/AdminAbsencesPanel";
-import { PendingChangesPanel } from "@/components/tabs/admin/PendingChangesPanel";
 import { WorkersMonitor } from "@/components/tabs/admin/WorkersMonitor";
 import { TeleworkingPanel } from "@/components/tabs/admin/TeleworkingPanel";
+import { UsersManagement } from "@/components/tabs/admin/UsersManagement";
+import { RecordsManagement } from "@/components/tabs/admin/RecordsManagement";
 import { useSecretSequence } from "@/hooks/useSecretSequence";
 import { useAbsences } from "@/contexts/AbsenceContext";
+import { useTeleworking } from "@/contexts/TeleworkingContext";
 import { TimeCorrectionsService } from "@/services/time-corrections-service";
 import {
   FiUsers,
@@ -20,21 +19,16 @@ import {
   FiClock,
   FiTrendingUp,
   FiCalendar,
-  FiBell,
   FiActivity,
   FiHome,
+  FiUserPlus,
 } from "react-icons/fi";
 
 interface AdminPanelProps {
   currentUser: Usuario;
 }
 
-type AdminView =
-  | "users"
-  | "monitor"
-  | "absences"
-  | "pending-changes"
-  | "teleworking";
+type AdminView = "users" | "records" | "monitor" | "absences" | "teleworking";
 
 type AbsenceSubView =
   | "pending"
@@ -49,13 +43,6 @@ export function AdminPanel({ currentUser }: AdminPanelProps) {
   const [activeAbsenceSubView, setActiveAbsenceSubView] =
     useState<AbsenceSubView>("pending");
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
-  const [users, setUsers] = useState<Usuario[]>([]);
-  const [selectedUser, setSelectedUser] = useState<Usuario | null>(null);
-  const [userRecords, setUserRecords] = useState<RegistroTiempo[]>([]);
-  const [timeRange, setTimeRange] = useState<TimeRange>("past2days");
-  const [isLoading, setIsLoading] = useState(false);
-  const [isRecordsLoading, setIsRecordsLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
   const [message, setMessage] = useState<{
     type: "success" | "error";
     text: string;
@@ -63,6 +50,7 @@ export function AdminPanel({ currentUser }: AdminPanelProps) {
   const [pendingChangesCount, setPendingChangesCount] = useState(0);
 
   const { absences, refreshAbsences } = useAbsences();
+  const { schedules: teleworkSchedules, refreshSchedules } = useTeleworking();
 
   const { isUnlocked, lock } = useSecretSequence({
     sequence: ["s", "e", "c", "r", "e", "t"],
@@ -80,11 +68,35 @@ export function AdminPanel({ currentUser }: AdminPanelProps) {
     (a) => a.estado === "pendiente" && a.createdBy !== currentUser.id
   ).length;
 
-  useEffect(() => {
-    loadPendingCounts();
-  }, []);
+  const pendingTeleworkCount = useMemo(() => {
+    const pending = teleworkSchedules.filter((s) => s.estado === "pendiente");
+    if (pending.length === 0) return 0;
 
-  const loadPendingCounts = async () => {
+    const sorted = [...pending].sort(
+      (a, b) => a.fecha.getTime() - b.fecha.getTime()
+    );
+    let groups = 1;
+
+    for (let i = 1; i < sorted.length; i++) {
+      const prevDate = new Date(sorted[i - 1].fecha);
+      const currDate = new Date(sorted[i].fecha);
+      prevDate.setHours(0, 0, 0, 0);
+      currDate.setHours(0, 0, 0, 0);
+
+      const dayDiff =
+        (currDate.getTime() - prevDate.getTime()) / (1000 * 60 * 60 * 24);
+      const sameUser = sorted[i].usuarioId === sorted[i - 1].usuarioId;
+      const sameLocation = sorted[i].location === sorted[i - 1].location;
+
+      if (dayDiff !== 1 || !sameUser || !sameLocation) {
+        groups++;
+      }
+    }
+
+    return groups;
+  }, [teleworkSchedules]);
+
+  const loadPendingCounts = useCallback(async () => {
     try {
       const changesCount =
         await TimeCorrectionsService.getPendingChangesCount();
@@ -92,73 +104,11 @@ export function AdminPanel({ currentUser }: AdminPanelProps) {
     } catch (error) {
       console.error("Error loading pending counts:", error);
     }
-  };
+  }, []);
 
   useEffect(() => {
-    if (activeView === "users") {
-      loadUsers();
-    }
-  }, [activeView]);
-
-  useEffect(() => {
-    if (selectedUser) {
-      loadUserRecords(selectedUser.id, timeRange);
-    }
-  }, [selectedUser, timeRange]);
-
-  const loadUsers = async () => {
-    try {
-      setIsLoading(true);
-      setError(null);
-      const allUsers = await AdminService.getAllUsers();
-      setUsers(allUsers);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Error loading users");
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const loadUserRecords = async (userId: string, range: TimeRange) => {
-    try {
-      setIsRecordsLoading(true);
-      setError(null);
-      const records = await AdminService.getUserRecords(userId, range);
-      const sortedRecords = records.sort((a, b) => {
-        return new Date(b.fecha).getTime() - new Date(a.fecha).getTime();
-      });
-      setUserRecords(sortedRecords);
-    } catch (err) {
-      setError(
-        err instanceof Error ? err.message : "Error loading user records"
-      );
-    } finally {
-      setIsRecordsLoading(false);
-    }
-  };
-
-  const handleUserSelect = async (user: Usuario) => {
-    setSelectedUser(user);
-  };
-
-  const handleTimeRangeChange = (newRange: string) => {
-    setTimeRange(newRange as TimeRange);
-  };
-
-  const handleUsersUpdated = () => {
-    loadUsers();
-  };
-
-  const handleRecordUpdated = () => {
-    if (selectedUser) {
-      loadUserRecords(selectedUser.id, timeRange);
-    }
-  };
-
-  const handleError = (errorMessage: string) => {
-    setError(errorMessage);
-    setTimeout(() => setError(null), 5000);
-  };
+    loadPendingCounts();
+  }, [loadPendingCounts]);
 
   const handleViewChange = (view: AdminView) => {
     setActiveView(view);
@@ -173,13 +123,15 @@ export function AdminPanel({ currentUser }: AdminPanelProps) {
     setIsMobileMenuOpen(false);
   };
 
-  const handleChangesProcessed = () => {
-    loadPendingCounts();
-    refreshAbsences();
-    if (selectedUser) {
-      loadUserRecords(selectedUser.id, timeRange);
-    }
-  };
+  const handleDataChanged = useCallback(async () => {
+    await refreshAbsences();
+    const now = new Date();
+    await refreshSchedules(
+      new Date(now.getFullYear(), 0, 1),
+      new Date(now.getFullYear(), 11, 31)
+    );
+    await loadPendingCounts();
+  }, [refreshAbsences, refreshSchedules, loadPendingCounts]);
 
   const navItems = [
     {
@@ -189,13 +141,13 @@ export function AdminPanel({ currentUser }: AdminPanelProps) {
     },
     {
       id: "users" as const,
-      label: "Usuarios y Registros",
-      icon: FiUsers,
+      label: "Gestión de Usuarios",
+      icon: FiUserPlus,
     },
     {
-      id: "pending-changes" as const,
-      label: "Cambios Pendientes",
-      icon: FiBell,
+      id: "records" as const,
+      label: "Registros de Tiempo",
+      icon: FiClock,
       badge: pendingChangesCount > 0 ? pendingChangesCount : undefined,
     },
     {
@@ -208,6 +160,7 @@ export function AdminPanel({ currentUser }: AdminPanelProps) {
       id: "teleworking" as const,
       label: "Teletrabajo",
       icon: FiHome,
+      badge: pendingTeleworkCount > 0 ? pendingTeleworkCount : undefined,
     },
   ];
 
@@ -318,67 +271,35 @@ export function AdminPanel({ currentUser }: AdminPanelProps) {
       )}
 
       <main className="flex-1 min-w-0">
-        {error && (
-          <div className="bg-red-500/10 border border-red-500/20 rounded-lg p-4 text-red-300 mb-6">
-            {error}
-          </div>
-        )}
-
         {activeView === "users" ? (
-          <div className="flex flex-col gap-6">
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-              <UsersList
-                users={users}
-                selectedUser={selectedUser}
-                currentUser={currentUser}
-                onUserSelect={handleUserSelect}
-                onUsersUpdated={handleUsersUpdated}
-                onError={handleError}
-                isLoading={false}
-              />
-
-              <UserRecordsList
-                selectedUser={selectedUser}
-                userRecords={userRecords}
-                timeRange={timeRange}
-                isRecordsLoading={isRecordsLoading}
-                currentAdmin={currentUser}
-                onTimeRangeChange={handleTimeRangeChange}
-                onRecordUpdated={handleRecordUpdated}
-              />
-            </div>
-
-            {selectedUser && (
-              <AdminUserReports
-                selectedUser={selectedUser}
-                userRecords={userRecords}
-              />
-            )}
-
+          <>
+            <UsersManagement currentUser={currentUser} />
             {isUnlocked && (
-              <AdminSystemDocumentation
-                currentUser={currentUser}
-                onLock={lock}
-              />
+              <div className="mt-6">
+                <AdminSystemDocumentation
+                  currentUser={currentUser}
+                  onLock={lock}
+                />
+              </div>
             )}
-          </div>
+          </>
+        ) : activeView === "records" ? (
+          <RecordsManagement
+            currentUser={currentUser}
+            onRecordsChanged={handleDataChanged}
+          />
         ) : activeView === "monitor" ? (
           <WorkersMonitor currentAdmin={currentUser} />
-        ) : activeView === "pending-changes" ? (
-          <PendingChangesPanel
-            currentAdmin={currentUser}
-            onChangesProcessed={handleChangesProcessed}
-          />
         ) : activeView === "teleworking" ? (
-          <TeleworkingPanel currentAdmin={currentUser} />
+          <TeleworkingPanel
+            currentAdmin={currentUser}
+            onTeleworkingChanged={handleDataChanged}
+          />
         ) : (
           <AdminAbsencesPanel
             currentAdmin={currentUser}
             activeSubView={activeAbsenceSubView}
-            onAbsencesChanged={() => {
-              refreshAbsences();
-              loadPendingCounts();
-            }}
+            onAbsencesChanged={handleDataChanged}
           />
         )}
       </main>

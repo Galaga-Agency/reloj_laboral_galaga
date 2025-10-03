@@ -24,7 +24,7 @@ export function TeleworkingScheduleModal({
 }: TeleworkingScheduleModalProps) {
   const [allUsers, setAllUsers] = useState<Usuario[]>([]);
   const [selectedUserId, setSelectedUserId] = useState(user?.id || "");
-  const [location, setLocation] = useState<TeleworkingLocation>("office");
+  const [location, setLocation] = useState<TeleworkingLocation>("remote");
   const [notes, setNotes] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);

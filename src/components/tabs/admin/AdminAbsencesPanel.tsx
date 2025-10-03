@@ -1,4 +1,4 @@
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { Usuario } from "@/types";
 import { useAbsences } from "@/contexts/AbsenceContext";
 import { AdminPendingAbsences } from "./AdminPendingAbsences";
@@ -18,7 +18,7 @@ interface AdminAbsencesPanelProps {
     | "workers"
     | "holidays"
     | "days-off";
-  onAbsencesChanged?: () => void;
+  onAbsencesChanged?: () => Promise<void>;
 }
 
 export function AdminAbsencesPanel({
@@ -39,9 +39,25 @@ export function AdminAbsencesPanel({
   const handleUpdate = async () => {
     await refreshAbsences();
     if (onAbsencesChanged) {
-      onAbsencesChanged();
+      await onAbsencesChanged();
     }
   };
+
+  useEffect(() => {
+    const refMap = {
+      pending: pendingRef,
+      statistics: statisticsRef,
+      calendar: calendarRef,
+      workers: workersRef,
+      holidays: holidaysRef,
+      "days-off": daysOffRef,
+    };
+
+    const targetRef = refMap[activeSubView];
+    if (targetRef?.current) {
+      targetRef.current.scrollIntoView({ behavior: "smooth", block: "start" });
+    }
+  }, [activeSubView]);
 
   return (
     <div className="flex flex-col gap-6">

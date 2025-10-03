@@ -12,6 +12,7 @@ import { CustomInput } from "@/components/ui/CustomInput";
 import { CustomDropdown } from "@/components/ui/CustomDropdown";
 import { CustomCalendar } from "@/components/ui/CustomCalendar";
 import { ConfirmModal } from "@/components/modals/ConfirmModal";
+import { DayOffEditModal } from "@/components/modals/DayOffEditModal";
 
 interface AdminDaysOffManagerProps {
   currentAdmin: Usuario;
@@ -23,6 +24,7 @@ interface DayOff {
   usuarioNombre: string;
   fecha: string;
   razon: string;
+  dateCount: number;
 }
 
 export function AdminDaysOffManager({
@@ -72,23 +74,34 @@ export function AdminDaysOffManager({
 
   const loadDaysOff = async () => {
     try {
-      const daysOffList = absences
-        .filter((a) => a.tipoAusencia === "dia_libre")
-        .flatMap((a) =>
-          a.fechas.map((f) => ({
-            id: a.id,
-            usuarioId: a.usuarioId,
-            usuarioNombre: "",
-            fecha: format(new Date(f), "yyyy-MM-dd"),
-            razon: a.razon,
-          }))
-        );
+      const daysOffAbsences = absences.filter(
+        (a) => a.tipoAusencia === "dia_libre"
+      );
 
       const allUsers = await AdminService.getAllUsers();
       const userMap = new Map(allUsers.map((u) => [u.id, u.nombre]));
 
-      daysOffList.forEach((d) => {
-        d.usuarioNombre = userMap.get(d.usuarioId) || "Usuario desconocido";
+      const daysOffList: DayOff[] = daysOffAbsences.map((a) => {
+        const sortedDates = [...a.fechas].sort(
+          (x, y) => x.getTime() - y.getTime()
+        );
+        const startDate = sortedDates[0];
+        const endDate = sortedDates[sortedDates.length - 1];
+
+        return {
+          id: a.id,
+          usuarioId: a.usuarioId,
+          usuarioNombre: userMap.get(a.usuarioId) || "Usuario desconocido",
+          fecha:
+            sortedDates.length === 1
+              ? format(startDate, "dd/MM/yyyy")
+              : `${format(startDate, "dd/MM/yyyy")} - ${format(
+                  endDate,
+                  "dd/MM/yyyy"
+                )}`,
+          razon: a.razon,
+          dateCount: sortedDates.length,
+        };
       });
 
       setDaysOff(daysOffList);
@@ -324,9 +337,9 @@ export function AdminDaysOffManager({
                       >
                         <div>
                           <p className="text-white text-sm">
-                            {format(new Date(dayOff.fecha), "PPP", {
-                              locale: es,
-                            })}
+                            {dayOff.dateCount === 1
+                              ? dayOff.fecha
+                              : `${dayOff.fecha} (${dayOff.dateCount} días)`}
                           </p>
                           <p className="text-white/60 text-xs">
                             {dayOff.razon}
@@ -385,32 +398,45 @@ export function AdminDaysOffManager({
       />
 
       {editDayOff && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-xl p-6 w-full max-w-md">
-            <h3 className="text-lg font-semibold mb-4 flex items-center gap-2">
-              <FiEdit3 className="w-5 h-5" /> Editar Día Libre
-            </h3>
+        <DayOffEditModal
+          isOpen={editDayOff !== null}
+          onClose={() => setEditDayOff(null)}
+          onSubmit={async (updates) => {
+            if (!editDayOff) return;
 
-            <CustomInput
-              label="Motivo"
-              type="text"
-              value={editDayOff.razon}
-              onChange={(e) =>
-                setEditDayOff({ ...editDayOff, razon: e.target.value })
-              }
-              variant="lightBg"
-            />
+            setIsUpdating(true);
+            try {
+              await AbsenceService.updateAbsence(
+                editDayOff.id,
+                {
+                  fechas: updates.fechas,
+                  razon: updates.razon,
+                },
+                { id: currentAdmin.id, isAdmin: currentAdmin.isAdmin }
+              );
 
-            <div className="mt-4 flex justify-end gap-2">
-              <SecondaryButton onClick={() => setEditDayOff(null)}>
-                Cancelar
-              </SecondaryButton>
-              <PrimaryButton onClick={handleUpdateDayOff} disabled={isUpdating}>
-                {isUpdating ? "Guardando..." : "Guardar Cambios"}
-              </PrimaryButton>
-            </div>
-          </div>
-        </div>
+              setMessage({
+                type: "success",
+                text: "Día libre actualizado correctamente",
+              });
+              setTimeout(() => setMessage(null), 3000);
+
+              setEditDayOff(null);
+              await refreshAbsences();
+            } catch (error) {
+              console.error("Error updating day off:", error);
+              setMessage({
+                type: "error",
+                text: "Error al actualizar el día libre",
+              });
+              setTimeout(() => setMessage(null), 3000);
+            } finally {
+              setIsUpdating(false);
+            }
+          }}
+          isLoading={isUpdating}
+          dayOff={editDayOff}
+        />
       )}
 
       {showCalendar && (

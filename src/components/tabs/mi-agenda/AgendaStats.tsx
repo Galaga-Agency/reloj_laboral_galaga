@@ -64,22 +64,72 @@ export function AgendaStats({ absences, teleworkSchedules }: AgendaStatsProps) {
 
   const { start, end } = getDateRange();
 
-  const filteredAbsences = absences.filter((a) =>
-    a.fechas.some((f) => f >= start && f <= end)
-  );
+  console.log("[AgendaStats] timeRange:", timeRange);
+  console.log("[AgendaStats] date range:", { start, end });
+  console.log("[AgendaStats] absences received:", absences);
+  console.log("[AgendaStats] teleworkSchedules received:", teleworkSchedules);
 
-  const filteredTelework = teleworkSchedules.filter(
-    (t) => t.fecha >= start && t.fecha <= end
-  );
+  const filteredAbsences = absences.filter((a) => {
+    const hasDateInRange = a.fechas.some((f) => {
+      const fTime = f.getTime();
+      const startTime = start.getTime();
+      const endTime = end.getTime();
+      const inRange = fTime >= startTime && fTime <= endTime;
+      return inRange;
+    });
+    return hasDateInRange;
+  });
+
+  const filteredTelework = teleworkSchedules.filter((t) => {
+    const tTime = t.fecha.getTime();
+    const startTime = start.getTime();
+    const endTime = end.getTime();
+    const inRange = tTime >= startTime && tTime <= endTime;
+    return inRange;
+  });
+
+  console.log("[AgendaStats] filteredAbsences:", filteredAbsences);
+  console.log("[AgendaStats] filteredTelework:", filteredTelework);
+
+  const daysOffCount = filteredAbsences
+    .filter((a) => a.tipoAusencia === "dia_libre")
+    .reduce((count, a) => {
+      const daysInRange = a.fechas.filter((f) => {
+        const fTime = f.getTime();
+        const startTime = start.getTime();
+        const endTime = end.getTime();
+        return fTime >= startTime && fTime <= endTime;
+      }).length;
+      return count + daysInRange;
+    }, 0);
+
+  const totalAbsencesCount = filteredAbsences
+    .filter((a) => a.tipoAusencia !== "dia_libre")
+    .reduce((count, a) => {
+      const daysInRange = a.fechas.filter((f) => {
+        const fTime = f.getTime();
+        const startTime = start.getTime();
+        const endTime = end.getTime();
+        return fTime >= startTime && fTime <= endTime;
+      }).length;
+      return count + daysInRange;
+    }, 0);
+
+  const teleworkDaysCount = filteredTelework.filter(
+    (t) => t.location === "remote"
+  ).length;
+
+  console.log("[AgendaStats] calculated stats:", {
+    totalAbsences: totalAbsencesCount,
+    daysOff: daysOffCount,
+    teleworkDays: teleworkDaysCount,
+    pending: filteredAbsences.filter((a) => a.estado === "pendiente").length,
+  });
 
   const stats = {
-    totalAbsences: filteredAbsences.filter(
-      (a) => a.tipoAusencia !== "dia_libre"
-    ).length,
-    daysOff: filteredAbsences.filter((a) => a.tipoAusencia === "dia_libre")
-      .length,
-    teleworkDays: filteredTelework.filter((t) => t.location === "remote")
-      .length,
+    totalAbsences: totalAbsencesCount,
+    daysOff: daysOffCount,
+    teleworkDays: teleworkDaysCount,
     pending: filteredAbsences.filter((a) => a.estado === "pendiente").length,
   };
 

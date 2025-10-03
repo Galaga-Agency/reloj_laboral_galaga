@@ -97,7 +97,7 @@ export function AdminUserReports({
   };
 
   return (
-    <div className="bg-white/10 backdrop-blur-md rounded-2xl p-6">
+    <div className="relative bg-white/10 backdrop-blur-md rounded-2xl p-6">
       <div className="flex items-center gap-3 pb-6">
         <FiFileText className="text-xl text-white" />
         <h3 className="text-xl font-semibold text-white">

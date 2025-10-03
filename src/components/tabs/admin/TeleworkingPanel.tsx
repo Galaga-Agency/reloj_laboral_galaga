@@ -9,12 +9,17 @@ import { TeleworkingDailyView } from "./TeleworkingDailyView";
 import { TeleworkingScheduleModal } from "../../modals/TeleworkingScheduleModal";
 import { PendingTeleworkRequests } from "./PendingTeleworkRequests";
 import { supabase } from "@/lib/supabase";
+import { TeleworkingReports } from "./TeleworkingReports";
 
 interface TeleworkingPanelProps {
   currentAdmin: Usuario;
+  onTeleworkingChanged?: () => Promise<void>;
 }
 
-export function TeleworkingPanel({ currentAdmin }: TeleworkingPanelProps) {
+export function TeleworkingPanel({
+  currentAdmin,
+  onTeleworkingChanged,
+}: TeleworkingPanelProps) {
   const [selectedDate, setSelectedDate] = useState<Date>(new Date());
   const [showScheduleModal, setShowScheduleModal] = useState(false);
   const [selectedUser, setSelectedUser] = useState<Usuario | null>(null);
@@ -58,14 +63,18 @@ export function TeleworkingPanel({ currentAdmin }: TeleworkingPanelProps) {
       new Date(selectedDate.getFullYear(), 0, 1),
       new Date(selectedDate.getFullYear(), 11, 31)
     );
+    if (onTeleworkingChanged) {
+      await onTeleworkingChanged();
+    }
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 pb-36">
       {currentAdmin.isAdmin && (
         <PendingTeleworkRequests
           currentAdmin={currentAdmin}
           allUsers={allUsers}
+          onRequestsChanged={onTeleworkingChanged}
         />
       )}
 
@@ -109,6 +118,8 @@ export function TeleworkingPanel({ currentAdmin }: TeleworkingPanelProps) {
         selectedDate={selectedDate}
         onScheduleUser={handleScheduleUser}
       />
+
+      <TeleworkingReports allUsers={allUsers} currentAdmin={currentAdmin} />
 
       {showScheduleModal && (
         <TeleworkingScheduleModal

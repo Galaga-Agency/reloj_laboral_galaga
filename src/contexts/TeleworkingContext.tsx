@@ -4,6 +4,7 @@ import {
   useState,
   useEffect,
   ReactNode,
+  useCallback,
 } from "react";
 import { TeleworkingService } from "@/services/teleworking-service";
 import { useAuth } from "./AuthContext";
@@ -56,7 +57,7 @@ export function TeleworkingProvider({
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const refreshSchedules = async (start: Date, end: Date) => {
+  const refreshSchedules = useCallback(async (start: Date, end: Date) => {
     setIsLoading(true);
     setError(null);
 
@@ -68,55 +69,84 @@ export function TeleworkingProvider({
     } finally {
       setIsLoading(false);
     }
-  };
+  }, []);
 
   useEffect(() => {
     const start = new Date(initialYear, 0, 1);
     const end = new Date(initialYear, 11, 31);
     refreshSchedules(start, end);
-  }, [initialYear]);
+  }, [initialYear, refreshSchedules]);
 
-  const createOrUpdateSchedule = async (
-    usuarioId: string,
-    fecha: Date,
-    location: TeleworkingLocation,
-    notes?: string
-  ) => {
-    await TeleworkingService.createOrUpdateSchedule(
-      usuarioId,
-      fecha,
-      location,
-      usuario!,
-      notes
-    );
-    await refreshSchedules(startOfMonth(fecha), endOfMonth(fecha));
-  };
+  const createOrUpdateSchedule = useCallback(
+    async (
+      usuarioId: string,
+      fecha: Date,
+      location: TeleworkingLocation,
+      notes?: string
+    ) => {
+      await TeleworkingService.createOrUpdateSchedule(
+        usuarioId,
+        fecha,
+        location,
+        usuario!,
+        notes
+      );
+      const now = new Date();
+      await refreshSchedules(
+        new Date(now.getFullYear(), 0, 1),
+        new Date(now.getFullYear(), 11, 31)
+      );
+    },
+    [usuario, refreshSchedules]
+  );
 
-  const deleteSchedule = async (scheduleId: string) => {
-    await TeleworkingService.deleteSchedule(scheduleId);
-    const currentDate = new Date();
-    await refreshSchedules(startOfMonth(currentDate), endOfMonth(currentDate));
-  };
+  const deleteSchedule = useCallback(
+    async (scheduleId: string) => {
+      await TeleworkingService.deleteSchedule(scheduleId);
+      const now = new Date();
+      await refreshSchedules(
+        new Date(now.getFullYear(), 0, 1),
+        new Date(now.getFullYear(), 11, 31)
+      );
+    },
+    [refreshSchedules]
+  );
 
-  const approveSchedule = async (scheduleId: string) => {
-    await TeleworkingService.approveSchedule(scheduleId, usuario!);
-    const currentDate = new Date();
-    await refreshSchedules(startOfMonth(currentDate), endOfMonth(currentDate));
-  };
+  const approveSchedule = useCallback(
+    async (scheduleId: string) => {
+      await TeleworkingService.approveSchedule(scheduleId, usuario!);
+      const now = new Date();
+      await refreshSchedules(
+        new Date(now.getFullYear(), 0, 1),
+        new Date(now.getFullYear(), 11, 31)
+      );
+    },
+    [usuario, refreshSchedules]
+  );
 
-  const rejectSchedule = async (scheduleId: string) => {
-    await TeleworkingService.rejectSchedule(scheduleId);
-    const currentDate = new Date();
-    await refreshSchedules(startOfMonth(currentDate), endOfMonth(currentDate));
-  };
+  const rejectSchedule = useCallback(
+    async (scheduleId: string) => {
+      await TeleworkingService.rejectSchedule(scheduleId);
+      const now = new Date();
+      await refreshSchedules(
+        new Date(now.getFullYear(), 0, 1),
+        new Date(now.getFullYear(), 11, 31)
+      );
+    },
+    [refreshSchedules]
+  );
 
-  const bulkCreateSchedules = async (schedules: any[]) => {
-    await TeleworkingService.bulkCreateSchedules(schedules, usuario!);
-    if (schedules.length > 0) {
-      const firstDate = schedules[0].fecha;
-      await refreshSchedules(startOfMonth(firstDate), endOfMonth(firstDate));
-    }
-  };
+  const bulkCreateSchedules = useCallback(
+    async (schedules: any[]) => {
+      await TeleworkingService.bulkCreateSchedules(schedules, usuario!);
+      const now = new Date();
+      await refreshSchedules(
+        new Date(now.getFullYear(), 0, 1),
+        new Date(now.getFullYear(), 11, 31)
+      );
+    },
+    [usuario, refreshSchedules]
+  );
 
   return (
     <TeleworkingContext.Provider

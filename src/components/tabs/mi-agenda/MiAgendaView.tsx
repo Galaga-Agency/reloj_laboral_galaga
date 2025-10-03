@@ -3,12 +3,11 @@ import { FiAlertCircle, FiHome } from "react-icons/fi";
 import { startOfMonth, endOfMonth } from "date-fns";
 import { AbsenceFormModal } from "@/components/modals/AbsenceFormModal";
 import { TeleworkRequestModal } from "@/components/modals/TeleworkRequestModal";
-import { AbsenceService } from "@/services/absence-service";
-import { TeleworkingService } from "@/services/teleworking-service";
+import { useAbsences } from "@/contexts/AbsenceContext";
+import { useTeleworking } from "@/contexts/TeleworkingContext";
 import PrimaryButton from "@/components/ui/PrimaryButton";
 import SecondaryButton from "@/components/ui/SecondaryButton";
-import type { Usuario, Absence } from "@/types";
-import type { TeleworkingSchedule } from "@/types/teleworking";
+import type { Usuario } from "@/types";
 import { AgendaStats } from "@/components/tabs/mi-agenda/AgendaStats";
 import { AgendaCalendar } from "@/components/tabs/mi-agenda/AgendaCalendar";
 import { HolidayVacationPicker } from "@/components/tabs/mi-agenda/HolidayVacationPicker";
@@ -21,87 +20,35 @@ interface MiAgendaViewProps {
 }
 
 export function MiAgendaView({ usuario }: MiAgendaViewProps) {
+  const { absences: allAbsences, deleteAbsence } = useAbsences();
+  const {
+    schedules: allTeleworkSchedules,
+    deleteSchedule: deleteTeleworkSchedule,
+  } = useTeleworking();
+
   const [showAbsenceModal, setShowAbsenceModal] = useState(false);
   const [showTeleworkModal, setShowTeleworkModal] = useState(false);
   const [selectedDate, setSelectedDate] = useState(new Date());
   const [currentMonth, setCurrentMonth] = useState(new Date());
-  const [absences, setAbsences] = useState<Absence[]>([]);
-  const [teleworkSchedules, setTeleworkSchedules] = useState<
-    TeleworkingSchedule[]
-  >([]);
-  const [daysOff, setDaysOff] = useState<Absence[]>([]);
-  const [isLoading, setIsLoading] = useState(false);
 
   const [toast, setToast] = useState<{
     type: "success" | "error" | "warning";
     message: string;
   } | null>(null);
 
-  useEffect(() => {
-    loadUserData();
-  }, [currentMonth, usuario.id]);
-
-  const loadUserData = async () => {
-    setIsLoading(true);
-    try {
-      const monthStart = startOfMonth(currentMonth);
-      const monthEnd = endOfMonth(currentMonth);
-
-      const [absencesData, allTeleworkData, allDaysOffData] = await Promise.all(
-        [
-          AbsenceService.getAbsencesByUser(
-            usuario.id,
-            monthStart,
-            monthEnd,
-            false
-          ),
-          TeleworkingService.getSchedulesForMonth(
-            currentMonth.getFullYear(),
-            currentMonth.getMonth() + 1
-          ),
-          AbsenceService.getAbsencesByUser(
-            usuario.id,
-            undefined,
-            undefined,
-            true
-          ),
-        ]
-      );
-
-      const userTelework = allTeleworkData.filter(
-        (t) => t.usuarioId === usuario.id
-      );
-      const daysOffData = allDaysOffData.filter(
-        (a) => a.tipoAusencia === "dia_libre"
-      );
-
-      setAbsences(absencesData);
-      setDaysOff(daysOffData);
-      setTeleworkSchedules(userTelework);
-    } catch (error) {
-      console.error("Error loading user agenda data:", error);
-      setToast({ type: "error", message: "Error al cargar agenda" });
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
   const handleAbsenceSuccess = () => {
-    loadUserData();
     setShowAbsenceModal(false);
     setToast({ type: "success", message: "Ausencia registrada correctamente" });
   };
 
   const handleTeleworkSuccess = () => {
-    loadUserData();
     setShowTeleworkModal(false);
     setToast({ type: "success", message: "Solicitud de teletrabajo enviada" });
   };
 
   const handleDeleteDayOff = async (absenceId: string) => {
     try {
-      await AbsenceService.deleteAbsence(absenceId);
-      await loadUserData();
+      await deleteAbsence(absenceId);
       setToast({ type: "success", message: "Día libre eliminado" });
     } catch (error) {
       console.error("Error deleting day off:", error);
@@ -110,22 +57,39 @@ export function MiAgendaView({ usuario }: MiAgendaViewProps) {
   };
 
   const handleDismissTelework = async (id: string) => {
-    await TeleworkingService.deleteSchedule(id);
-    await loadUserData();
+    await deleteTeleworkSchedule(id);
   };
 
   const handleDismissAbsence = async (id: string) => {
-    await AbsenceService.deleteAbsence(id);
-    await loadUserData();
+    await deleteAbsence(id);
   };
+
+  const userAbsences = allAbsences.filter((a) => a.usuarioId === usuario.id);
+  const userTeleworkSchedules = allTeleworkSchedules.filter(
+    (t) => t.usuarioId === usuario.id
+  );
+
+  const daysOff = userAbsences.filter((a) => a.tipoAusencia === "dia_libre");
+  const regularAbsences = userAbsences.filter(
+    (a) => a.tipoAusencia !== "dia_libre"
+  );
 
   const monthStart = startOfMonth(currentMonth);
   const monthEnd = endOfMonth(currentMonth);
+
+  const monthRegularAbsences = regularAbsences.filter((a) =>
+    a.fechas.some((f) => f >= monthStart && f <= monthEnd)
+  );
+
   const monthDaysOff = daysOff.filter((d) =>
     d.fechas.some((f) => f >= monthStart && f <= monthEnd)
   );
 
-  const allAbsencesForCalendar = [...absences, ...monthDaysOff];
+  const allAbsencesForCalendar = [...monthRegularAbsences, ...monthDaysOff];
+
+  const monthTeleworkSchedules = userTeleworkSchedules.filter(
+    (t) => t.fecha >= monthStart && t.fecha <= monthEnd
+  );
 
   return (
     <div className="max-w-7xl mx-auto space-y-6">
@@ -158,23 +122,25 @@ export function MiAgendaView({ usuario }: MiAgendaViewProps) {
 
         <div className="pt-6 relative z-10">
           <AgendaStats
-            absences={allAbsencesForCalendar}
-            teleworkSchedules={teleworkSchedules}
+            absences={userAbsences}
+            teleworkSchedules={userTeleworkSchedules}
           />
         </div>
       </div>
 
       <NotificationCenter
         usuario={usuario}
-        teleworkSchedules={teleworkSchedules}
-        absences={absences}
+        teleworkSchedules={monthTeleworkSchedules}
+        absences={userAbsences.filter((a) =>
+          a.fechas.some((f) => f >= monthStart && f <= monthEnd)
+        )}
         onDismissTelework={handleDismissTelework}
         onDismissAbsence={handleDismissAbsence}
       />
 
       <HolidayVacationPicker
         daysOff={daysOff}
-        onRefresh={loadUserData}
+        onRefresh={() => {}}
         onDelete={handleDeleteDayOff}
         currentUserId={usuario.id}
         currentUser={usuario}
@@ -182,7 +148,7 @@ export function MiAgendaView({ usuario }: MiAgendaViewProps) {
 
       <AgendaCalendar
         absences={allAbsencesForCalendar}
-        teleworkSchedules={teleworkSchedules}
+        teleworkSchedules={monthTeleworkSchedules}
         selectedDate={selectedDate}
         onDateSelect={setSelectedDate}
         currentMonth={currentMonth}
@@ -207,9 +173,9 @@ export function MiAgendaView({ usuario }: MiAgendaViewProps) {
 
       <AgendaReportGenerator
         usuario={usuario}
-        absences={[...absences, ...daysOff]}
-        teleworkSchedules={teleworkSchedules}
-        onRefresh={loadUserData}
+        absences={userAbsences}
+        teleworkSchedules={userTeleworkSchedules}
+        onRefresh={() => {}}
       />
 
       {toast && (
